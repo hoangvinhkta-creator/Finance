@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="FinTrace — demo theo dõi dòng tiền, tài sản, công nợ và biến động tài sản cá nhân.">
+  <title>FinTrace — Tài chính cá nhân</title>
+  <style>
+    :root {
+      --ink:#18201c; --muted:#6e7772; --line:#e5e7e2; --paper:#f6f6f1;
+      --card:#fff; --green:#176b50; --green-2:#dff1e8; --lime:#d8f06d;
+      --orange:#f18c5b; --red:#bd594e; --blue:#4f6bff; --shadow:0 12px 40px rgba(27,39,31,.07);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    .app{min-height:100vh;display:grid;grid-template-columns:248px 1fr}
+    .sidebar{position:fixed;inset:0 auto 0 0;width:248px;background:#14241c;color:#eef7f1;padding:28px 18px;display:flex;flex-direction:column;z-index:20}
+    .brand{display:flex;align-items:center;gap:11px;padding:0 10px 30px;font-size:19px;font-weight:760;letter-spacing:-.4px}
+    .brand-mark{width:33px;height:33px;border-radius:11px;background:var(--lime);color:#173025;display:grid;place-items:center;font-size:18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
+    .nav-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#7e9a8b;padding:4px 12px 10px}
+    .nav{display:grid;gap:5px}
+    .nav a{color:#aebfb6;text-decoration:none;padding:11px 12px;border-radius:11px;display:flex;gap:11px;align-items:center;font-weight:550;transition:.2s}
+    .nav a:hover,.nav a.active{background:#23372d;color:#fff}
+    .nav a.active{box-shadow:inset 3px 0 var(--lime)}
+    .nav-icon{font-size:15px;width:18px;text-align:center}
+    .side-foot{margin-top:auto;background:#20362b;border:1px solid #2c4739;border-radius:14px;padding:15px}
+    .side-foot small{color:#90aa9c;display:block;margin-bottom:7px}.side-foot strong{font-size:12px}.sync-line{height:4px;background:#30493c;border-radius:9px;margin-top:12px;overflow:hidden}.sync-line span{display:block;width:78%;height:100%;background:var(--lime)}
+    main{grid-column:2;padding:28px 32px 52px;max-width:1560px;width:100%;margin:auto}
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px;gap:16px}
+    .hello h1{font-size:24px;letter-spacing:-.7px;margin:0 0 5px}.hello p{color:var(--muted);margin:0}
+    .actions{display:flex;gap:10px;align-items:center}
+    .icon-btn,.secondary,.primary,.period{border:1px solid var(--line);background:#fff;border-radius:11px;height:42px;padding:0 14px;color:var(--ink)}
+    .icon-btn{width:42px;padding:0}.primary{border-color:#1b3c2d;background:#1b3c2d;color:#fff;font-weight:650;padding:0 17px}.primary:hover{background:#285540}.secondary:hover,.icon-btn:hover,.period:hover{border-color:#b8beb9}
+    .section-title{display:flex;justify-content:space-between;align-items:end;margin:30px 0 14px}.section-title h2{font-size:17px;margin:0;letter-spacing:-.3px}.section-title p{margin:4px 0 0;color:var(--muted);font-size:12px}.section-title a{color:var(--green);text-decoration:none;font-size:12px;font-weight:700}
+    .hero{border-radius:21px;background:#183327;color:white;padding:28px 29px;display:grid;grid-template-columns:minmax(260px,.85fr) 1.2fr;gap:26px;overflow:hidden;position:relative;box-shadow:var(--shadow)}
+    .hero:after{content:"";position:absolute;width:340px;height:340px;border:65px solid rgba(216,240,109,.08);border-radius:50%;right:-145px;top:-210px}
+    .eyebrow{color:#9ab3a5;font-size:11px;text-transform:uppercase;letter-spacing:1.3px}.networth{font-size:40px;letter-spacing:-1.6px;font-weight:740;margin:10px 0 8px}.unit{font-size:17px;color:#aec0b5;font-weight:500}.delta{display:inline-flex;align-items:center;gap:6px;color:#d9ef71;background:#274837;border-radius:99px;padding:6px 9px;font-size:12px}.hero-note{color:#a9bbb1;line-height:1.55;margin:18px 0 0;max-width:360px;font-size:12px}
+    .hero-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-self:end;z-index:1}.mini{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);border-radius:14px;padding:15px}.mini-label{color:#9fb2a7;font-size:11px;margin-bottom:8px}.mini-value{font-size:19px;font-weight:680}.mini-detail{font-size:10px;color:#86a092;margin-top:5px}.good{color:#9ed6bb}.bad{color:#ffad98}.warn{color:#f7d87d}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:17px;box-shadow:0 4px 16px rgba(27,39,31,.025)}
+    .kpi{padding:18px}.kpi-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:11px}.badge-icon{width:29px;height:29px;border-radius:9px;display:grid;place-items:center;background:#edf4ef;color:var(--green)}.kpi-value{font-size:23px;font-weight:720;letter-spacing:-.6px;margin:16px 0 7px}.kpi-sub{font-size:11px;color:var(--muted)}
+    .grid-main{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.8fr);gap:14px}.panel{padding:20px;min-height:320px}.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.panel-head h3{font-size:14px;margin:0}.panel-head span{font-size:11px;color:var(--muted)}
+    .legend{display:flex;gap:14px;color:var(--muted);font-size:11px}.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}.dot.in{background:var(--green)}.dot.out{background:var(--orange)}
+    .chart-wrap{height:245px;position:relative}canvas{width:100%;height:100%;display:block}
+    .donut-wrap{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:18px}.donut{width:148px;aspect-ratio:1;border-radius:50%;background:conic-gradient(#172f25 0 45.54%,#d8f06d 45.54% 72.47%,#ef9166 72.47% 91.47%,#789885 91.47% 99.81%,#ccd5cf 99.81% 100%);display:grid;place-items:center}.donut:after{content:"";width:84px;aspect-ratio:1;background:#fff;border-radius:50%}.asset-legend{display:grid;gap:13px}.asset-row{display:grid;grid-template-columns:9px 1fr auto;gap:8px;align-items:center}.asset-row i{width:8px;height:8px;border-radius:3px}.asset-row span{color:var(--muted);font-size:11px}.asset-row strong{font-size:11px}
+    .data-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}.table-card{overflow:hidden}.table-tools{padding:17px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}.table-tools h3{margin:0;font-size:14px}.search{border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:180px;background:#fafbf9}.table-scroll{overflow:auto;max-height:410px}table{width:100%;border-collapse:collapse;white-space:nowrap}th{text-align:left;text-transform:uppercase;letter-spacing:.7px;color:#8b938e;font-size:9px;font-weight:700;padding:12px 18px;background:#fbfbf8;position:sticky;top:0;z-index:2}td{padding:13px 18px;border-top:1px solid #eff0ed;font-size:11px}td.amount{text-align:right;font-weight:670}.type{display:inline-block;padding:5px 8px;border-radius:8px;background:#f1f3ef;color:#5b665f;font-size:10px}.type.income{background:#e5f3eb;color:#176b50}.type.social{background:#fff0e8;color:#aa552e}.type.shop{background:#eeeeff;color:#5656a8}.account-name{display:flex;align-items:center;gap:10px}.asset-dot{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:#eff4f0;color:#315d48;font-weight:750;font-size:9px}.progress{width:84px;height:5px;background:#eceeea;border-radius:9px;overflow:hidden}.progress span{display:block;height:100%;background:var(--green);border-radius:9px}.reconcile{padding:20px}.reconcile h3{font-size:14px;margin:0}.recon-total{margin:9px 0 18px;font-size:11px;color:var(--muted)}.recon-list{display:grid;gap:10px}.recon-item{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;border:1px solid #eceeea;border-radius:13px;padding:12px}.recon-item .name{font-weight:650;font-size:11px}.recon-item .status{font-size:9px;color:var(--muted);margin-top:3px}.pill{font-size:9px;border-radius:99px;padding:5px 7px;background:#e5f3eb;color:var(--green)}.pill.alert{background:#fff0e9;color:#ae512b}.reconcile button{width:100%;margin-top:15px}.source-note{text-align:center;color:#939b96;font-size:10px;margin:24px 0 0}
+    .mobile-bar{display:none}.modal{position:fixed;inset:0;background:rgba(8,19,13,.55);display:none;place-items:center;z-index:50;padding:20px}.modal.open{display:grid}.dialog{background:#fff;border-radius:19px;width:min(520px,100%);padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.25)}.dialog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:19px}.dialog-head h3{margin:0;font-size:17px}.close{border:0;background:#f0f2ef;border-radius:9px;width:34px;height:34px}.form{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:10px;color:var(--muted);font-weight:650}.field input,.field select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff}.dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.toast{position:fixed;right:24px;bottom:24px;background:#193327;color:#fff;padding:13px 17px;border-radius:11px;box-shadow:var(--shadow);transform:translateY(80px);opacity:0;transition:.25s;z-index:60}.toast.show{transform:none;opacity:1}
+    @media(max-width:1100px){.app{grid-template-columns:80px 1fr}.sidebar{width:80px;padding:26px 11px}.brand{padding:0 12px 28px}.brand>span:last-child,.nav-label,.nav a span:last-child,.side-foot{display:none}.nav a{justify-content:center;padding:12px}.nav a.active{box-shadow:none}.hero{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.data-grid{grid-template-columns:1fr}main{grid-column:2}}
+    @media(max-width:720px){.app{display:block}.sidebar{display:none}main{padding:20px 14px 86px}.topbar{align-items:flex-start}.hello h1{font-size:20px}.actions .icon-btn,.actions .period{display:none}.hero{padding:22px}.networth{font-size:32px}.hero-breakdown{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.grid-main{grid-template-columns:1fr}.donut-wrap{grid-template-columns:130px 1fr}.donut{width:126px}.data-grid{display:block}.reconcile{margin-top:14px}.mobile-bar{display:flex;position:fixed;bottom:0;left:0;right:0;height:68px;background:#14241c;justify-content:space-around;align-items:center;z-index:30;color:#aebfb6}.mobile-bar a{color:inherit;text-decoration:none;font-size:10px;display:grid;gap:4px;text-align:center}.mobile-bar .add-mobile{width:44px;height:44px;background:var(--lime);color:#173025;border-radius:15px;display:grid;place-items:center;font-size:22px;margin-top:-24px}.form{grid-template-columns:1fr}.field.full{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">↗</span><span>FinTrace</span></div>
+      <div class="nav-label">Không gian cá nhân</div>
+      <nav class="nav">
+        <a href="#overview" class="active"><span class="nav-icon">⌂</span><span>Tổng quan</span></a>
+        <a href="#cashflow"><span class="nav-icon">⇄</span><span>Dòng tiền</span></a>
+        <a href="#assets"><span class="nav-icon">◈</span><span>Tài sản</span></a>
+        <a href="#transactions"><span class="nav-icon">≡</span><span>Giao dịch</span></a>
+        <a href="#reconcile"><span class="nav-icon">✓</span><span>Đối soát</span></a>
+      </nav>
+      <div class="side-foot"><small>Độ đầy đủ dữ liệu</small><strong>78% đã đối soát</strong><div class="sync-line"><span></span></div></div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="hello"><h1>Chào buổi chiều, Vinh</h1><p>Đây là bức tranh tài chính hiện tại của bạn.</p></div>
+        <div class="actions"><button class="period">Dữ liệu tổng hợp ▾</button><button class="icon-btn" aria-label="Thông báo">◉</button><button class="primary js-open">＋ Giao dịch</button></div>
+      </header>
+
+      <section id="overview" class="hero">
+        <div><div class="eyebrow">Tài sản ròng ước tính</div><div class="networth">317,03 <span class="unit">triệu</span></div><span class="delta">↑ 10,47% kỳ gần nhất</span><p class="hero-note">Giá trị sau khi lấy tổng tài sản 347,35 triệu trừ công nợ ròng 30,33 triệu từ bảng tính của bạn.</p></div>
+        <div class="hero-breakdown">
+          <div class="mini"><div class="mini-label">Tổng tài sản</div><div class="mini-value">347,35 tr</div><div class="mini-detail good">13 tài khoản & tài sản</div></div>
+          <div class="mini"><div class="mini-label">Công nợ ròng</div><div class="mini-value">−30,33 tr</div><div class="mini-detail warn">15 khoản đang theo dõi</div></div>
+          <div class="mini"><div class="mini-label">Tiền & tương đương</div><div class="mini-value">15,66 tr</div><div class="mini-detail">VCB · USDT · Tiền mặt</div></div>
+        </div>
+      </section>
+
+      <section class="kpis">
+        <article class="card kpi"><div class="kpi-top"><span>Thu thực nhận</span><span class="badge-icon">↓</span></div><div class="kpi-value">31,74 tr</div><div class="kpi-sub good">8 nguồn thu đã ghi nhận</div></article>
+        <article class="card kpi"><div class="kpi-top"><span>Chi thực trả</span><span class="badge-icon">↑</span></div><div class="kpi-value">40,23 tr</div><div class="kpi-sub bad">Mua sắm chiếm 58,8%</div></article>
+        <article class="card kpi"><div class="kpi-top"><span>Dòng tiền ròng</span><span class="badge-icon">≈</span></div><div class="kpi-value">−8,49 tr</div><div class="kpi-sub bad">Chi đang cao hơn thu</div></article>
+        <article class="card kpi"><div class="kpi-top"><span>Đối ứng xã giao</span><span class="badge-icon">◎</span></div><div class="kpi-value">4,65 tr</div><div class="kpi-sub">Ghi nhận trong nhóm chi hiện tại</div></article>
+      </section>
+
+      <div id="cashflow" class="section-title"><div><h2>Dòng tiền & cơ cấu tài sản</h2><p>Biến động thu–chi theo tháng và phân bổ tài sản hiện tại.</p></div><a href="#transactions">Xem giao dịch →</a></div>
+      <section class="grid-main">
+        <article class="card panel"><div class="panel-head"><div><h3>Thu nhập và chi tiêu</h3><span>10 kỳ gần nhất trong file</span></div><div class="legend"><span><i class="dot in"></i>Thu</span><span><i class="dot out"></i>Chi</span></div></div><div class="chart-wrap"><canvas id="cashChart" aria-label="Biểu đồ thu nhập và chi tiêu"></canvas></div></article>
+        <article id="assets" class="card panel"><div class="panel-head"><div><h3>Cơ cấu tài sản</h3><span>347,35 triệu trước công nợ</span></div></div><div class="donut-wrap"><div class="donut" title="Phân bổ tài sản"></div><div class="asset-legend">
+          <div class="asset-row"><i style="background:#172f25"></i><span>Crypto</span><strong>158,19 tr</strong></div>
+          <div class="asset-row"><i style="background:#d8f06d"></i><span>Vàng</span><strong>93,53 tr</strong></div>
+          <div class="asset-row"><i style="background:#ef9166"></i><span>Bạc</span><strong>66,00 tr</strong></div>
+          <div class="asset-row"><i style="background:#789885"></i><span>Chứng khoán</span><strong>28,95 tr</strong></div>
+          <div class="asset-row"><i style="background:#ccd5cf"></i><span>Tiền</span><strong>0,68 tr</strong></div>
+        </div></div></article>
+      </section>
+
+      <div class="section-title"><div><h2>Sổ tài chính</h2><p>Giao dịch và tài sản được chuyển từ bảng “chi tiêu.xlsx”.</p></div></div>
+      <section class="data-grid">
+        <article id="transactions" class="card table-card"><div class="table-tools"><h3>Giao dịch gần đây</h3><input id="search" class="search" placeholder="Tìm giao dịch…" aria-label="Tìm giao dịch"></div><div class="table-scroll"><table><thead><tr><th>Nội dung</th><th>Phân loại</th><th>Tài khoản</th><th style="text-align:right">Số tiền</th></tr></thead><tbody id="transactionRows"></tbody></table></div></article>
+        <article id="reconcile" class="card reconcile"><h3>Tài sản & đối soát</h3><div class="recon-total">13 tài sản · tổng ghi sổ 347,35 triệu</div><div id="assetRows" class="recon-list"></div><button class="secondary" id="reconBtn">Bắt đầu đối soát</button></article>
+      </section>
+      <p class="source-note">Demo dùng dữ liệu điền sẵn từ “chi tiêu.xlsx”. Các số liệu được coi là dữ liệu mẫu cho đến khi hoàn tất đối soát.</p>
+    </main>
+  </div>
+
+  <nav class="mobile-bar"><a href="#overview">⌂<span>Tổng quan</span></a><a href="#cashflow">⇄<span>Dòng tiền</span></a><button class="add-mobile js-open" aria-label="Thêm giao dịch">＋</button><a href="#assets">◈<span>Tài sản</span></a><a href="#transactions">≡<span>Giao dịch</span></a></nav>
+
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><div class="dialog"><div class="dialog-head"><h3 id="dialogTitle">Thêm giao dịch</h3><button class="close" id="closeModal" aria-label="Đóng">×</button></div><form id="transactionForm"><div class="form"><div class="field"><label>Bản chất giao dịch</label><select id="txType"><option>Chi tiêu</option><option>Thu nhập</option><option>Chuyển tài sản</option><option>Cho vay</option><option>Đối ứng xã giao</option></select></div><div class="field"><label>Số tiền (nghìn đồng)</label><input id="txAmount" type="number" min="0" placeholder="Ví dụ: 250" required></div><div class="field full"><label>Nội dung</label><input id="txName" placeholder="Ví dụ: Ăn trưa" required></div><div class="field"><label>Tài khoản</label><select id="txAccount"><option>Vietcombank</option><option>Tiền mặt</option><option>USDT</option></select></div><div class="field"><label>Ngày giao dịch</label><input type="date" value="2026-08-27"></div></div><div class="dialog-actions"><button type="button" class="secondary" id="cancelModal">Hủy</button><button class="primary" type="submit">Lưu bản demo</button></div></form></div></div>
+  <div class="toast" id="toast">Đã thêm giao dịch vào bản demo</div>
+
+  <script>
+    const transactions = [
+      ["MacMini","Mua sắm","Vietcombank",-22386],["Hạ Long","Giải trí","Vietcombank",-4085],["Momo","Trả nợ","Vietcombank",-3422],["Trường","Xã giao","Tiền mặt",-2635],["Nghi Sơn","Giải trí","Vietcombank",-2255],["Trường","Xã giao","Tiền mặt",-1500],["Lương","Thu nhập","Vietcombank",14652],["Xuân Biển","Thu nhập","Vietcombank",4000],["Bàn phím","Mua sắm","Vietcombank",-589],["Tiến","Thu nhập","Tiền mặt",500],["Đáo thẻ","Trả nợ","Vietcombank",-410],["Bia","Xã giao","Tiền mặt",-400],["Tâm Anh","Thu nhập","Vietcombank",900],["Nước","Ăn uống","Tiền mặt",-86],["Coffee","Ăn uống","Tiền mặt",-110],["Đổ xăng","Dịch vụ","Tiền mặt",-130],["Tạp hoá","Ăn uống","Tiền mặt",-38]
+    ];
+    const assets = [
+      ["ETH","127,52 tr",100,"Đã khớp"],["Bạc ACR","51,00 tr",92,"Đã khớp"],["Vàng Phi Đoan","42,90 tr",84,"Cần snapshot"],["VCBS","28,95 tr",76,"Cần snapshot"],["Vàng Ancarat","27,54 tr",68,"Đã khớp"],["Vàng BTMH","19,89 tr",61,"Cần snapshot"]
+    ];
+    const fmt = n => new Intl.NumberFormat('vi-VN').format(Math.abs(n)) + 'k';
+    const typeClass = t => t==='Thu nhập'?'income':t==='Xã giao'?'social':t==='Mua sắm'?'shop':'';
+    function renderTransactions(filter=''){
+      const rows=transactions.filter(r=>r.join(' ').toLowerCase().includes(filter.toLowerCase())).map(r=>`<tr><td><strong>${r[0]}</strong></td><td><span class="type ${typeClass(r[1])}">${r[1]}</span></td><td>${r[2]}</td><td class="amount ${r[3]>0?'good':'bad'}">${r[3]>0?'+':'−'}${fmt(r[3])}</td></tr>`).join('');
+      document.querySelector('#transactionRows').innerHTML=rows||'<tr><td colspan="4">Không tìm thấy giao dịch.</td></tr>';
+    }
+    document.querySelector('#assetRows').innerHTML=assets.map((a,i)=>`<div class="recon-item"><span class="asset-dot">${a[0].slice(0,2)}</span><div><div class="name">${a[0]} · ${a[1]}</div><div class="progress"><span style="width:${a[2]}%"></span></div></div><span class="pill ${a[3]!=='Đã khớp'?'alert':''}">${a[3]}</span></div>`).join('');
+    renderTransactions(); document.querySelector('#search').addEventListener('input',e=>renderTransactions(e.target.value));
+
+    const modal=document.querySelector('#modal'); const open=()=>modal.classList.add('open'); const close=()=>modal.classList.remove('open');
+    document.querySelectorAll('.js-open').forEach(b=>b.addEventListener('click',open)); document.querySelector('#closeModal').onclick=close; document.querySelector('#cancelModal').onclick=close; modal.addEventListener('click',e=>{if(e.target===modal)close()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+    document.querySelector('#transactionForm').addEventListener('submit',e=>{e.preventDefault();const amount=Number(document.querySelector('#txAmount').value);const type=document.querySelector('#txType').value;transactions.unshift([document.querySelector('#txName').value,type,document.querySelector('#txAccount').value,type==='Thu nhập'?amount:-amount]);renderTransactions();close();e.target.reset();const t=document.querySelector('#toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)});
+    document.querySelector('#reconBtn').onclick=()=>{document.querySelector('#toast').textContent='Đã mở phiên đối soát bản demo';document.querySelector('#toast').classList.add('show');setTimeout(()=>document.querySelector('#toast').classList.remove('show'),2200)};
+    document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>{document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active')});
+
+    const periods=['T1/26','T2/26','T3/26','T4/26','T5/26','T6/26','T7/26','T8/26','T9/26','T10/26'];
+    const income=[42.109,250.649,35.807,32.293,36.124,38.921,32.531,38.146,41.181,31.453];
+    const expense=[44.518,444.93,63.561,89.965,119.03,31.93,56.96,49.197,54.737,43.111];
+    function drawChart(){
+      const c=document.querySelector('#cashChart'),box=c.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);c.width=box.width*dpr;c.height=box.height*dpr;const x=c.getContext('2d');x.scale(dpr,dpr);const w=box.width,h=box.height,p={l:36,r:12,t:12,b:30},max=500;
+      x.font='10px system-ui';x.strokeStyle='#e7e9e5';x.fillStyle='#8a928d';x.lineWidth=1;
+      [0,100,200,300,400,500].forEach(v=>{const y=h-p.b-(v/max)*(h-p.t-p.b);x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillText(v===0?'0':v+'tr',1,y+3)});
+      const px=i=>p.l+i*((w-p.l-p.r)/(periods.length-1)),py=v=>h-p.b-(v/max)*(h-p.t-p.b);
+      periods.forEach((v,i)=>x.fillText(v,px(i)-13,h-8));
+      function line(data,color,fill){x.beginPath();data.forEach((v,i)=>i?x.lineTo(px(i),py(v)):x.moveTo(px(i),py(v)));x.strokeStyle=color;x.lineWidth=2.3;x.lineJoin='round';x.stroke();if(fill){x.lineTo(px(data.length-1),h-p.b);x.lineTo(px(0),h-p.b);x.closePath();const g=x.createLinearGradient(0,p.t,0,h-p.b);g.addColorStop(0,fill);g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fill()}data.forEach((v,i)=>{x.beginPath();x.arc(px(i),py(v),2.6,0,Math.PI*2);x.fillStyle=color;x.fill()})}
+      line(income,'#176b50','rgba(23,107,80,.14)');line(expense,'#f18c5b');
+    }
+    drawChart(); let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(drawChart,100)});
+  </script>
+</body>
+</html>
