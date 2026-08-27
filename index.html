@@ -34,7 +34,8 @@
     .actions{display:flex;gap:10px;align-items:center}
     .icon-btn,.secondary,.primary,.period{border:1px solid var(--line);background:#fff;border-radius:11px;height:42px;padding:0 14px;color:var(--ink)}
     .icon-btn{width:42px;padding:0}.primary{border-color:#1b3c2d;background:#1b3c2d;color:#fff;font-weight:650;padding:0 17px}.primary:hover{background:#285540}.secondary:hover,.icon-btn:hover,.period:hover{border-color:#b8beb9}
-    .section-title{display:flex;justify-content:space-between;align-items:end;margin:30px 0 14px}.section-title h2{font-size:17px;margin:0;letter-spacing:-.3px}.section-title p{margin:4px 0 0;color:var(--muted);font-size:12px}.section-title a{color:var(--green);text-decoration:none;font-size:12px;font-weight:700}
+    .view{display:none}.view.active{display:block;animation:fade-up .24s ease-out}@keyframes fade-up{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+    .section-title{display:flex;justify-content:space-between;align-items:end;margin:0 0 14px}.section-title h2{font-size:17px;margin:0;letter-spacing:-.3px}.section-title p{margin:4px 0 0;color:var(--muted);font-size:12px}.section-title a{color:var(--green);text-decoration:none;font-size:12px;font-weight:700}
     .hero{border-radius:21px;background:#183327;color:white;padding:28px 29px;display:grid;grid-template-columns:minmax(260px,.85fr) 1.2fr;gap:26px;overflow:hidden;position:relative;box-shadow:var(--shadow)}
     .hero:after{content:"";position:absolute;width:340px;height:340px;border:65px solid rgba(216,240,109,.08);border-radius:50%;right:-145px;top:-210px}
     .eyebrow{color:#9ab3a5;font-size:11px;text-transform:uppercase;letter-spacing:1.3px}.networth{font-size:40px;letter-spacing:-1.6px;font-weight:740;margin:10px 0 8px}.unit{font-size:17px;color:#aec0b5;font-weight:500}.delta{display:inline-flex;align-items:center;gap:6px;color:#d9ef71;background:#274837;border-radius:99px;padding:6px 9px;font-size:12px}.hero-note{color:#a9bbb1;line-height:1.55;margin:18px 0 0;max-width:360px;font-size:12px}
@@ -57,11 +58,11 @@
       <div class="brand"><span class="brand-mark">↗</span><span>FinTrace</span></div>
       <div class="nav-label">Không gian cá nhân</div>
       <nav class="nav">
-        <a href="#overview" class="active"><span class="nav-icon">⌂</span><span>Tổng quan</span></a>
-        <a href="#cashflow"><span class="nav-icon">⇄</span><span>Dòng tiền</span></a>
-        <a href="#assets"><span class="nav-icon">◈</span><span>Tài sản</span></a>
-        <a href="#transactions"><span class="nav-icon">≡</span><span>Giao dịch</span></a>
-        <a href="#reconcile"><span class="nav-icon">✓</span><span>Đối soát</span></a>
+        <a href="#overview" data-tab="overview" class="active"><span class="nav-icon">⌂</span><span>Tổng quan</span></a>
+        <a href="#cashflow" data-tab="cashflow"><span class="nav-icon">⇄</span><span>Dòng tiền</span></a>
+        <a href="#assets" data-tab="assets"><span class="nav-icon">◈</span><span>Tài sản</span></a>
+        <a href="#transactions" data-tab="transactions"><span class="nav-icon">≡</span><span>Giao dịch</span></a>
+        <a href="#reconcile" data-tab="reconcile"><span class="nav-icon">✓</span><span>Đối soát</span></a>
       </nav>
       <div class="side-foot"><small>Độ đầy đủ dữ liệu</small><strong>78% đã đối soát</strong><div class="sync-line"><span></span></div></div>
     </aside>
@@ -72,14 +73,15 @@
         <div class="actions"><button class="period">Dữ liệu tổng hợp ▾</button><button class="icon-btn" aria-label="Thông báo">◉</button><button class="primary js-open">＋ Giao dịch</button></div>
       </header>
 
-      <section id="overview" class="hero">
+      <section id="overview" class="view active" data-view="overview">
+      <div class="hero">
         <div><div class="eyebrow">Tài sản ròng ước tính</div><div class="networth">317,03 <span class="unit">triệu</span></div><span class="delta">↑ 10,47% kỳ gần nhất</span><p class="hero-note">Giá trị sau khi lấy tổng tài sản 347,35 triệu trừ công nợ ròng 30,33 triệu từ bảng tính của bạn.</p></div>
         <div class="hero-breakdown">
           <div class="mini"><div class="mini-label">Tổng tài sản</div><div class="mini-value">347,35 tr</div><div class="mini-detail good">13 tài khoản & tài sản</div></div>
           <div class="mini"><div class="mini-label">Công nợ ròng</div><div class="mini-value">−30,33 tr</div><div class="mini-detail warn">15 khoản đang theo dõi</div></div>
           <div class="mini"><div class="mini-label">Tiền & tương đương</div><div class="mini-value">15,66 tr</div><div class="mini-detail">VCB · USDT · Tiền mặt</div></div>
         </div>
-      </section>
+      </div>
 
       <section class="kpis">
         <article class="card kpi"><div class="kpi-top"><span>Thu thực nhận</span><span class="badge-icon">↓</span></div><div class="kpi-value">31,74 tr</div><div class="kpi-sub good">8 nguồn thu đã ghi nhận</div></article>
@@ -87,11 +89,18 @@
         <article class="card kpi"><div class="kpi-top"><span>Dòng tiền ròng</span><span class="badge-icon">≈</span></div><div class="kpi-value">−8,49 tr</div><div class="kpi-sub bad">Chi đang cao hơn thu</div></article>
         <article class="card kpi"><div class="kpi-top"><span>Đối ứng xã giao</span><span class="badge-icon">◎</span></div><div class="kpi-value">4,65 tr</div><div class="kpi-sub">Ghi nhận trong nhóm chi hiện tại</div></article>
       </section>
+      </section>
 
-      <div id="cashflow" class="section-title"><div><h2>Dòng tiền & cơ cấu tài sản</h2><p>Biến động thu–chi theo tháng và phân bổ tài sản hiện tại.</p></div><a href="#transactions">Xem giao dịch →</a></div>
-      <section class="grid-main">
+      <section id="cashflow" class="view" data-view="cashflow">
+      <div class="section-title"><div><h2>Dòng tiền</h2><p>Biến động thu–chi theo 10 kỳ gần nhất trong file.</p></div><a href="#transactions" data-tab="transactions">Xem giao dịch →</a></div>
+      <section>
         <article class="card panel"><div class="panel-head"><div><h3>Thu nhập và chi tiêu</h3><span>10 kỳ gần nhất trong file</span></div><div class="legend"><span><i class="dot in"></i>Thu</span><span><i class="dot out"></i>Chi</span></div></div><div class="chart-wrap"><canvas id="cashChart" aria-label="Biểu đồ thu nhập và chi tiêu"></canvas></div></article>
-        <article id="assets" class="card panel"><div class="panel-head"><div><h3>Cơ cấu tài sản</h3><span>347,35 triệu trước công nợ</span></div></div><div class="donut-wrap"><div class="donut" title="Phân bổ tài sản"></div><div class="asset-legend">
+      </section>
+      </section>
+
+      <section id="assets" class="view" data-view="assets">
+      <div class="section-title"><div><h2>Tài sản</h2><p>Cơ cấu 347,35 triệu trước khi trừ công nợ ròng.</p></div></div>
+      <article class="card panel"><div class="panel-head"><div><h3>Cơ cấu tài sản hiện tại</h3><span>13 tài khoản & tài sản</span></div></div><div class="donut-wrap"><div class="donut" title="Phân bổ tài sản"></div><div class="asset-legend">
           <div class="asset-row"><i style="background:#172f25"></i><span>Crypto</span><strong>158,19 tr</strong></div>
           <div class="asset-row"><i style="background:#d8f06d"></i><span>Vàng</span><strong>93,53 tr</strong></div>
           <div class="asset-row"><i style="background:#ef9166"></i><span>Bạc</span><strong>66,00 tr</strong></div>
@@ -100,16 +109,20 @@
         </div></div></article>
       </section>
 
-      <div class="section-title"><div><h2>Sổ tài chính</h2><p>Giao dịch và tài sản được chuyển từ bảng “chi tiêu.xlsx”.</p></div></div>
-      <section class="data-grid">
-        <article id="transactions" class="card table-card"><div class="table-tools"><h3>Giao dịch gần đây</h3><input id="search" class="search" placeholder="Tìm giao dịch…" aria-label="Tìm giao dịch"></div><div class="table-scroll"><table><thead><tr><th>Nội dung</th><th>Phân loại</th><th>Tài khoản</th><th style="text-align:right">Số tiền</th></tr></thead><tbody id="transactionRows"></tbody></table></div></article>
-        <article id="reconcile" class="card reconcile"><h3>Tài sản & đối soát</h3><div class="recon-total">13 tài sản · tổng ghi sổ 347,35 triệu</div><div id="assetRows" class="recon-list"></div><button class="secondary" id="reconBtn">Bắt đầu đối soát</button></article>
+      <section id="transactions" class="view" data-view="transactions">
+      <div class="section-title"><div><h2>Giao dịch</h2><p>Giao dịch được chuyển từ bảng “chi tiêu.xlsx”.</p></div><button class="primary js-open">＋ Giao dịch</button></div>
+      <article class="card table-card"><div class="table-tools"><h3>Giao dịch gần đây</h3><input id="search" class="search" placeholder="Tìm giao dịch…" aria-label="Tìm giao dịch"></div><div class="table-scroll"><table><thead><tr><th>Nội dung</th><th>Phân loại</th><th>Tài khoản</th><th style="text-align:right">Số tiền</th></tr></thead><tbody id="transactionRows"></tbody></table></div></article>
+      </section>
+
+      <section id="reconcile" class="view" data-view="reconcile">
+      <div class="section-title"><div><h2>Đối soát</h2><p>Đối chiếu số dư ghi sổ với snapshot thực tế.</p></div></div>
+      <article class="card reconcile"><h3>Tài sản & đối soát</h3><div class="recon-total">13 tài sản · tổng ghi sổ 347,35 triệu</div><div id="assetRows" class="recon-list"></div><button class="secondary" id="reconBtn">Bắt đầu đối soát</button></article>
       </section>
       <p class="source-note">Demo dùng dữ liệu điền sẵn từ “chi tiêu.xlsx”. Các số liệu được coi là dữ liệu mẫu cho đến khi hoàn tất đối soát.</p>
     </main>
   </div>
 
-  <nav class="mobile-bar"><a href="#overview">⌂<span>Tổng quan</span></a><a href="#cashflow">⇄<span>Dòng tiền</span></a><button class="add-mobile js-open" aria-label="Thêm giao dịch">＋</button><a href="#assets">◈<span>Tài sản</span></a><a href="#transactions">≡<span>Giao dịch</span></a></nav>
+  <nav class="mobile-bar"><a href="#overview" data-tab="overview">⌂<span>Tổng quan</span></a><a href="#cashflow" data-tab="cashflow">⇄<span>Dòng tiền</span></a><button class="add-mobile js-open" aria-label="Thêm giao dịch">＋</button><a href="#assets" data-tab="assets">◈<span>Tài sản</span></a><a href="#transactions" data-tab="transactions">≡<span>Giao dịch</span></a></nav>
 
   <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><div class="dialog"><div class="dialog-head"><h3 id="dialogTitle">Thêm giao dịch</h3><button class="close" id="closeModal" aria-label="Đóng">×</button></div><form id="transactionForm"><div class="form"><div class="field"><label>Bản chất giao dịch</label><select id="txType"><option>Chi tiêu</option><option>Thu nhập</option><option>Chuyển tài sản</option><option>Cho vay</option><option>Đối ứng xã giao</option></select></div><div class="field"><label>Số tiền (nghìn đồng)</label><input id="txAmount" type="number" min="0" placeholder="Ví dụ: 250" required></div><div class="field full"><label>Nội dung</label><input id="txName" placeholder="Ví dụ: Ăn trưa" required></div><div class="field"><label>Tài khoản</label><select id="txAccount"><option>Vietcombank</option><option>Tiền mặt</option><option>USDT</option></select></div><div class="field"><label>Ngày giao dịch</label><input type="date" value="2026-08-27"></div></div><div class="dialog-actions"><button type="button" class="secondary" id="cancelModal">Hủy</button><button class="primary" type="submit">Lưu bản demo</button></div></form></div></div>
   <div class="toast" id="toast">Đã thêm giao dịch vào bản demo</div>
@@ -135,7 +148,16 @@
     document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
     document.querySelector('#transactionForm').addEventListener('submit',e=>{e.preventDefault();const amount=Number(document.querySelector('#txAmount').value);const type=document.querySelector('#txType').value;transactions.unshift([document.querySelector('#txName').value,type,document.querySelector('#txAccount').value,type==='Thu nhập'?amount:-amount]);renderTransactions();close();e.target.reset();const t=document.querySelector('#toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)});
     document.querySelector('#reconBtn').onclick=()=>{document.querySelector('#toast').textContent='Đã mở phiên đối soát bản demo';document.querySelector('#toast').classList.add('show');setTimeout(()=>document.querySelector('#toast').classList.remove('show'),2200)};
-    document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>{document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active')});
+    const pageCopy={overview:['Chào buổi chiều, Vinh','Đây là bức tranh tài chính hiện tại của bạn.'],cashflow:['Dòng tiền','Theo dõi thu, chi và biến động theo từng kỳ.'],assets:['Tài sản','Xem cơ cấu và giá trị các tài sản đang nắm giữ.'],transactions:['Giao dịch','Tra cứu và thêm các khoản thu, chi hoặc chuyển tài sản.'],reconcile:['Đối soát','Kiểm tra số dư ghi sổ với snapshot thực tế.']};
+    function switchTab(tab){
+      const key=pageCopy[tab]?tab:'overview';
+      document.querySelectorAll('[data-view]').forEach(view=>view.classList.toggle('active',view.dataset.view===key));
+      document.querySelectorAll('[data-tab]').forEach(link=>link.classList.toggle('active',link.dataset.tab===key));
+      document.querySelector('.hello h1').textContent=pageCopy[key][0]; document.querySelector('.hello p').textContent=pageCopy[key][1];
+      if(key==='cashflow')requestAnimationFrame(drawChart);
+    }
+    document.querySelectorAll('[data-tab]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();const key=link.dataset.tab;if(location.hash!==`#${key}`)history.pushState(null,'',`#${key}`);switchTab(key)}));
+    addEventListener('popstate',()=>switchTab(location.hash.slice(1)));
 
     const periods=['T1/26','T2/26','T3/26','T4/26','T5/26','T6/26','T7/26','T8/26','T9/26','T10/26'];
     const income=[42.109,250.649,35.807,32.293,36.124,38.921,32.531,38.146,41.181,31.453];
@@ -149,7 +171,7 @@
       function line(data,color,fill){x.beginPath();data.forEach((v,i)=>i?x.lineTo(px(i),py(v)):x.moveTo(px(i),py(v)));x.strokeStyle=color;x.lineWidth=2.3;x.lineJoin='round';x.stroke();if(fill){x.lineTo(px(data.length-1),h-p.b);x.lineTo(px(0),h-p.b);x.closePath();const g=x.createLinearGradient(0,p.t,0,h-p.b);g.addColorStop(0,fill);g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fill()}data.forEach((v,i)=>{x.beginPath();x.arc(px(i),py(v),2.6,0,Math.PI*2);x.fillStyle=color;x.fill()})}
       line(income,'#176b50','rgba(23,107,80,.14)');line(expense,'#f18c5b');
     }
-    drawChart(); let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(drawChart,100)});
+    switchTab(location.hash.slice(1)); let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(document.querySelector('[data-view="cashflow"]').classList.contains('active'))drawChart()},100)});
   </script>
 </body>
 </html>
