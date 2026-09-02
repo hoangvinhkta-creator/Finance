@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Chỉ chính chủ (đã đăng nhập, uid trùng với đoạn đường dẫn) được đọc/ghi users/{uid}/**
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // Chặn mọi đường dẫn còn lại
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
