@@ -95,6 +95,7 @@ select.inline:hover{border-color:var(--line)}
 .quick .chk{grid-column:1/-1;margin-top:-2px}
 .quick.debt{grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr) minmax(0,.9fr) minmax(0,1.2fr) auto}
 .hint{padding:0 16px 10px;font-size:12px;color:var(--mute)}
+.notice{border:1px dashed var(--faint);border-radius:8px;padding:9px 14px;font-size:12px;color:var(--ink2);margin-bottom:16px;background:var(--soft)}
 .shake{animation:shake .25s}
 @keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
 
@@ -236,6 +237,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         </div>
         <div class="right"><span id="closedInfo" class="mute" style="font-size:12px"></span><button class="btn" id="btnClose">Chốt tháng</button></div>
       </header>
+      <div id="importNotice" class="notice" hidden>Tháng đã import từ sheet — xem chi tiết theo nhóm ở Lịch sử. Số dưới đây là số đã chốt, không có từng dòng giao dịch.</div>
       <div class="stats" id="soStats"></div>
       <div class="ledger">
         <section class="col card">
@@ -566,9 +568,9 @@ function debtTotals(){
 const holdingValue = h => Number(h.quantity||0) * (h.priceKey ? price(h.priceKey) : 1);
 const totalAssets = () => sum(D.holdings, holdingValue);
 const netWorth = () => totalAssets() + debtTotals().net;
-function pace(m){
+function pace(m, t){
   const target = Number(settings().incomeTarget||DEFAULT_TARGET);
-  const {income} = monthTotals(m);
+  const {income} = t || monthTotals(m);
   if(m!==thisMonth()) return {target, income, current:false};
   const daysLeft = daysInMonth(m) - new Date().getDate() + 1;
   return {target, income, current:true, daysLeft, perDay: income>=target ? 0 : (target-income)/daysLeft, reached: income>=target};
@@ -687,18 +689,23 @@ function fillStaticSelects(){
    SỔ THÁNG
    ===================================================================== */
 function renderLedger(){
-  const m = state.month, t = monthTotals(m), p = pace(m);
-  el('mLabel').textContent = fmtMonthLong(m);
+  const m = state.month;
   const closed = D.months[m];
+  const hasTx = txOfMonth(m).length > 0;
+  const importOnly = !!closed && !hasTx;
+  const t = importOnly ? { income:Number(closed.income||0), expense:Number(closed.expense||0), pending:0, byCategory:closed.byCategory||{} } : monthTotals(m);
+  const p = pace(m, t);
+  el('mLabel').textContent = fmtMonthLong(m);
   el('closedInfo').textContent = closed && closed.closedAt ? 'đã chốt '+fmtTime(closed.closedAt) : '';
   el('btnClose').textContent = closed ? 'Chốt lại tháng' : 'Chốt tháng';
+  el('importNotice').hidden = !importOnly;
   let paceHtml;
   if(!p.current) paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">${p.income>=p.target?'Đã đạt':'Đạt '+fmtPct(p.income/p.target)+' mục tiêu'}</div><div class="sub">${p.income>=p.target?'vượt '+fmtBig(p.income-p.target):'thiếu '+fmtBig(p.target-p.income)}</div>`;
   else if(p.reached) paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">Đã đạt mục tiêu</div><div class="sub">vượt ${fmtBig(p.income-p.target)}</div>`;
   else paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">Cần thu thêm <b>${fmtK(Math.ceil(p.perDay))}/ngày</b></div><div class="sub">còn ${p.daysLeft} ngày · thiếu ${fmtBig(p.target-p.income)}</div>`;
   el('soStats').innerHTML = `
     <div class="stat"><div class="lbl">Thu</div><div class="val">${fmtBig(t.income)}</div><div class="sub">${t.pending?'trong đó chưa nhận: '+fmtK(t.pending):'đã nhận đủ'}</div></div>
-    <div class="stat"><div class="lbl">Chi</div><div class="val">${fmtBig(t.expense)}</div><div class="sub">${txOfMonth(m).filter(x=>x.type==='chi').length} khoản</div></div>
+    <div class="stat"><div class="lbl">Chi</div><div class="val">${fmtBig(t.expense)}</div><div class="sub">${importOnly?'số đã chốt · không có dòng chi tiết':txOfMonth(m).filter(x=>x.type==='chi').length+' khoản'}</div></div>
     <div class="stat"><div class="lbl">Chênh lệch</div><div class="val">${fmtBig(t.income-t.expense)}</div><div class="sub">thu − chi</div></div>
     <div class="stat wide">${paceHtml}</div>`;
   el('chiTotal').textContent = fmtK(t.expense);
