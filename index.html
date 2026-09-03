@@ -165,6 +165,41 @@ details summary{cursor:pointer;color:var(--mute);font-size:13px}
 details .row{margin-top:10px}
 code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:var(--soft);padding:1px 5px;border-radius:4px}
 
+/* ---------- Pha 3: tổng quan, chuyển đổi, kịch bản ---------- */
+.grid2.eq{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.hero{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 22px}
+.hero .big{font-size:34px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.hero .vs{font-size:13px;color:var(--ink2);padding-bottom:3px}
+.split{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--ink2);margin-top:10px}
+.split b{font-weight:600;color:var(--ink)}
+.split .u{color:var(--mute);font-weight:400}
+.rates{font-size:12px;color:var(--mute);margin-top:6px}
+.warnline{margin-top:10px;border:1px dashed var(--faint);border-radius:6px;padding:7px 11px;font-size:12px;color:var(--ink2);background:var(--tint)}
+.wf text{font-size:11px;fill:var(--mute)}
+.wf text.v{fill:var(--ink2);font-size:10.5px}
+.spark{display:grid;gap:14px}
+.spark .s{display:grid;gap:3px}
+.spark .s .t{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--mute)}
+.spark .s .t b{color:var(--ink);font-weight:600;font-size:13px}
+.prog{height:8px;background:var(--line2);border-radius:5px;overflow:hidden;margin:8px 0 6px}
+.prog i{display:block;height:100%;background:var(--ink)}
+.goal{border-top:1px solid var(--line2);margin-top:14px;padding-top:12px}
+.goal .g{font-size:13px;color:var(--ink2);display:grid;gap:3px}
+.goal .g b{color:var(--ink)}
+.tagx{font-style:normal;font-size:10px;color:var(--ink2);border:1px solid var(--faint);border-radius:3px;padding:0 4px;margin-left:6px;white-space:nowrap;vertical-align:1px}
+.tbl tr.hot td{font-weight:600}
+.tbl tr.hot td.first{position:relative}
+.quick.xfer{grid-template-columns:minmax(0,1.1fr) minmax(0,.85fr) 14px minmax(0,1.1fr) minmax(0,.85fr) minmax(0,1fr) auto}
+.quick.xfer .arrow{text-align:center;color:var(--mute)}
+.quick.xfer .lb{grid-column:1/-1;font-size:12px;color:var(--mute);margin-top:-4px}
+.scn td.n input{width:118px}
+.scn .cur{color:var(--mute)}
+.scnbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:0 16px 12px}
+.scnbar input{width:auto;flex:0 1 180px}
+.scnbar select{width:auto;flex:0 1 190px}
+.kpi{display:grid;gap:2px;font-size:13px;color:var(--ink2)}
+.kpi .n{font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-.02em}
+
 /* ---------- responsive ---------- */
 @media (max-width:1100px){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -179,13 +214,20 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   .ledger{grid-template-columns:minmax(0,1fr)}
   .stats{gap:8px}
   .stat{padding:12px 14px}.stat .val{font-size:20px}
-  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
+  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
   .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--mute);padding:4px 0}
   .tabbar a.active{color:var(--ink);font-weight:600}
   .quick{grid-template-columns:1fr 1fr;padding:0 10px 10px}
   .quick input[name=name]{grid-column:1/-1}
   .quick input[type=date]{grid-column:auto}
   .quick.debt{grid-template-columns:1fr 1fr}
+  .grid2.eq{grid-template-columns:minmax(0,1fr)}
+  .quick.xfer{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .quick.xfer .arrow{display:none}
+  .quick.xfer input[name=note]{grid-column:1/-1}
+  .hero .big{font-size:27px}
+  .tabbar a{font-size:9px}
+  .scn td.n input{width:96px}
   .quick.debt input[name=party],.quick.debt input[name=note]{grid-column:1/-1}
   .tbl td,.tbl th{padding:7px 6px}
   .tbl td.first,.tbl th.first{padding-left:10px}
@@ -214,6 +256,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   <aside class="side">
     <div class="brand"><i></i>FinTrace</div>
     <nav class="nav">
+      <a href="#tong" data-view="tong"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 9l3.5-2.5M9 9v-4"/></svg>Tổng quan</a>
       <a href="#so" data-view="so"><svg class="ic" viewBox="0 0 18 18"><rect x="2.5" y="3" width="5" height="12" rx="1"/><rect x="10.5" y="3" width="5" height="12" rx="1"/></svg>Sổ tháng</a>
       <a href="#congno" data-view="congno"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Công nợ</a>
       <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
@@ -226,6 +269,42 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   </aside>
 
   <main>
+    <!-- ===== Tổng quan (Pha 3) ===== -->
+    <section id="view-tong" class="view">
+      <header class="vhead"><h1>Tổng quan</h1><div class="right"><small id="ovBase"></small></div></header>
+
+      <section class="card pad" style="margin-bottom:14px"><div id="ovHero"></div></section>
+
+      <div class="stats" id="ovMonth"></div>
+
+      <section class="card pad" style="margin-bottom:14px">
+        <div class="colhead" style="padding:0 0 12px">
+          <h2>Phân rã tăng trưởng</h2>
+          <select id="ovPeriod" style="width:auto;min-width:132px">
+            <option value="m0">tháng này</option><option value="m1">tháng trước</option>
+            <option value="m3">3 tháng</option><option value="m12">12 tháng</option>
+          </select>
+        </div>
+        <div id="ovWaterfall"></div>
+        <div id="ovWfNote"></div>
+      </section>
+
+      <div class="grid2 eq">
+        <section class="card pad"><h2>Mốc</h2><div id="ovGoal"></div></section>
+        <section class="card pad"><h2>12 tháng</h2><div id="ovSpark" class="spark"></div></section>
+      </div>
+
+      <section class="card" style="margin-bottom:14px">
+        <div class="colhead"><h2>Chi theo nhóm <small>tháng này so với TB 6 tháng</small></h2><label class="chk"><input type="checkbox" id="ovUnusual"> bỏ khoản bất thường</label></div>
+        <div class="scroll"><table class="tbl" id="ovByCat"></table></div>
+      </section>
+
+      <div class="grid2">
+        <section class="card"><div class="colhead"><h2>Thu theo nguồn <small>6 tháng gần nhất</small></h2><span id="ovSrcTotal"></span></div><div class="scroll"><table class="tbl" id="ovSource"></table></div></section>
+        <section class="card pad"><h2>Cơ cấu và thanh khoản</h2><div id="ovDonut" style="margin:10px 0 14px"></div><div id="ovRunway"></div></section>
+      </div>
+    </section>
+
     <!-- ===== Sổ tháng ===== -->
     <section id="view-so" class="view">
       <header class="vhead">
@@ -248,6 +327,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <select name="category"></select>
             <input name="date" type="date">
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
+            <label class="chk"><input type="checkbox" name="unusual"> bất thường <small style="color:var(--faint)">· không tính vào trung bình ở Tổng quan</small></label>
           </form>
           <table class="tbl"><tbody id="rowsChi"></tbody></table>
         </section>
@@ -304,6 +384,19 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
     <section id="view-taisan" class="view">
       <header class="vhead"><h1>Tài sản</h1></header>
       <div class="stats three" id="assetStats"></div>
+      <section class="card" style="margin-bottom:14px">
+        <div class="colhead"><h2>Chuyển đổi tài sản</h2><small>không vào sổ tháng · không tính là chi · không đổi tài sản ròng</small></div>
+        <form class="quick xfer" id="formXfer" autocomplete="off">
+          <select name="fromId"></select>
+          <input name="qtyOut" placeholder="số tiền" inputmode="text">
+          <span class="arrow">→</span>
+          <select name="toId"></select>
+          <input name="qtyIn" placeholder="số lượng nhận" inputmode="text">
+          <input name="note" placeholder="Ghi chú">
+          <span class="acts-row"><button type="submit" class="btn primary">Chuyển</button></span>
+          <div class="lb" id="xferHint"></div>
+        </form>
+      </section>
       <div class="grid2">
         <section class="card">
           <div class="colhead"><h2>Danh mục</h2><span id="holdTotal"></span></div>
@@ -321,9 +414,25 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div id="donut"></div>
         </section>
       </div>
-      <section class="card">
+      <section class="card" style="margin-bottom:14px">
+        <div class="colhead"><h2>Chuyển đổi gần đây</h2><span id="xferCount" class="mute" style="font-size:12px"></span></div>
+        <div class="scroll"><table class="tbl" id="xferTable"></table></div>
+      </section>
+      <section class="card" style="margin-bottom:14px">
         <div class="colhead"><h2>Bảng giá <small>nghìn đồng / 1 đơn vị</small></h2><button class="btn" disabled title="Pha 2: lấy giá qua Cloudflare Worker">Cập nhật giá live</button></div>
         <div class="scroll"><table class="tbl" id="priceTable"></table></div>
+      </section>
+      <section class="card">
+        <div class="colhead"><h2>Kịch bản <small>giá giả định · giữ nguyên số lượng</small></h2><button class="link" id="scnReset">xoá giả định</button></div>
+        <div class="scroll"><table class="tbl scn" id="scnTable"></table></div>
+        <div id="scnOut"></div>
+        <div class="scnbar">
+          <select id="scnPick"></select>
+          <input id="scnName" placeholder="Tên kịch bản">
+          <button class="btn" id="scnSave">Lưu kịch bản</button>
+          <button class="btn" id="scnDel">Xoá kịch bản</button>
+          <span class="mute" style="font-size:12px" id="scnInfo"></span>
+        </div>
       </section>
     </section>
 
@@ -345,6 +454,15 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <section class="card pad">
           <h2>Mục tiêu thu nhập tháng</h2>
           <div class="row"><input id="setTarget" inputmode="decimal" style="max-width:160px"><span class="mute">nghìn đồng / tháng</span><button class="btn" id="saveTarget">Lưu</button></div>
+        </section>
+        <section class="card pad">
+          <h2>Mốc tài sản ròng</h2>
+          <div class="row"><input id="setMilestones" placeholder="400000, 500000, 1000000"><button class="btn" id="saveMilestones">Lưu</button></div>
+          <div class="hint" style="padding:8px 0 0">Nghìn đồng, cách nhau bằng dấu phẩy. Mốc kế tiếp = mốc nhỏ nhất lớn hơn tài sản ròng hiện tại.</div>
+        </section>
+        <section class="card pad">
+          <h2>Mục tiêu dài hạn</h2>
+          <div class="row"><input id="setLongAmt" style="max-width:170px" placeholder="2000000"><span class="mute">nghìn đồng, trước</span><input id="setLongMonth" type="month" style="max-width:170px"><button class="btn" id="saveLong">Lưu</button></div>
         </section>
         <section class="card pad">
           <h2>Nhóm chi</h2>
@@ -374,6 +492,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 </div>
 
 <nav class="tabbar" id="tabbar">
+  <a href="#tong" data-view="tong"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 9l3.5-2.5M9 9v-4"/></svg>Tổng quan</a>
   <a href="#so" data-view="so"><svg class="ic" viewBox="0 0 18 18"><rect x="2.5" y="3" width="5" height="12" rx="1"/><rect x="10.5" y="3" width="5" height="12" rx="1"/></svg>Sổ</a>
   <a href="#congno" data-view="congno"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Công nợ</a>
   <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
@@ -416,6 +535,10 @@ const PRICE_KEYS = [
   {key:'silver_pq',    label:'Bạc PQ',        unit:'chỉ'},
   {key:'hoa_khai_acr', label:'Hoa khai ACR',  unit:'cái'},
 ];
+const DEFAULT_MILESTONES = [400000, 500000, 1000000];
+const DEFAULT_LONG_TARGET = { amount:2000000, month:'2028-12' };
+const LIVE_KEYS = PRICE_KEYS.filter(p=>p.live).map(p=>p.key);      // usdt, btc, eth, ada — ô kịch bản nhập USD
+const MAX_SCENARIOS = 5;
 const DEBT_UNITS = [
   {value:'VND',      unit:'VND',      priceKey:null,       label:'k (nghìn đồng)'},
   {value:'gold_pd',  unit:'GOLD_CHI', priceKey:'gold_pd',  label:'chỉ vàng Phi Đoan'},
@@ -463,13 +586,14 @@ const el = id => document.getElementById(id);
    STORE — hai adapter cùng API: Firestore (thật) và localStorage (thử cục bộ).
    Mọi document được nạp về state khi đăng nhập; UI render từ state; ghi nền.
    ===================================================================== */
-const COLLECTIONS = ['transactions','debts','holdings','months','prices','settings'];
+const COLLECTIONS = ['transactions','debts','holdings','transfers','months','prices','settings'];
 
 function makeLocalStore(){
   const KEY = 'fintrace.local.v1';
   const empty = () => Object.fromEntries(COLLECTIONS.map(c=>[c,{}]));
   let db; try{ db = JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ db=null; }
   db = db || empty();
+  for(const c of COLLECTIONS) if(!db[c]) db[c] = {};   // dữ liệu lưu trước khi có collection mới (vd transfers)
   const save = () => localStorage.setItem(KEY, JSON.stringify(db));
   const list = c => Object.entries(db[c]||{}).map(([id,d])=>({id,...d}));
   return {
@@ -477,7 +601,7 @@ function makeLocalStore(){
     async currentUser(){ return {uid:'local', email:'chế độ thử cục bộ'}; },
     async signIn(){ return {uid:'local', email:'chế độ thử cục bộ'}; },
     async signOut(){},
-    async loadAll(){ return {transactions:list('transactions'), debts:list('debts'), holdings:list('holdings'),
+    async loadAll(){ return {transactions:list('transactions'), debts:list('debts'), holdings:list('holdings'), transfers:list('transfers'),
       months:Object.fromEntries(list('months').map(m=>[m.id,m])), prices:(db.prices.current||{}), settings:(db.settings.main||null)}; },
     newId(){ return 'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); },
     async set(c,id,data){ db[c][id] = JSON.parse(JSON.stringify(data)); save(); },
@@ -508,10 +632,10 @@ async function makeFirestoreStore(){
     async signOut(){ await authM.signOut(auth); uid=null; },
     async loadAll(){
       const get = async c => (await fsM.getDocs(colRef(c))).docs.map(fromFs);
-      const [transactions,debts,holdings,months] = await Promise.all(['transactions','debts','holdings','months'].map(get));
+      const [transactions,debts,holdings,transfers,months] = await Promise.all(['transactions','debts','holdings','transfers','months'].map(get));
       const prices = await fsM.getDoc(docRef('prices','current'));
       const settings = await fsM.getDoc(docRef('settings','main'));
-      return {transactions,debts,holdings, months:Object.fromEntries(months.map(m=>[m.id,m])),
+      return {transactions,debts,holdings,transfers, months:Object.fromEntries(months.map(m=>[m.id,m])),
         prices: prices.exists()?prices.data():{}, settings: settings.exists()?settings.data():null};
     },
     newId(){ return fsM.doc(colRef('transactions')).id; },
@@ -539,9 +663,10 @@ async function makeFirestoreStore(){
 let store = null;
 const state = {
   uid:null, email:null, mode:'local',
-  data:{transactions:[], debts:[], holdings:[], prices:{}, months:{}, settings:{}},
-  month: thisMonth(), view:'so', showSettled:false,
+  data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, settings:{}},
+  month: thisMonth(), view:'tong', showSettled:false,
   edit:{chi:null, thu:null, receivable:null, payable:null},
+  period:'m0', exUnusual:false, scn:{prices:{}, name:''},
 };
 const D = state.data;
 const settings = () => D.settings;
@@ -568,6 +693,41 @@ function debtTotals(){
 const holdingValue = h => Number(h.quantity||0) * (h.priceKey ? price(h.priceKey) : 1);
 const totalAssets = () => sum(D.holdings, holdingValue);
 const netWorth = () => totalAssets() + debtTotals().net;
+
+/* Dữ liệu Pha 1 không có milestones/longTarget/scenarios — điền mặc định, không bắt import lại. */
+function normalizeSettings(){
+  const st = D.settings;
+  let ms = Array.isArray(st.milestones) ? st.milestones.map(Number).filter(x=>isFinite(x)&&x>0) : [];
+  st.milestones = (ms.length ? ms : [...DEFAULT_MILESTONES]).sort((a,b)=>a-b);
+  const lt = st.longTarget && typeof st.longTarget==='object' ? st.longTarget : {};
+  st.longTarget = { amount: Number(lt.amount)>0 ? Number(lt.amount) : DEFAULT_LONG_TARGET.amount,
+                    month: /^\d{4}-\d{2}$/.test(lt.month||'') ? lt.month : DEFAULT_LONG_TARGET.month };
+  st.scenarios = Array.isArray(st.scenarios) ? st.scenarios.filter(x=>x&&x.name).slice(0,MAX_SCENARIOS) : [];
+}
+const r6 = x => Math.round((Number(x)||0)*1e6)/1e6;          // tiền: 6 chữ số là thừa đủ
+const rq = x => Math.round((Number(x)||0)*1e10)/1e10;        // số lượng: đủ mịn để cộng/trừ rồi đảo lại không lệch
+const holdingById = id => D.holdings.find(h=>h.id===id) || null;
+function monthsBetween(a,b){ const [y1,m1]=a.split('-').map(Number), [y2,m2]=b.split('-').map(Number); return (y2-y1)*12+(m2-m1); }
+const lastDay = m => m+'-'+pad2(daysInMonth(m));
+
+/* ---- CHUYỂN ĐỔI TÀI SẢN (SPEC-PHA3 mục 1) ---- */
+/* valueVnd: from không có priceKey → qtyOut; ngược lại to không có priceKey → qtyIn;
+   cả hai có giá → qtyOut × price(from). Transfer một chiều (tất toán công nợ) chỉ có một bên. */
+function transferValue(from, to, qtyOut, qtyIn){
+  if(!from) return Number(qtyIn||0) * (to && to.priceKey ? price(to.priceKey) : 1);
+  if(!to)   return Number(qtyOut||0) * (from.priceKey ? price(from.priceKey) : 1);
+  if(!from.priceKey) return Number(qtyOut||0);
+  if(!to.priceKey)   return Number(qtyIn||0);
+  return Number(qtyOut||0) * price(from.priceKey);
+}
+/* Giá ngầm định của một transfer, theo đơn vị của bên có giá. */
+function transferImplied(tf){
+  const f=holdingById(tf.fromId), t=holdingById(tf.toId);
+  if(t && t.priceKey && Number(tf.qtyIn))  return {v:Number(tf.valueVnd||0)/Number(tf.qtyIn),  key:t.priceKey};
+  if(f && f.priceKey && Number(tf.qtyOut)) return {v:Number(tf.valueVnd||0)/Number(tf.qtyOut), key:f.priceKey};
+  return null;
+}
+const xfersSorted = () => [...D.transfers].sort((a,b)=> b.date<a.date?-1 : b.date>a.date?1 : (b.createdAt||0)-(a.createdAt||0));
 function pace(m, t){
   const target = Number(settings().incomeTarget||DEFAULT_TARGET);
   const {income} = t || monthTotals(m);
@@ -587,6 +747,217 @@ function historyRows(){
     if(nw!=null) prevNw = nw;
     return {...m, diff, nw, growth, ratio, rate};
   });
+}
+
+/* =====================================================================
+   PHÂN RÃ TĂNG TRƯỞNG (SPEC-PHA3 mục 3)
+   Tài sản ròng đổi vì đúng ba nguyên nhân: dòng tiền ngoài (thu − chi),
+   chuyển đổi nội bộ (tổng bằng 0), biến động giá. Phần còn lại là "Khác".
+   Biến động giá là số TÍNH RA, không bao giờ nhập.
+   ===================================================================== */
+
+/* Hàm thuần, không đụng DOM — test bằng testAttribution() trong console.
+   S = { month, asOf, netWorth, holdings }
+       month     'YYYY-MM'    tháng của snapshot (S0 = đầu kỳ, KHÔNG tính vào kỳ)
+       asOf      'YYYY-MM-DD' chỉ tính tới ngày này (tháng đang mở = hôm nay)
+       holdings  [{holdingId, priceKey, value, ...}] hoặc null nếu bản chốt không có
+                 snapshot (các tháng import từ sheet)
+   Trả về { dNW, cashFlow, market, other, marketKnown, warn }.
+   marketKnown=false ⇒ market=null và other = dNW − cashFlow. */
+function attribution(S0, S1, transactions, transfers){
+  const nw0 = S0 && S0.netWorth!=null ? Number(S0.netWorth) : null;
+  const nw1 = S1 && S1.netWorth!=null ? Number(S1.netWorth) : null;
+  const dNW = (nw0==null || nw1==null) ? null : nw1 - nw0;
+  const from = S0 ? S0.month : null;                 // loại trừ: kỳ bắt đầu SAU tháng này
+  const to   = S1 ? S1.month : null;                 // bao gồm
+  const asOf = S1 ? S1.asOf || null : null;
+  const inPeriod = r => (!from || r.month > from) && (!to || r.month <= to) && (!asOf || !r.date || r.date <= asOf);
+
+  /* --- dòng tiền ngoài: Σ thu − Σ chi (thu gồm cả chưa nhận, như Pha 1) --- */
+  const tx = (transactions||[]).filter(inPeriod);
+  const income  = sum(tx.filter(t=>t.type==='thu'), t=>t.amount);
+  const expense = sum(tx.filter(t=>t.type==='chi'), t=>t.amount);
+  const cashFlow = income - expense;
+
+  /* --- biến động giá: chỉ holdings CÓ priceKey, trừ phần chuyển đổi vào/ra --- */
+  const marketKnown = !!(S0 && S0.holdings && S1 && S1.holdings);
+  let market = null;
+  if(marketKnown){
+    const flowIn = new Map(), flowOut = new Map();
+    for(const t of (transfers||[]).filter(inPeriod)){
+      const v = Number(t.valueVnd)||0;
+      if(t.toId)   flowIn.set(t.toId,    (flowIn.get(t.toId)||0)    + v);
+      if(t.fromId) flowOut.set(t.fromId, (flowOut.get(t.fromId)||0) + v);
+    }
+    const h0 = new Map(S0.holdings.map(h=>[h.holdingId,h]));
+    const h1 = new Map(S1.holdings.map(h=>[h.holdingId,h]));
+    market = 0;
+    for(const id of new Set([...h0.keys(), ...h1.keys()])){
+      const a = h0.get(id), b = h1.get(id);
+      if(!((a&&a.priceKey) || (b&&b.priceKey))) continue;    // tiền: không có thành phần thị trường
+      const v0 = a ? Number(a.value)||0 : 0;                 // có trong S1 mà không có trong S0 ⇒ value0 = 0
+      const v1 = b ? Number(b.value)||0 : 0;                 // ngược lại ⇒ value1 = 0
+      market += (v1 - v0) - ((flowIn.get(id)||0) - (flowOut.get(id)||0));
+    }
+  }
+
+  const other = dNW==null ? null : (marketKnown ? dNW - cashFlow - market : dNW - cashFlow);
+  const warn  = other!=null && Math.abs(other) > 0.05*Math.abs(dNW) && Math.abs(other) > 1000;
+  return { dNW, cashFlow, income, expense, market, other, marketKnown, warn, from, to };
+}
+
+/* ---- snapshot ---- */
+function snapshotOf(m){
+  const doc = D.months[m]; if(!doc) return null;
+  return { month:m, asOf:lastDay(m), netWorth: doc.netWorth==null?null:Number(doc.netWorth),
+           totalAssets: doc.totalAssets==null?null:Number(doc.totalAssets),
+           holdings: Array.isArray(doc.holdings)&&doc.holdings.length ? doc.holdings : null,
+           prices: doc.prices||null, debt: doc.debt||null };
+}
+function currentSnapshot(){
+  const dt = debtTotals();
+  return { month:thisMonth(), asOf:todayStr(), netWorth:netWorth(), totalAssets:totalAssets(),
+           holdings:holdingSnapshot(), prices:priceSnapshot(), debt:dt, live:true };
+}
+/* Tháng import từ sheet không có transactions — dựng hai dòng thay thế để dòng tiền
+   của các kỳ dài (3/12 tháng) vẫn đúng. Không ghi vào đâu cả. */
+function txForAttribution(){
+  const have = new Set(D.transactions.map(t=>t.month));
+  const extra = [];
+  for(const m of Object.keys(D.months)){
+    if(have.has(m)) continue;
+    const doc = D.months[m], d = lastDay(m);
+    if(Number(doc.income))  extra.push({type:'thu', amount:Number(doc.income),  month:m, date:d, synth:true});
+    if(Number(doc.expense)) extra.push({type:'chi', amount:Number(doc.expense), month:m, date:d, synth:true});
+  }
+  return extra.length ? D.transactions.concat(extra) : D.transactions;
+}
+
+/* ---- kỳ cho waterfall: tháng này / tháng trước / 3 tháng / 12 tháng ---- */
+const PERIODS = { m0:{n:1,label:'tháng này'}, m1:{n:1,label:'tháng trước'}, m3:{n:3,label:'3 tháng'}, m12:{n:12,label:'12 tháng'} };
+function periodStats(kind){
+  const now = thisMonth();
+  const end = kind==='m1' ? shiftMonth(now,-1) : now;
+  const start = shiftMonth(end, -(PERIODS[kind].n - 1));
+  const S1 = end===now ? currentSnapshot() : snapshotOf(end);
+  let S0 = snapshotOf(shiftMonth(start,-1));
+  if(S0 && S0.netWorth==null) S0 = null;
+  const a = attribution(S0, S1, txForAttribution(), D.transfers);
+  return { kind, start, end, S0, S1, label:PERIODS[kind].label,
+           noEnd: !S1 || S1.netWorth==null, noBase: !S0, ...a };
+}
+
+/* ---- chỉ số dẫn xuất ---- */
+/* Số của một tháng. Tháng có giao dịch trong app thì tính từ transactions (để lọc được
+   "bất thường"); tháng import chỉ có bản chốt thì dùng bản chốt. */
+function monthFigures(m, exUnusual){
+  const tx = txOfMonth(m);
+  if(tx.length){
+    const byCategory = {}; let expense = 0;
+    for(const t of tx){ if(t.type!=='chi') continue; if(exUnusual && t.unusual) continue;
+      byCategory[t.category] = (byCategory[t.category]||0) + Number(t.amount||0); expense += Number(t.amount||0); }
+    return { income:sum(tx.filter(t=>t.type==='thu'), t=>t.amount), expense, byCategory, src:'tx' };
+  }
+  const doc = D.months[m];
+  return doc ? { income:Number(doc.income||0), expense:Number(doc.expense||0), byCategory:doc.byCategory||{}, src:'closed' } : null;
+}
+const closedBefore = n => Object.keys(D.months).filter(m=>m<thisMonth()).sort().slice(-n);
+/* Tích lũy trung bình n tháng đã chốt gần nhất (= cột "Chênh lệch" của Pha 1). */
+function accumAvg(n, exUnusual){
+  const ms = closedBefore(n); if(!ms.length) return null;
+  const vals = ms.map(m=>{ const f=monthFigures(m,exUnusual); return f ? f.income-f.expense : 0; });
+  return { avg: sum(vals)/vals.length, months:ms.length, from:ms[0], to:ms[ms.length-1] };
+}
+/* Tốc độ tăng trưởng n tháng = NW_cuối / NW_đầu − 1. */
+function growthRate(n){
+  const withNw = Object.keys(D.months).filter(m=>D.months[m].netWorth!=null).sort();
+  const target = shiftMonth(thisMonth(), -n);
+  const cand = withNw.filter(m=>m<=target); if(!cand.length) return null;
+  const m0 = cand[cand.length-1], nw0 = Number(D.months[m0].netWorth);
+  return nw0 ? { rate: netWorth()/nw0 - 1, from:m0, n } : null;
+}
+/* Mốc kế tiếp + mục tiêu dài hạn (SPEC-PHA3 mục 4). Giả định giá đứng yên. */
+function milestoneInfo(exUnusual){
+  const nw = netWorth(), ms = settings().milestones||[];
+  const next = ms.find(x=>x>nw);
+  const a6 = accumAvg(6, exUnusual), a3 = accumAvg(3, exUnusual);
+  const avg6 = a6 ? a6.avg : null;
+  const monthsLeft = (next!=null && avg6!=null && avg6>0) ? (next-nw)/avg6 : null;
+  const nextNeed = (next!=null && monthsLeft!=null) ? (next-nw)/Math.max(1,Math.ceil(monthsLeft)) : null;
+  const lt = settings().longTarget, ltMonths = monthsBetween(thisMonth(), lt.month);
+  const ltNeed = ltMonths>0 ? (lt.amount-nw)/ltMonths : null;
+  return { nw, ms, next, prev:[...ms].reverse().find(x=>x<=nw)||0, a3, a6, avg6, monthsLeft, nextNeed, lt, ltMonths, ltNeed };
+}
+
+/* Test phân rã bằng số giả — gõ testAttribution() trong console.
+   Không đụng dữ liệu thật: chỉ dựng snapshot giả rồi gọi attribution(). */
+function testAttribution(){
+  const P0=65996, P1=65996*1.1, r3=x=>Math.round(x*1000)/1000;
+  const H=(id,q,pk,pr)=>({holdingId:id,name:id,group:pk?'Crypto':'Tiền',quantity:q,priceKey:pk||null,price:pr||1,value:q*(pr||1)});
+  const S=(month,asOf,hs,debtNet=0)=>({month,asOf,holdings:hs,netWorth:sum(hs,h=>h.value)+debtNet});
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.5)=>{ const p = want===null ? got===null : (got!=null && Math.abs(got-want)<=tol);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${got==null?'null':r3(got)}${p?'':`   (mong đợi ${want===null?'null':r3(want)})`}`); p?ok++:bad++; };
+
+  console.log('%c1 — kịch bản chính mục 7: ETH +10%, chuyển 20.000 VCB→ETH đúng giá mới, thu 50.000, chi 30.000','font-weight:600');
+  { const qIn=20000/P1;
+    const S0=S('2026-08','2026-08-31',[H('vcb',50000,null,1),H('eth',2,'eth',P0)]);
+    const S1=S('2026-09','2026-09-30',[H('vcb',50000,null,1),H('eth',2+qIn,'eth',P1)]);
+    const a=attribution(S0,S1,[{type:'thu',amount:50000,month:'2026-09',date:'2026-09-10'},{type:'chi',amount:30000,month:'2026-09',date:'2026-09-12'}],
+                        [{month:'2026-09',date:'2026-09-05',fromId:'vcb',toId:'eth',qtyOut:20000,qtyIn:qIn,valueVnd:20000}]);
+    chk('ΔNW',a.dNW,S1.netWorth-S0.netWorth); chk('DòngTiền',a.cashFlow,20000);
+    chk('ThịTrường = 10% × giá trị ETH cũ',a.market,0.1*2*P0); chk('Khác',a.other,0); chk('cờ nhắc',a.warn?1:0,0); }
+
+  console.log('%c2 — chưa có snapshot đầu kỳ (8/2026 sau import)','font-weight:600');
+  { const S0={month:'2026-07',netWorth:300421,holdings:null};
+    const S1=S('2026-08','2026-08-31',[H('all',347350,null,1)],-30330);
+    const a=attribution(S0,S1,[{type:'thu',amount:16000,month:'2026-08',date:'2026-08-05'},{type:'chi',amount:6000,month:'2026-08',date:'2026-08-06'}],[]);
+    chk('ΔNW',a.dNW,317020-300421); chk('DòngTiền',a.cashFlow,10000);
+    chk('ThịTrường = null ⇒ "cần chốt tháng có snapshot"',a.market,null); chk('Khác = ΔNW − DòngTiền',a.other,317020-300421-10000); }
+
+  console.log('%c3 — chuyển đổi đúng giá sổ, giá đứng yên ⇒ mọi thành phần = 0','font-weight:600');
+  { const qIn=20000/P0;
+    const a=attribution(S('2026-08','2026-08-31',[H('vcb',50000,null,1),H('eth',2,'eth',P0)]),
+                        S('2026-09','2026-09-30',[H('vcb',30000,null,1),H('eth',2+qIn,'eth',P0)]),[],
+                        [{month:'2026-09',date:'2026-09-05',fromId:'vcb',toId:'eth',qtyOut:20000,qtyIn:qIn,valueVnd:20000}]);
+    chk('ΔNW',a.dNW,0); chk('ThịTrường',a.market,0); chk('Khác',a.other,0); }
+
+  console.log('%c4 — bán ETH ra VND và mua mới 1 chỉ vàng (holding chưa có trong S0)','font-weight:600');
+  { const a=attribution(S('2026-08','2026-08-31',[H('vcb',50000,null,1),H('eth',2,'eth',P0)]),
+                        S('2026-09','2026-09-30',[H('vcb',50000+65996-14300,null,1),H('eth',1,'eth',P0),H('gold',1,'gold_pd',14300)]),[],
+                        [{month:'2026-09',date:'2026-09-03',fromId:'eth',toId:'vcb',qtyOut:1,qtyIn:65996,valueVnd:65996},
+                         {month:'2026-09',date:'2026-09-04',fromId:'vcb',toId:'gold',qtyOut:14300,qtyIn:1,valueVnd:14300}]);
+    chk('ΔNW',a.dNW,0); chk('ThịTrường (value0 = 0 cho holding mới)',a.market,0); chk('Khác',a.other,0); }
+
+  console.log('%c5 — sửa tay số lượng không qua Chuyển đổi ⇒ rơi vào "Khác" + bật cờ nhắc','font-weight:600');
+  { const a=attribution(S('2026-08','2026-08-31',[H('vcb',50000,null,1),H('eth',2,'eth',P0)]),
+                        S('2026-09','2026-09-30',[H('vcb',30000,null,1),H('eth',2,'eth',P0)]),[],[]);
+    chk('ΔNW',a.dNW,-20000); chk('ThịTrường',a.market,0); chk('Khác',a.other,-20000); chk('cờ nhắc',a.warn?1:0,1); }
+
+  console.log('%c6 — lọc kỳ: bỏ giao dịch ngoài kỳ và sau ngày asOf','font-weight:600');
+  { const S1={...S('2026-09','2026-09-15',[H('vcb',60000,null,1)])};
+    const a=attribution(S('2026-08','2026-08-31',[H('vcb',50000,null,1)]),S1,
+      [{type:'thu',amount:99999,month:'2026-08',date:'2026-08-20'},{type:'thu',amount:12000,month:'2026-09',date:'2026-09-10'},
+       {type:'chi',amount:2000,month:'2026-09',date:'2026-09-14'},{type:'chi',amount:77777,month:'2026-09',date:'2026-09-28'},
+       {type:'thu',amount:88888,month:'2026-10',date:'2026-10-01'}],[]);
+    chk('DòngTiền = 12.000 − 2.000',a.cashFlow,10000); chk('Khác',a.other,0); }
+
+  console.log('%c7 — nghiệm thu mục 7: 20.000 VCB → nhận đúng 0,3 ETH (giá sổ 65.996)','font-weight:600');
+  { const S0=S('2026-08','2026-08-31',[H('vcb',50000,null,1),H('eth',1.93213,'eth',P0)]);
+    const a=attribution(S0,S('2026-09','2026-09-30',[H('vcb',30000,null,1),H('eth',1.93213+0.3,'eth',P0)]),[],
+      [{month:'2026-09',date:'2026-09-05',fromId:'vcb',toId:'eth',qtyOut:20000,qtyIn:0.3,valueVnd:20000}]);
+    console.log(`  0,3 × 65.996 = ${r3(0.3*P0)}k nhận về cho 20.000k bỏ ra ⇒ tài sản ròng giảm thật ${r3(20000-0.3*P0)}k`);
+    chk('ΔNW',a.dNW,0.3*P0-20000);
+    chk('ThịTrường (mua trên giá sổ ⇒ chênh lệch nằm ở thành phần giá)',a.market,0.3*P0-20000);
+    chk('Khác',a.other,0);
+    const q=20000/P0;
+    const b=attribution(S0,S('2026-09','2026-09-30',[H('vcb',30000,null,1),H('eth',1.93213+q,'eth',P0)]),[],
+      [{month:'2026-09',date:'2026-09-05',fromId:'vcb',toId:'eth',qtyOut:20000,qtyIn:q,valueVnd:20000}]);
+    console.log(`  biến thể khớp giá sổ: nhận ${r3(q)} ETH`);
+    chk('ΔNW < 1k (đúng tiêu chí mục 7)',b.dNW,0); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
 }
 
 /* =====================================================================
@@ -610,8 +981,9 @@ el('loginForm').addEventListener('submit', async e=>{
 async function start(user){
   state.uid=user.uid; state.email=user.email;
   const d = await store.loadAll();
-  D.transactions=d.transactions; D.debts=d.debts; D.holdings=d.holdings; D.months=d.months; D.prices=d.prices||{};
+  D.transactions=d.transactions; D.debts=d.debts; D.holdings=d.holdings; D.transfers=d.transfers||[]; D.months=d.months; D.prices=d.prices||{};
   D.settings = { incomeTarget: DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS], ...(d.settings||{}) };
+  normalizeSettings();
   el('login').hidden=true; el('app').hidden=false;
   el('modeBadge').textContent = state.mode==='local' ? 'Chế độ thử cục bộ — chưa nối Firebase. Dữ liệu chỉ nằm trong trình duyệt này.' : state.email;
   fillStaticSelects();
@@ -630,11 +1002,34 @@ function removeDebt(id){ D.debts = D.debts.filter(x=>x.id!==id); render(); bg(st
 function addHolding(data){ const id=store.newId(); const doc={...data, order: Math.max(0,...D.holdings.map(h=>Number(h.order)||0))+1}; D.holdings.push({id,...doc}); render(); bg(store.set('holdings',id,doc)); }
 function updateHolding(id, patch){ const h=D.holdings.find(x=>x.id===id); if(!h) return; Object.assign(h,patch); render(); bg(store.update('holdings',id,patch)); }
 function removeHolding(id){ D.holdings = D.holdings.filter(x=>x.id!==id); render(); bg(store.remove('holdings',id)); }
+/* sign=+1 áp dụng transfer, −1 đảo ngược (khi xoá) */
+function applyXfer(tf, sign){
+  const f=holdingById(tf.fromId), t=holdingById(tf.toId);
+  if(f) updateHolding(f.id, {quantity: rq(Number(f.quantity||0) - sign*Number(tf.qtyOut||0))});
+  if(t) updateHolding(t.id, {quantity: rq(Number(t.quantity||0) + sign*Number(tf.qtyIn||0))});
+}
+function addTransfer(data){
+  const id=store.newId(); const doc={...data, createdAt:Date.now()};
+  D.transfers.push({id,...doc}); applyXfer(doc,1); render(); bg(store.set('transfers',id,doc)); return id;
+}
+function removeTransfer(id){
+  const tf=D.transfers.find(x=>x.id===id); if(!tf) return;
+  D.transfers=D.transfers.filter(x=>x.id!==id); applyXfer(tf,-1); render(); bg(store.remove('transfers',id));
+}
 function setPrice(key, value, source='manual'){ D.prices[key] = {value, source, updatedAt:Date.now()}; render(); bg(store.set('prices','current',D.prices)); }
 function saveSettings(patch){ Object.assign(D.settings, patch); render(); bg(store.set('settings','main',D.settings)); }
+function holdingSnapshot(){
+  return D.holdings.map(h=>({ holdingId:h.id, name:h.name, group:h.group, quantity:Number(h.quantity)||0,
+    priceKey:h.priceKey||null, price: h.priceKey?price(h.priceKey):1, value: r6(holdingValue(h)) }));
+}
+const priceSnapshot = () => Object.fromEntries(Object.entries(D.prices).map(([k,v])=>[k, Number(v&&v.value)||0]));
 function closeMonth(m, note){
-  const t = monthTotals(m);
-  const doc = { income:t.income, expense:t.expense, byCategory:t.byCategory, netWorth:Math.round(netWorth()), note:note||'', closedAt:Date.now() };
+  const t = monthTotals(m), dt = debtTotals();
+  const doc = { income:t.income, expense:t.expense, byCategory:t.byCategory, netWorth:Math.round(netWorth()),
+    totalAssets: Math.round(totalAssets()),
+    debt: { recv:Math.round(dt.recv), pay:Math.round(dt.pay), pending:Math.round(dt.pending), net:Math.round(dt.net) },
+    holdings: holdingSnapshot(), prices: priceSnapshot(),
+    note:note||'', closedAt:Date.now() };
   D.months[m] = {id:m, ...doc}; render(); bg(store.set('months',m,doc), 'Đã chốt '+fmtMonthLong(m).toLowerCase());
 }
 function updateMonth(m, patch){ if(!D.months[m]) return; Object.assign(D.months[m],patch); render(); bg(store.update('months',m,patch)); }
@@ -659,21 +1054,21 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !el('modal').hi
 /* =====================================================================
    ROUTING + RENDER
    ===================================================================== */
-const VIEWS = ['so','congno','taisan','lichsu','caidat'];
+const VIEWS = ['tong','so','congno','taisan','lichsu','caidat'];
 function route(){
   const v = location.hash.replace('#','');
-  state.view = VIEWS.includes(v) ? v : 'so';
+  state.view = VIEWS.includes(v) ? v : 'tong';
   document.querySelectorAll('[data-view]').forEach(a=>a.classList.toggle('active', a.dataset.view===state.view));
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active', s.id==='view-'+state.view));
   render();
   if(state.view==='so' && isDesktop() && !state.edit.chi && !state.edit.thu) el('formChi').name.focus();
 }
 addEventListener('hashchange', route);
-addEventListener('resize', ()=>{ clearTimeout(window.__rt); window.__rt=setTimeout(()=>{ if(state.view==='lichsu') renderHistory(); if(state.view==='taisan') renderHoldings(); },120); });
+addEventListener('resize', ()=>{ clearTimeout(window.__rt); window.__rt=setTimeout(()=>{ if(state.view==='lichsu') renderHistory(); if(state.view==='taisan') renderHoldings(); if(state.view==='tong') renderOverview(); },120); });
 
 function render(){
   fillStaticSelects();
-  ({so:renderLedger, congno:renderDebts, taisan:renderHoldings, lichsu:renderHistory, caidat:renderSettings})[state.view]();
+  ({tong:renderOverview, so:renderLedger, congno:renderDebts, taisan:renderHoldings, lichsu:renderHistory, caidat:renderSettings})[state.view]();
 }
 function fillStaticSelects(){
   setOptions(el('formChi').category, settings().expenseCats);
@@ -683,11 +1078,217 @@ function fillStaticSelects(){
   document.querySelectorAll('form.debt select[name=unit]').forEach(s=>setOptions(s, DEBT_UNITS, u=>u.label, u=>u.value));
   setOptions(el('formHold').group, HOLDING_GROUPS);
   setOptions(el('formHold').priceKey, [{key:'',label:'giá = số lượng (VND)'},...PRICE_KEYS], p=>p.label, p=>p.key);
+  fillXferSelects();
 }
+function fillXferSelects(){
+  const f = el('formXfer'), hs=[...D.holdings].sort((a,b)=>(a.order||0)-(b.order||0));
+  for(const which of ['fromId','toId']){
+    const sel=f[which], cur=sel.value;
+    sel.innerHTML = `<option value="">— chọn ${which==='fromId'?'nguồn':'đích'} —</option>` + options(hs, cur, h=>h.name, h=>h.id);
+    if(cur && hs.some(h=>h.id===cur)) sel.value=cur;
+    else if(which==='fromId'){ const vcb=hs.find(h=>/vietcombank/i.test(h.name)); if(vcb) sel.value=vcb.id; }
+  }
+  updateXferLabels();
+}
+
+/* =====================================================================
+   TỔNG QUAN (SPEC-PHA3 mục 5) — không có ô nhập nào, mọi số tính từ dữ liệu có sẵn.
+   ===================================================================== */
+const fmtGoal = n => n==null||isNaN(n) ? '—' : (Math.abs(n)>=1e6 ? fmtNum(n/1e6, n%1e6?2:0)+' tỷ' : fmtBig(n));
+const signed = (n, f=fmtBig) => n==null||isNaN(n) ? '—' : (Math.abs(n)<0.5 ? f(0) : (n>0?'+':'')+f(n));
+
+/* ---- waterfall: cột nổi NW đầu kỳ → +Thu → −Chi → ±Thị trường → ±Khác → NW cuối ---- */
+function waterfallSvg(w, p){
+  const steps = [ {tot:1, label:'NW đầu kỳ', v:p.S0.netWorth} ,
+                  {label:'Thu',    v: p.income,  fill:'var(--ink)'},
+                  {label:'Chi',    v:-p.expense, fill:'var(--ink)'} ];
+  if(p.marketKnown) steps.push({label:'Thị trường', v:p.market, fill:'var(--bar2)'});
+  steps.push({label:'Khác', v:p.other, fill:'var(--soft)', stroke:'var(--faint)'});
+  steps.push({tot:1, label: p.S1.live?'NW hiện tại':'NW cuối kỳ', v:p.S1.netWorth});
+
+  const narrow = w < 560;
+  const H = narrow?200:250, T=20, B=narrow?34:30, ph=H-T-B, fs=narrow?9.5:10.5;
+  let run = p.S0.netWorth; const levels=[run];
+  for(const st of steps){ if(st.tot){ st.from=null; continue; } st.from=run; run=r6(run+st.v); st.to=run; levels.push(run); }
+  const lo=Math.min(...levels), hi=Math.max(...levels), span=(hi-lo)||Math.abs(hi)||1;
+  const yMin=lo-span*0.22, yMax=hi+span*0.22;
+  const y = v => T + ph*(yMax-v)/(yMax-yMin);
+  const g = w/steps.length, bw = Math.min(narrow?30:52, g*0.6);
+
+  let out = `<svg class="chart wf" viewBox="0 0 ${w} ${H}" width="${w}" height="${H}" style="font-size:${fs}px">`;
+  // đường nối mức chạy giữa các cột (vẽ trước để nằm dưới cột)
+  steps.forEach((st,i)=>{
+    if(i===steps.length-1) return;
+    const level = st.tot ? st.v : st.to;
+    out += `<line x1="${g*i+g/2+bw/2}" x2="${g*(i+1)+g/2-bw/2}" y1="${y(level)}" y2="${y(level)}" stroke="var(--line)" stroke-dasharray="2 3"/>`;
+  });
+  steps.forEach((st,i)=>{
+    const cx = g*i+g/2;
+    const yA = st.tot ? y(st.v) : y(Math.max(st.from,st.to));
+    const yB = st.tot ? T+ph    : y(Math.min(st.from,st.to));
+    out += `<rect x="${cx-bw/2}" y="${yA}" width="${bw}" height="${Math.max(1.5,yB-yA)}" fill="${st.tot?'var(--ink)':st.fill}"${st.stroke?` stroke="${st.stroke}"`:''} rx="1"><title>${esc(st.label)} ${fmtK(Math.round(st.v))}</title></rect>`;
+    const up = st.tot || st.v>=0;
+    out += `<text class="v" x="${cx}" y="${up?yA-6:yB+11}" text-anchor="middle">${st.tot?fmtBig(st.v):signed(st.v)}</text>`;
+    // nhãn dưới cột: ở hẹp thì xuống dòng để không đè nhau
+    const words = st.label.split(' ');
+    if(narrow && words.length>1) out += `<text x="${cx}" y="${H-20}" text-anchor="middle">${esc(words[0])}</text><text x="${cx}" y="${H-9}" text-anchor="middle">${esc(words.slice(1).join(' '))}</text>`;
+    else out += `<text x="${cx}" y="${H-(narrow?14:10)}" text-anchor="middle">${esc(st.label)}</text>`;
+  });
+  return out+'</svg>';
+}
+
+/* ---- sparkline không trục ---- */
+function sparkLine(vals, w, h){
+  const v = vals.filter(x=>x!=null); if(v.length<2) return '<div class="mute" style="font-size:12px">chưa đủ dữ liệu</div>';
+  const lo=Math.min(...v), hi=Math.max(...v), sp=(hi-lo)||1;
+  const pts = vals.map((x,i)=> x==null?null:[2+(w-4)*i/(vals.length-1), 2+(h-4)*(hi-x)/sp]).filter(Boolean);
+  const last = pts[pts.length-1];
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="none"><polyline points="${pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.5" fill="var(--ink)"/></svg>`;
+}
+function sparkBars(vals, w, h){
+  if(!vals.length) return '<div class="mute" style="font-size:12px">chưa đủ dữ liệu</div>';
+  const mx = Math.max(1, ...vals.map(x=>Math.abs(x))), zero = h/2, g=w/vals.length, bw=Math.max(2,g*0.62);
+  const bars = vals.map((x,i)=>{ const hh=Math.abs(x)/mx*(h/2-2); const yy = x>=0 ? zero-hh : zero;
+    return `<rect x="${(g*i+(g-bw)/2).toFixed(1)}" y="${yy.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,hh).toFixed(1)}" fill="${x>=0?'var(--ink)':'var(--bar2)'}"/>`; }).join('');
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="none">${bars}<line x1="0" x2="${w}" y1="${zero}" y2="${zero}" stroke="var(--line)"/></svg>`;
+}
+
+function renderOverview(){
+  const m = thisMonth(), t = monthTotals(m), ex = state.exUnusual;
+  const p0 = periodStats('m0');
+
+  /* 1. Tài sản ròng */
+  const nw = netWorth();
+  const baseM = p0.S0 ? p0.S0.month : null;
+  el('ovBase').textContent = baseM
+    ? `Baseline: bản chốt ${fmtMonth(baseM)}${p0.marketKnown?' (có snapshot danh mục)':' — chưa có snapshot danh mục'}`
+    : (Object.keys(D.months).length ? `Chưa chốt ${fmtMonth(shiftMonth(m,-1))} — chưa có mốc so sánh cho tháng này`
+                                    : 'Chưa chốt tháng nào — chưa có mốc so sánh');
+  const parts = p0.dNW==null ? '' :
+    `<div class="split"><span>mình tích lũy <b>${signed(p0.cashFlow)}</b></span>
+      <span>thị trường ${p0.marketKnown?`<b>${signed(p0.market)}</b>`:'<span class="u">cần chốt tháng có snapshot</span>'}</span>
+      <span>khác <b>${signed(p0.other)}</b></span></div>`;
+  const g1=growthRate(1), g3=growthRate(3), g12=growthRate(12);
+  const organic = p0.S0 && p0.S0.netWorth ? p0.cashFlow/p0.S0.netWorth : null;
+  const mkt     = p0.S0 && p0.S0.netWorth && p0.marketKnown ? p0.market/p0.S0.netWorth : null;
+  el('ovHero').innerHTML = `<div class="lbl mute" style="font-size:12px;margin-bottom:6px">Tài sản ròng</div>
+    <div class="hero"><span class="big">${fmtBig(nw)}</span>
+      ${baseM && p0.dNW!=null ? `<span class="vs">so với chốt ${fmtMonth(baseM)}: <b>${signed(p0.dNW)}</b> (${fmtPct(p0.S0.netWorth?p0.dNW/p0.S0.netWorth:null)})</span>`:''}</div>
+    ${parts}
+    <div class="rates">Tốc độ: ${[['1 tháng',g1],['3 tháng',g3],['12 tháng',g12]].map(([lb,g])=>`${lb} ${g?fmtPct(g.rate):'—'}`).join(' · ')}${organic!=null?` &nbsp;|&nbsp; tháng này: hữu cơ ${fmtPct(organic)}${mkt!=null?' · thị trường '+fmtPct(mkt):''}`:''}</div>
+    ${p0.warn?`<div class="warnline">Chênh "khác" ${signed(p0.other)} — có biến động chưa được ghi qua Chuyển đổi hoặc sổ.</div>`:''}`;
+
+  /* 2. Tháng này — dùng lại đúng code của Sổ tháng */
+  el('ovMonth').innerHTML = monthStatsHtml(m, t, false, 'Tích lũy');
+
+  /* 3. Waterfall */
+  el('ovPeriod').value = state.period;
+  const p = periodStats(state.period);
+  const box = el('ovWaterfall'), w = Math.max(300, box.clientWidth || 800);
+  if(p.noEnd || p.noBase || p.dNW==null){
+    box.innerHTML = `<div class="mute" style="padding:18px 0">${p.noEnd?'Chưa chốt '+p.label+' nên chưa có tài sản ròng cuối kỳ.':'Chưa có bản chốt đầu kỳ ('+fmtMonth(shiftMonth(p.start,-1))+') để so sánh.'}</div>`;
+    el('ovWfNote').innerHTML = '';
+  } else {
+    box.innerHTML = waterfallSvg(w, p);
+    const notes = [`${fmtMonth(p.start)}${p.start!==p.end?' → '+fmtMonth(p.end):''} · trục cắt, không bắt đầu từ 0`];
+    if(!p.marketKnown) notes.push('Phần thị trường: <b>cần chốt tháng có snapshot</b> — toàn bộ phần không phải dòng tiền đang nằm ở "Khác".');
+    if(p.warn) notes.push('|Khác| vượt 5% ΔNW và 1.000k — <b>có biến động chưa được ghi qua Chuyển đổi hoặc sổ.</b>');
+    el('ovWfNote').innerHTML = `<div class="hint" style="padding:10px 0 0">${notes.join('<br>')}</div>`;
+  }
+
+  /* 4. Mốc */
+  const mi = milestoneInfo(ex);
+  const prog = mi.next ? Math.min(1, mi.nw/mi.next) : 1;
+  const avgTxt = mi.avg6==null ? 'chưa đủ tháng chốt' : fmtBig(mi.avg6)+'/tháng';
+  const gap = (mi.ltNeed!=null && mi.avg6!=null) ? mi.avg6-mi.ltNeed : null;
+  el('ovGoal').innerHTML = mi.next==null
+    ? `<div class="g" style="margin-top:10px">Đã vượt mốc cao nhất (${fmtGoal(mi.ms[mi.ms.length-1])}). Thêm mốc mới trong Cài đặt.</div>`
+    : `<div style="margin-top:12px"><div class="split" style="margin:0"><span>Mốc kế tiếp <b>${fmtGoal(mi.next)}</b></span><span class="u">${fmtPct(mi.nw/mi.next)}</span></div>
+      <div class="prog"><i style="width:${(prog*100).toFixed(1)}%"></i></div>
+      <div class="g"><span>còn ${fmtBig(mi.next-mi.nw)} · ${mi.monthsLeft!=null?`<b>còn ~${Math.ceil(mi.monthsLeft)} tháng</b> với TB 6 tháng (${avgTxt})`:'<b>—</b>, tốc độ tích lũy hiện tại không đủ'}</span>
+        ${mi.nextNeed!=null?`<span>cần để ra <b>${fmtBig(mi.nextNeed)}</b>/tháng</span>`:''}</div></div>
+      <div class="goal"><div class="split" style="margin:0"><span>Dài hạn <b>${fmtGoal(mi.lt.amount)}</b></span><span class="u">${fmtMonth(mi.lt.month)} · còn ${mi.ltMonths} tháng</span></div>
+        <div class="g" style="margin-top:6px">
+          <span>cần để ra <b>${mi.ltNeed!=null?fmtBig(mi.ltNeed):'—'}</b>/tháng</span>
+          <span>đang tích lũy TB <b>${avgTxt}</b>${gap!=null?` → ${gap>=0?'đạt, dư '+fmtBig(gap):'thiếu '+fmtBig(-gap)}/tháng`:''}</span>
+        </div></div>
+      <div class="hint" style="padding:10px 0 0">Giả định giá đứng yên — chỉ tính phần tự tích lũy.</div>`;
+
+  /* 5. 12 tháng */
+  const hist = sortedMonths().slice(-12);
+  const sw = 260, nwSeries = hist.map(x=>x.netWorth==null?null:Number(x.netWorth));
+  const accSeries = hist.map(x=>{ const f=monthFigures(x.id, ex); return f ? f.income-f.expense : 0; });
+  const lastNw = [...nwSeries].reverse().find(x=>x!=null);
+  el('ovSpark').innerHTML = hist.length ? `
+    <div class="s"><div class="t"><span>Tài sản ròng · ${hist.length} tháng</span><b>${fmtBig(lastNw)}</b></div>${sparkLine(nwSeries, sw, 46)}</div>
+    <div class="s"><div class="t"><span>Tích lũy hàng tháng</span><b>TB ${fmtBig(sum(accSeries)/accSeries.length)}</b></div>${sparkBars(accSeries, sw, 46)}
+      <div class="t"><span>${fmtMonth(hist[0].id)}</span><span>${fmtMonth(hist[hist.length-1].id)}</span></div></div>`
+    : '<div class="mute">Chưa chốt tháng nào</div>';
+
+  /* 6. Chi theo nhóm so với TB 6 tháng */
+  el('ovUnusual').checked = ex;
+  const cur = monthFigures(m, ex) || {byCategory:{}, expense:0};
+  const ms6 = closedBefore(6), figs = ms6.map(x=>monthFigures(x,ex)).filter(Boolean);
+  const cats = [...settings().expenseCats];
+  for(const f of [cur,...figs]) for(const c of Object.keys(f.byCategory||{})) if(!cats.includes(c)) cats.push(c);
+  const rows = cats.map(c=>{
+    const now = cur.byCategory[c]||0;
+    const avg = figs.length ? sum(figs, f=>f.byCategory[c]||0)/figs.length : null;
+    const diff = avg==null?null:now-avg, pct = (avg!=null&&avg>0)?now/avg-1:null;
+    return {c, now, avg, diff, pct, hot: diff!=null && diff>500 && pct!=null && pct>0.2};
+  }).filter(r=>r.now>0 || (r.avg||0)>0).sort((a,b)=>b.now-a.now);
+  const nExc = txOfMonth(m).filter(x=>x.type==='chi'&&x.unusual).length;
+  el('ovByCat').innerHTML = `<thead><tr><th class="first">Nhóm</th><th class="n">Tháng này</th><th class="n">TB ${figs.length||0} tháng</th><th class="n">Chênh</th><th class="n last">Chênh %</th></tr></thead><tbody>`+
+    (rows.map(r=>`<tr class="${r.hot?'hot':''}"><td class="first">${esc(r.c)}</td><td class="n">${fmtK(Math.round(r.now))}</td><td class="n mute">${r.avg==null?'—':fmtK(Math.round(r.avg))}</td><td class="n">${r.diff==null?'—':signed(Math.round(r.diff),fmtK)}</td><td class="n last">${r.pct==null?'—':signed(r.pct*100,x=>fmtNum(x,0)+'%')}</td></tr>`).join('')
+      || '<tr><td class="empty" colspan="5">Chưa có dữ liệu</td></tr>')+
+    `<tr class="total"><td class="first">Tổng</td><td class="n">${fmtK(Math.round(cur.expense))}</td><td class="n">${figs.length?fmtK(Math.round(sum(figs,f=>f.expense)/figs.length)):'—'}</td><td class="n" colspan="2">${ex&&nExc?`đã bỏ ${nExc} khoản bất thường`:''}</td></tr></tbody>`;
+
+  /* 7. Thu theo nguồn — 6 tháng gần nhất, chỉ từ transactions trong app */
+  const mo6 = []; for(let i=5;i>=0;i--) mo6.push(shiftMonth(m,-i));
+  const set6 = new Set(mo6), agg = new Map();
+  for(const x of D.transactions){
+    if(x.type!=='thu' || !set6.has(x.month)) continue;
+    const key = String(x.name||'').trim().toLowerCase(); if(!key) continue;
+    let r = agg.get(key); if(!r){ r={label:String(x.name).trim(), by:{}, total:0}; agg.set(key,r); }
+    r.by[x.month]=(r.by[x.month]||0)+Number(x.amount||0); r.total+=Number(x.amount||0);
+  }
+  const all = [...agg.values()].sort((a,b)=>b.total-a.total);
+  const top = all.slice(0,10), rest = all.slice(10);
+  if(rest.length){ const o={label:'Khác', by:{}, total:0}; for(const r of rest){ for(const k in r.by) o.by[k]=(o.by[k]||0)+r.by[k]; o.total+=r.total; } top.push(o); }
+  el('ovSrcTotal').textContent = all.length ? fmtK(Math.round(sum(all,r=>r.total))) : '';
+  el('ovSource').innerHTML = `<thead><tr><th class="first">Nguồn</th>${mo6.map(x=>`<th class="n">${fmtMonth(x)}</th>`).join('')}<th class="n last">Tổng</th></tr></thead><tbody>`+
+    (top.map(r=>`<tr><td class="first">${esc(r.label)}</td>${mo6.map(x=>`<td class="n">${r.by[x]?fmtNum(Math.round(r.by[x])):'<span class="mute">·</span>'}</td>`).join('')}<td class="n last"><b>${fmtNum(Math.round(r.total))}</b></td></tr>`).join('')
+      || `<tr><td class="empty" colspan="${mo6.length+2}">Chưa có khoản thu nào trong app (dữ liệu import lịch sử không có từng dòng)</td></tr>`)+`</tbody>`;
+
+  /* 8. Cơ cấu và thanh khoản */
+  el('ovDonut').innerHTML = donutHtml();
+  const cash = sum(D.holdings.filter(h=>h.group==='Tiền'), holdingValue);
+  const avgExp = figs.length ? sum(figs, f=>f.expense)/figs.length : null;
+  el('ovRunway').innerHTML = `<div class="kpi" style="border-top:1px solid var(--line2);padding-top:12px">
+      <span>Tiền &amp; ngân hàng / chi TB ${figs.length||0} tháng</span>
+      <span class="n">${avgExp?fmtNum(cash/avgExp, cash/avgExp>=1?1:2)+' tháng':'—'}</span>
+      <span class="mute">số tháng sống được nếu không bán tài sản · ${fmtK(Math.round(cash))} ÷ ${avgExp?fmtK(Math.round(avgExp)):'—'}/tháng</span></div>`;
+}
+el('ovPeriod').onchange = e=>{ state.period=e.target.value; renderOverview(); };
+el('ovUnusual').onchange = e=>{ state.exUnusual=e.target.checked; renderOverview(); };
 
 /* =====================================================================
    SỔ THÁNG
    ===================================================================== */
+/* 4 ô Thu · Chi · Chênh lệch/Tích lũy · Cần thu thêm — Sổ tháng và Tổng quan dùng chung đúng code này.
+   Chỉ khác nhãn cột thứ ba: Sổ tháng giữ "Chênh lệch" của Pha 1, Tổng quan gọi là "Tích lũy" (SPEC-PHA3 mục 5.2). */
+function monthStatsHtml(m, t, importOnly, diffLabel='Chênh lệch'){
+  const p = pace(m, t);
+  let paceHtml;
+  if(!p.current) paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">${p.income>=p.target?'Đã đạt':'Đạt '+fmtPct(p.income/p.target)+' mục tiêu'}</div><div class="sub">${p.income>=p.target?'vượt '+fmtBig(p.income-p.target):'thiếu '+fmtBig(p.target-p.income)}</div>`;
+  else if(p.reached) paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">Đã đạt mục tiêu</div><div class="sub">vượt ${fmtBig(p.income-p.target)}</div>`;
+  else paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">Cần thu thêm <b>${fmtK(Math.ceil(p.perDay))}/ngày</b></div><div class="sub">còn ${p.daysLeft} ngày · thiếu ${fmtBig(p.target-p.income)}</div>`;
+  return `
+    <div class="stat"><div class="lbl">Thu</div><div class="val">${fmtBig(t.income)}</div><div class="sub">${t.pending?'trong đó chưa nhận: '+fmtK(t.pending):'đã nhận đủ'}</div></div>
+    <div class="stat"><div class="lbl">Chi</div><div class="val">${fmtBig(t.expense)}</div><div class="sub">${importOnly?'số đã chốt · không có dòng chi tiết':txOfMonth(m).filter(x=>x.type==='chi').length+' khoản'}</div></div>
+    <div class="stat"><div class="lbl">${esc(diffLabel)}</div><div class="val">${fmtBig(t.income-t.expense)}</div><div class="sub">thu − chi</div></div>
+    <div class="stat wide">${paceHtml}</div>`;
+}
 function renderLedger(){
   const m = state.month;
   const closed = D.months[m];
@@ -699,21 +1300,12 @@ function renderLedger(){
   el('closedInfo').textContent = closed && closed.closedAt ? 'đã chốt '+fmtTime(closed.closedAt) : '';
   el('btnClose').textContent = closed ? 'Chốt lại tháng' : 'Chốt tháng';
   el('importNotice').hidden = !importOnly;
-  let paceHtml;
-  if(!p.current) paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">${p.income>=p.target?'Đã đạt':'Đạt '+fmtPct(p.income/p.target)+' mục tiêu'}</div><div class="sub">${p.income>=p.target?'vượt '+fmtBig(p.income-p.target):'thiếu '+fmtBig(p.target-p.income)}</div>`;
-  else if(p.reached) paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">Đã đạt mục tiêu</div><div class="sub">vượt ${fmtBig(p.income-p.target)}</div>`;
-  else paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">Cần thu thêm <b>${fmtK(Math.ceil(p.perDay))}/ngày</b></div><div class="sub">còn ${p.daysLeft} ngày · thiếu ${fmtBig(p.target-p.income)}</div>`;
-  el('soStats').innerHTML = `
-    <div class="stat"><div class="lbl">Thu</div><div class="val">${fmtBig(t.income)}</div><div class="sub">${t.pending?'trong đó chưa nhận: '+fmtK(t.pending):'đã nhận đủ'}</div></div>
-    <div class="stat"><div class="lbl">Chi</div><div class="val">${fmtBig(t.expense)}</div><div class="sub">${importOnly?'số đã chốt · không có dòng chi tiết':txOfMonth(m).filter(x=>x.type==='chi').length+' khoản'}</div></div>
-    <div class="stat"><div class="lbl">Chênh lệch</div><div class="val">${fmtBig(t.income-t.expense)}</div><div class="sub">thu − chi</div></div>
-    <div class="stat wide">${paceHtml}</div>`;
-  el('chiTotal').textContent = fmtK(t.expense);
-  el('thuTotal').textContent = fmtK(t.income);
+  el('soStats').innerHTML = monthStatsHtml(m, t, importOnly);
+  el('chiTotal').textContent = fmtK(t.expense); el('thuTotal').textContent = fmtK(t.income);
   const rows = type => txOfMonth(m).filter(x=>x.type===type).sort((a,b)=> b.date<a.date?-1: b.date>a.date?1 : (b.createdAt||0)-(a.createdAt||0));
   const row = x => `<tr class="${x.pending?'pending':''}" data-id="${x.id}">
       <td class="d first">${fmtDate(x.date)}</td>
-      <td class="name">${esc(x.name)}${x.parts||x.note?`<small>${esc(partsStr(x.parts))}${x.parts&&x.note?' · ':''}${esc(x.note||'')}</small>`:''}</td>
+      <td class="name">${esc(x.name)}${x.unusual?'<em class="tagx">bất thường</em>':''}${x.parts||x.note?`<small>${esc(partsStr(x.parts))}${x.parts&&x.note?' · ':''}${esc(x.note||'')}</small>`:''}</td>
       <td class="c">${esc(x.category)}</td>
       <td class="n">${fmtK(x.amount)}</td>
       <td class="act last">${x.pending?'<button class="tag" data-act="received">Đã nhận</button>':''}<button data-act="edit">sửa</button><button data-act="del">xoá</button></td></tr>`;
@@ -744,7 +1336,8 @@ for(const type of ['chi','thu']){
     if(!name){ shake(f.name); f.name.focus(); return; }
     if(!amt || amt.amount<=0){ shake(f.amount); f.amount.focus(); toast('Số tiền không hợp lệ. Ví dụ: 86 hoặc 10+40+450'); return; }
     const date = /^\d{4}-\d{2}-\d{2}$/.test(f.date.value) ? f.date.value : todayStr();
-    const doc = { type, name, amount:amt.amount, parts:amt.parts, category:f.category.value, date, month:date.slice(0,7), pending: type==='thu' ? !!f.pending.checked : false };
+    const doc = { type, name, amount:amt.amount, parts:amt.parts, category:f.category.value, date, month:date.slice(0,7),
+                  pending: type==='thu' ? !!f.pending.checked : false, unusual: type==='chi' ? !!f.unusual.checked : false };
     if(doc.parts===null) delete doc.parts;
     const editId = state.edit[type];
     if(editId){ if(!doc.parts) doc.parts=null; updateTx(editId, doc); toast('Đã sửa'); }
@@ -755,7 +1348,7 @@ for(const type of ['chi','thu']){
 function resetForm(type){
   const f = el(type==='chi'?'formChi':'formThu');
   state.edit[type]=null; f.classList.remove('editing');
-  f.name.value=''; f.amount.value=''; f.date.value=todayStr(); if(f.pending) f.pending.checked=false;
+  f.name.value=''; f.amount.value=''; f.date.value=todayStr(); if(f.pending) f.pending.checked=false; if(f.unusual) f.unusual.checked=false;
   f.querySelector('button[type=submit]').textContent='Thêm';
   f.name.focus();
 }
@@ -764,6 +1357,7 @@ function editTx(x){
   state.edit[type]=x.id; f.classList.add('editing');
   f.name.value=x.name; f.amount.value = x.parts ? partsStr(x.parts) : String(x.amount).replace('.',','); f.category.value=x.category; f.date.value=x.date;
   if(f.pending) f.pending.checked=!!x.pending;
+  if(f.unusual) f.unusual.checked=!!x.unusual;
   f.querySelector('button[type=submit]').textContent='Lưu';
   f.name.focus(); f.name.select();
 }
@@ -832,8 +1426,8 @@ for(const id of ['rowsRecv','rowsPay']) el(id).addEventListener('click', e=>{
   const tr=b.closest('tr');
   if(tr.dataset.tx){ const x=D.transactions.find(t=>t.id===tr.dataset.tx); if(x){ updateTx(x.id,{pending:false}); toast('Đã nhận '+fmtK(x.amount)+' · '+x.name); } return; }
   const d=D.debts.find(t=>t.id===tr.dataset.id); if(!d) return;
-  if(b.dataset.act==='settle') updateDebt(d.id,{settled:true, settledAt:Date.now()});
-  else if(b.dataset.act==='reopen') updateDebt(d.id,{settled:false, settledAt:null});
+  if(b.dataset.act==='settle') settleDialog(d);
+  else if(b.dataset.act==='reopen') reopenDebt(d);
   else if(b.dataset.act==='del'){ if(confirm(`Xoá khoản nợ "${d.party}"?`)) removeDebt(d.id); }
   else if(b.dataset.act==='edit'){
     const f=document.querySelector(`#view-congno form[data-dir=${d.direction}]`);
@@ -844,10 +1438,52 @@ for(const id of ['rowsRecv','rowsPay']) el(id).addEventListener('click', e=>{
   }
 });
 
+/* Tất toán: có thể đi qua một tài khoản tiền — ghi thành transfer một chiều,
+   nên tổng tài sản đổi nhưng bù trừ bằng công nợ ⇒ tài sản ròng không đổi. */
+const cashAccounts = () => [...D.holdings].filter(h=>!h.priceKey).sort((a,b)=>(a.order||0)-(b.order||0));
+function settleDialog(d){
+  const v = debtValue(d), accts = cashAccounts();
+  const vcb = accts.find(h=>/vietcombank/i.test(h.name)) || accts[0];
+  const dirTxt = d.direction==='payable' ? 'trừ khỏi' : 'cộng vào';
+  const opts = `<option value="">Không đụng tài sản</option>` + accts.map(h=>`<option value="${esc(h.id)}"${vcb&&h.id===vcb.id?' selected':''}>${esc(h.name)} · ${fmtK(Math.round(h.quantity))}</option>`).join('');
+  showModal('Tất toán · '+d.party,
+    `<div class="kv"><span>Khoản</span><b>${esc(debtQtyStr(d))}</b><span>Giá trị</span><b>${fmtK(Math.round(v))}</b></div>
+     <label class="chk" style="display:block;margin-top:4px">Qua tài khoản</label><select id="mdAcct">${opts}</select>
+     <small>Chọn tài khoản ⇒ ${dirTxt} tài khoản đó ${fmtK(Math.round(v))} và ghi một dòng Chuyển đổi. Tài sản ròng không đổi.</small>`,
+    'Tất toán', ()=>settleDebt(d, el('mdAcct').value||null));
+}
+function settleDebt(d, acctId){
+  const patch = {settled:true, settledAt:Date.now()};
+  if(acctId && holdingById(acctId)){
+    const v = r6(debtValue(d)), date = todayStr();
+    const one = d.direction==='payable' ? {fromId:acctId, toId:null, qtyOut:v, qtyIn:0}
+                                        : {fromId:null, toId:acctId, qtyOut:0, qtyIn:v};
+    patch.settleTransferId = addTransfer({date, month:date.slice(0,7), ...one, valueVnd:v, note:'Tất toán: '+d.party, settle:true});
+  }
+  updateDebt(d.id, patch);
+  toast('Đã tất toán '+d.party+(acctId?' · đã ghi Chuyển đổi':''));
+}
+function reopenDebt(d){
+  const tf = d.settleTransferId ? D.transfers.find(x=>x.id===d.settleTransferId) : null;
+  if(tf && confirm(`Mở lại "${d.party}". Xoá luôn dòng Chuyển đổi tất toán (${fmtK(Math.round(tf.valueVnd))}) và hoàn lại số dư tài khoản?`)) removeTransfer(tf.id);
+  updateDebt(d.id,{settled:false, settledAt:null, settleTransferId:null});
+}
+
 /* =====================================================================
    TÀI SẢN
    ===================================================================== */
 const SHADES = ['#151515','#4a4a4a','#7a7a7a','#a6a6a6','#c9c9c9','#e2e2e2'];
+/* Donut cơ cấu theo nhóm — tab Tài sản và Tổng quan dùng chung. */
+function donutHtml(){
+  const ta = totalAssets();
+  const byG = {}; for(const h of D.holdings) byG[h.group]=(byG[h.group]||0)+holdingValue(h);
+  const segs = HOLDING_GROUPS.map(g=>({g,v:byG[g]||0})).filter(s=>s.v>0).sort((a,b)=>b.v-a.v);
+  if(!segs.length) return '<div class="mute">Chưa có dữ liệu</div>';
+  const R=60, C=2*Math.PI*R; let off=0;
+  const arcs = segs.map((s,i)=>{ const len=ta?s.v/ta*C:0; const html=`<circle r="${R}" cx="75" cy="75" fill="none" stroke="${SHADES[i%SHADES.length]}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 75 75)"/>`; off+=len; return html; }).join('');
+  return `<div class="donut"><svg viewBox="0 0 150 150">${arcs}<text x="75" y="72" text-anchor="middle" style="font-size:11px">Tổng</text><text x="75" y="88" text-anchor="middle" style="font-size:13px;fill:var(--ink);font-weight:600">${fmtBig(ta)}</text></svg>
+    <div class="dl">${segs.map((s,i)=>`<div><i style="background:${SHADES[i%SHADES.length]}"></i><span>${esc(s.g)}</span><span>${fmtBig(s.v)}</span><span class="p">${fmtPct(s.v/ta)}</span></div>`).join('')}</div></div>`;
+}
 function renderHoldings(){
   const t=debtTotals(), ta=totalAssets(), nw=ta+t.net;
   el('assetStats').innerHTML = `
@@ -864,18 +1500,14 @@ function renderHoldings(){
       <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey),4) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
       <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b></td>
       <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===hs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`).join('') || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
-  // cơ cấu theo nhóm
-  const byG = {}; for(const h of D.holdings) byG[h.group]=(byG[h.group]||0)+holdingValue(h);
-  const segs = HOLDING_GROUPS.map(g=>({g,v:byG[g]||0})).filter(s=>s.v>0).sort((a,b)=>b.v-a.v);
-  const R=60, C=2*Math.PI*R; let off=0;
-  const arcs = segs.map((s,i)=>{ const len=ta?s.v/ta*C:0; const html=`<circle r="${R}" cx="75" cy="75" fill="none" stroke="${SHADES[i%SHADES.length]}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 75 75)"/>`; off+=len; return html; }).join('');
-  el('donut').innerHTML = segs.length ? `<div class="donut"><svg viewBox="0 0 150 150">${arcs}<text x="75" y="72" text-anchor="middle" style="font-size:11px">Tổng</text><text x="75" y="88" text-anchor="middle" style="font-size:13px;fill:var(--ink);font-weight:600">${fmtBig(ta)}</text></svg>
-    <div class="dl">${segs.map((s,i)=>`<div><i style="background:${SHADES[i%SHADES.length]}"></i><span>${esc(s.g)}</span><span>${fmtBig(s.v)}</span><span class="p">${fmtPct(s.v/ta)}</span></div>`).join('')}</div></div>` : '<div class="mute">Chưa có dữ liệu</div>';
+  el('donut').innerHTML = donutHtml();
   // bảng giá
   el('priceTable').innerHTML = `<thead><tr><th class="first key">Khoá</th><th>Tên</th><th class="n">Giá</th><th class="c">Nguồn</th><th class="last">Cập nhật</th></tr></thead><tbody>`+
     PRICE_KEYS.map(p=>{ const cur=D.prices[p.key]; return `<tr><td class="first key"><code>${p.key}</code></td><td>${esc(p.label)} <small>/ ${p.unit}</small></td>
       <td class="n"><input class="inline" data-p="${p.key}" value="${cur?esc(fmtInput(cur.value)):''}" inputmode="decimal" placeholder="nhập giá" style="width:130px"></td>
       <td class="c">${cur ? (cur.source==='live'?'live':'nhập tay') : '<span class="mute">—</span>'}${p.live?' <small>(live: Pha 2)</small>':''}</td><td class="last mute" style="white-space:nowrap">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join('')+`</tbody>`;
+  renderTransfers();
+  renderScenario();
 }
 function commitInline(inp){
   const f=inp.dataset.f, pk=inp.dataset.p;
@@ -903,6 +1535,178 @@ el('formHold').addEventListener('submit', e=>{
   addHolding({name, group:f.group.value, quantity:q, priceKey:f.priceKey.value||null});
   f.name.value=''; f.quantity.value=''; f.name.focus();
 });
+
+/* ---------------------------------------------------------------------
+   CHUYỂN ĐỔI TÀI SẢN — form + bảng gần đây (SPEC-PHA3 mục 1)
+   --------------------------------------------------------------------- */
+function updateXferLabels(){
+  const f = el('formXfer'), from = holdingById(f.fromId.value), to = holdingById(f.toId.value);
+  f.qtyOut.placeholder = from && !from.priceKey ? 'số tiền' : 'số lượng';
+  f.qtyIn.placeholder  = to   && !to.priceKey   ? 'số tiền nhận' : 'số lượng nhận';
+  const bits = [];
+  if(from) bits.push(`${esc(from.name)} đang có ${fmtQty(from.quantity)}${from.priceKey?'':'k'}`);
+  const q = parseNum(f.qtyOut.value), qi = parseNum(f.qtyIn.value);
+  if(from && to && !isNaN(q) && q>0){
+    const v = transferValue(from, to, q, isNaN(qi)?0:qi);
+    if(v) bits.push(`giá trị ≈ ${fmtK(Math.round(v))}`);
+    if(to.priceKey && !isNaN(qi) && qi>0) bits.push(`giá ngầm định ${fmtK(v/qi, 2)}/${priceLabel(to.priceKey)}`);
+  }
+  el('xferHint').innerHTML = bits.join(' · ');
+}
+function renderTransfers(){
+  const all = xfersSorted(), rows = all.slice(0,20);
+  el('xferCount').textContent = all.length ? `${all.length} dòng · hiện ${rows.length} gần nhất` : '';
+  const side = (id, qty, kind) => {
+    const h = holdingById(id);
+    if(!h) return id ? '<span class="mute">đã xoá</span>' : `<span class="mute">${kind==='out'?'ngoài':'ngoài'}</span>`;
+    return `${esc(h.name)} <small class="mute">${fmtQty(qty)}${h.priceKey?'':'k'}</small>`;
+  };
+  el('xferTable').innerHTML = `<thead><tr><th class="first">Ngày</th><th>Từ</th><th>Sang</th><th class="n">Giá trị</th><th class="n">Giá ngầm định</th><th>Ghi chú</th><th class="last"></th></tr></thead><tbody>`+
+    (rows.map(t=>{ const im = transferImplied(t);
+      return `<tr data-id="${t.id}"><td class="d first">${fmtDate(t.date)}</td>
+        <td>${t.fromId?side(t.fromId,t.qtyOut,'out'):'<span class="mute">—</span>'}</td>
+        <td>${t.toId?side(t.toId,t.qtyIn,'in'):'<span class="mute">—</span>'}</td>
+        <td class="n">${fmtK(Math.round(t.valueVnd))}</td>
+        <td class="n mute">${im?fmtK(im.v,2)+' /'+esc(priceLabel(im.key)):'—'}</td>
+        <td class="c">${esc(t.note||'')}</td>
+        <td class="act last"><button data-act="del">xoá</button></td></tr>`; }).join('')
+     || '<tr><td class="empty" colspan="7">Chưa có chuyển đổi nào</td></tr>')+`</tbody>`;
+}
+el('formXfer').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.tagName!=='BUTTON'){ e.preventDefault(); el('formXfer').requestSubmit(); } });
+el('formXfer').addEventListener('input', updateXferLabels);
+el('formXfer').addEventListener('change', updateXferLabels);
+el('formXfer').addEventListener('submit', e=>{
+  e.preventDefault(); const f=e.target;
+  const from = holdingById(f.fromId.value), to = holdingById(f.toId.value);
+  if(!from){ shake(f.fromId); toast('Chọn tài sản nguồn'); return; }
+  if(!to){ shake(f.toId); toast('Chọn tài sản đích'); return; }
+  if(from.id===to.id){ shake(f.toId); toast('Nguồn và đích trùng nhau'); return; }
+  const qo = parseNum(f.qtyOut.value), qi = parseNum(f.qtyIn.value);
+  if(isNaN(qo) || qo<=0){ shake(f.qtyOut); f.qtyOut.focus(); toast('Số lượng chuyển đi không hợp lệ'); return; }
+  if(isNaN(qi) || qi<=0){ shake(f.qtyIn);  f.qtyIn.focus();  toast('Số lượng nhận không hợp lệ'); return; }
+  const date = todayStr();
+  addTransfer({ date, month:date.slice(0,7), fromId:from.id, toId:to.id, qtyOut:rq(qo), qtyIn:rq(qi),
+                valueVnd: r6(transferValue(from,to,qo,qi)), note: f.note.value.trim() });
+  f.qtyOut.value=''; f.qtyIn.value=''; f.note.value=''; updateXferLabels(); f.qtyOut.focus();
+  toast(`Đã chuyển ${fmtQty(qo)} ${from.name} → ${fmtQty(qi)} ${to.name}`);
+});
+el('xferTable').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-act=del]'); if(!b) return;
+  const t = D.transfers.find(x=>x.id===b.closest('tr').dataset.id); if(!t) return;
+  const f = holdingById(t.fromId), to = holdingById(t.toId), lines=[];
+  if(f)  lines.push(`${f.name}: ${fmtQty(f.quantity)} → ${fmtQty(r6(Number(f.quantity||0)+Number(t.qtyOut||0)))}`);
+  if(to) lines.push(`${to.name}: ${fmtQty(to.quantity)} → ${fmtQty(r6(Number(to.quantity||0)-Number(t.qtyIn||0)))}`);
+  if(confirm('Xoá chuyển đổi này? Số lượng sẽ đổi lại:\n\n'+lines.join('\n'))) removeTransfer(t.id);
+});
+
+/* ---------------------------------------------------------------------
+   KỊCH BẢN (SPEC-PHA3 mục 6)
+   Ô nhập: khoá live (btc/eth/ada) là USD, nhân với tỷ giá usdt giả định;
+   dòng usdt chính là tỷ giá, nhập nghìn đồng/USDT; vàng bạc nhập nghìn đồng/đơn vị.
+   Ô để trống = giá hiện tại. Chỉ lưu giá giả định, không lưu kết quả.
+   --------------------------------------------------------------------- */
+const scnRaw = k => { const v = state.scn.prices[k]; return v==null || v==='' ? null : Number(v); };
+const scnUsdt = () => { const v = scnRaw('usdt'); return v==null || !isFinite(v) ? price('usdt') : v; };
+const curUsd  = k => price('usdt') ? price(k)/price('usdt') : 0;      // giá USD hiện tại của khoá live
+function scnPrice(k){
+  if(k==='usdt') return scnUsdt();
+  const raw = scnRaw(k);
+  if(LIVE_KEYS.includes(k)) return (raw==null || !isFinite(raw) ? curUsd(k) : raw) * scnUsdt();
+  return raw==null || !isFinite(raw) ? price(k) : raw;
+}
+const scnHoldingValue = h => Number(h.quantity||0) * (h.priceKey ? scnPrice(h.priceKey) : 1);
+const scnDebtValue    = d => d.unit==='GOLD_CHI' ? Number(d.quantity||0)*scnPrice(d.priceKey||'gold_pd') : Number(d.quantity||0);
+function scnNetWorth(){
+  const open = D.debts.filter(d=>!d.settled);
+  const net = sum(open.filter(d=>d.direction==='receivable'), scnDebtValue)
+            - sum(open.filter(d=>d.direction==='payable'), scnDebtValue) + pendingIncome();
+  return sum(D.holdings, scnHoldingValue) + net;
+}
+/* Số lượng ròng chịu ảnh hưởng của một khoá giá: danh mục + họ nợ mình − mình nợ
+   (nợ tính bằng vàng cũng đổi giá theo, nên phải cộng vào thì "giá cần để đạt" mới đúng). */
+function netQty(k){
+  let q = sum(D.holdings.filter(h=>h.priceKey===k), h=>Number(h.quantity)||0);
+  let dq = 0;
+  for(const d of D.debts) if(!d.settled && d.unit==='GOLD_CHI' && (d.priceKey||'gold_pd')===k)
+    dq += (d.direction==='receivable'?1:-1)*(Number(d.quantity)||0);
+  return { q, dq, net:q+dq };
+}
+const scnInUnit = (k, pk) => LIVE_KEYS.includes(k) && k!=='usdt' ? pk/scnUsdt() : pk;   // k → đơn vị của ô nhập
+/* Số lẻ theo độ lớn: ADA ~0,2 USD cần 4 chữ số, BTC ~78.850 USD thì 0. */
+const scnDec = (k,v) => k==='usdt' ? (Math.abs(v)>=1000?0:4) : Math.abs(v)>=1000 ? 0 : Math.abs(v)>=10 ? 2 : Math.abs(v)>=1 ? 3 : 4;
+const unitOf = k => k==='usdt' ? 'k/USDT' : LIVE_KEYS.includes(k) ? 'USD' : 'k/' + (PRICE_KEYS.find(p=>p.key===k)||{unit:'đv'}).unit;
+
+function renderScenario(){
+  const keysUsed = PRICE_KEYS.filter(p=>D.holdings.some(h=>h.priceKey===p.key) || D.debts.some(d=>!d.settled&&d.priceKey===p.key) || p.key==='usdt');
+  const nwNow = netWorth(), nwScn = scnNetWorth();
+  const mi = milestoneInfo(state.exUnusual);
+  const targets = [ mi.next!=null ? {label:'mốc '+fmtBig(mi.next), amount:mi.next} : null,
+                    {label:fmtBig(mi.lt.amount), amount:mi.lt.amount} ].filter(Boolean);
+  el('scnTable').innerHTML = `<thead><tr><th class="first">Tài sản</th><th class="n">Giá hiện tại</th><th class="n">Giá giả định</th><th class="n">Giá trị danh mục</th><th class="n">Chênh lệch</th>${targets.map(t=>`<th class="n${t===targets[targets.length-1]?' last':''}">Giá cần để đạt ${esc(t.label)}</th>`).join('')}</tr></thead><tbody>`+
+    keysUsed.map(p=>{
+      const k=p.key, pk=scnPrice(k), qty=netQty(k);
+      const v0 = sum(D.holdings.filter(h=>h.priceKey===k), holdingValue);
+      const v1 = sum(D.holdings.filter(h=>h.priceKey===k), scnHoldingValue);
+      const cur = k==='usdt' ? price(k) : LIVE_KEYS.includes(k) ? curUsd(k) : price(k);
+      const raw = state.scn.prices[k];
+      const need = targets.map(t=>{
+        if(!qty.net) return '<td class="n mute">—</td>';
+        const pNeed = pk + (t.amount - nwScn)/qty.net;
+        const cls = pNeed<0 ? ' class="n mute"' : ' class="n"';
+        const shown = scnInUnit(k,pNeed);
+        return `<td${cls}>${pNeed<0?'đã vượt':fmtNum(shown, scnDec(k,shown))}</td>`;
+      });
+      if(need.length) need[need.length-1] = need[need.length-1].replace('class="n', 'class="n last');
+      return `<tr><td class="first">${esc(p.label)} <small class="mute">${esc(unitOf(k))}</small>${qty.dq?`<small>gồm công nợ ${fmtNum(qty.dq,3)} ${p.unit}</small>`:''}</td>
+        <td class="n cur">${fmtNum(cur, scnDec(k,cur))}</td>
+        <td class="n"><input class="inline" data-scn="${k}" value="${raw==null?'':esc(String(raw).replace('.',','))}" inputmode="decimal" placeholder="${fmtNum(cur, scnDec(k,cur))}"></td>
+        <td class="n">${v0||v1?fmtK(Math.round(v1)):'<span class="mute">—</span>'}</td>
+        <td class="n ${v1-v0>0?'':'mute'}">${v0||v1?fmtK(Math.round(v1-v0)):'—'}</td>${need.join('')}</tr>`;
+    }).join('')+`</tbody>`;
+
+  const hit = [...mi.ms].filter(x=>x<=nwScn).pop();
+  el('scnOut').innerHTML = `<div class="colhead" style="padding:14px 16px 12px;border-top:1px solid var(--line)">
+      <div class="kpi"><span>Tài sản ròng theo kịch bản <small class="mute">(nợ tính bằng vàng đã định giá lại)</small></span><span class="n">${fmtBig(nwScn)}</span>
+        <span>${nwScn===nwNow?'bằng hiện tại':(nwScn>nwNow?'+':'−')+fmtBig(Math.abs(nwScn-nwNow)).replace('−','')+' so với hiện tại ('+fmtPct((nwScn-nwNow)/(nwNow||1))+')'}</span>
+        <span>${hit?'theo kịch bản đạt mốc '+fmtGoal(hit):'theo kịch bản chưa đạt mốc nào'}${mi.next!=null&&!(hit&&hit>=mi.next)?' · mốc kế tiếp hiện tại '+fmtGoal(mi.next):''}</span></div>
+    </div>`;
+  const sc = settings().scenarios||[];
+  setOptions(el('scnPick'), [{name:'— kịch bản đã lưu —'},...sc], x=>x.name, x=>x.name===undefined?'':x.name);
+  el('scnPick').value = state.scn.name || '';
+  el('scnName').value = state.scn.name || '';
+  el('scnInfo').textContent = `${sc.length}/${MAX_SCENARIOS} kịch bản`;
+}
+el('scnTable').addEventListener('change', e=>{
+  const k = e.target.dataset.scn; if(!k) return;
+  const raw = e.target.value.trim();
+  if(!raw){ delete state.scn.prices[k]; renderScenario(); return; }
+  const v = parseNum(raw);
+  if(isNaN(v) || v<0){ shake(e.target); return; }
+  state.scn.prices[k] = v; renderScenario();
+});
+el('scnTable').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.dataset.scn){ e.preventDefault(); e.target.blur(); } });
+el('scnReset').onclick = ()=>{ state.scn={prices:{},name:''}; renderScenario(); };
+el('scnPick').onchange = e=>{
+  const sc=(settings().scenarios||[]).find(x=>x.name===e.target.value);
+  state.scn = sc ? {prices:{...sc.prices}, name:sc.name} : {prices:{}, name:''};
+  renderScenario();
+};
+el('scnSave').onclick = ()=>{
+  const name = el('scnName').value.trim();
+  if(!name){ shake(el('scnName')); toast('Đặt tên cho kịch bản'); return; }
+  const list = [...(settings().scenarios||[])];
+  const i = list.findIndex(x=>x.name===name);
+  const doc = {name, prices:{...state.scn.prices}};
+  if(i>=0) list[i]=doc;
+  else { if(list.length>=MAX_SCENARIOS){ toast('Tối đa '+MAX_SCENARIOS+' kịch bản — xoá bớt trước'); return; } list.push(doc); }
+  state.scn.name=name; saveSettings({scenarios:list}); toast('Đã lưu kịch bản "'+name+'"');
+};
+el('scnDel').onclick = ()=>{
+  const name = el('scnPick').value; if(!name) return;
+  if(!confirm(`Xoá kịch bản "${name}"?`)) return;
+  saveSettings({scenarios:(settings().scenarios||[]).filter(x=>x.name!==name)});
+  state.scn={prices:{},name:''}; renderScenario();
+};
 
 /* =====================================================================
    LỊCH SỬ
@@ -953,6 +1757,9 @@ el('histTable').addEventListener('click', e=>{ const b=e.target.closest('button[
    ===================================================================== */
 function renderSettings(){
   el('setTarget').value = String(settings().incomeTarget);
+  el('setMilestones').value = (settings().milestones||[]).join(', ');
+  el('setLongAmt').value = String(settings().longTarget.amount);
+  el('setLongMonth').value = settings().longTarget.month;
   const used = new Set(D.transactions.map(t=>t.category));
   const tags = (list, kind) => list.map(c=>`<span>${esc(c)}<button data-kind="${kind}" data-cat="${esc(c)}" ${used.has(c)?'disabled title="Đã có giao dịch dùng nhóm này"':''} aria-label="xoá">×</button></span>`).join('');
   el('expCats').innerHTML = tags(settings().expenseCats,'exp'); el('incCats').innerHTML = tags(settings().incomeCats,'inc');
@@ -961,6 +1768,19 @@ function renderSettings(){
 }
 el('saveTarget').onclick = ()=>{ const v=parseNum(el('setTarget').value); if(isNaN(v)||v<=0){ shake(el('setTarget')); return; } saveSettings({incomeTarget:v}); toast('Đã lưu mục tiêu '+fmtBig(v)); };
 el('setTarget').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveTarget').click(); } });
+el('saveMilestones').onclick = ()=>{
+  const raw = el('setMilestones').value.split(/[,;]+/).map(x=>parseNum(x)).filter(x=>!isNaN(x)&&x>0);
+  if(!raw.length){ shake(el('setMilestones')); toast('Nhập ít nhất một mốc, vd: 400000, 500000'); return; }
+  saveSettings({milestones: [...new Set(raw)].sort((a,b)=>a-b)}); toast('Đã lưu mốc');
+};
+el('setMilestones').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveMilestones').click(); } });
+el('saveLong').onclick = ()=>{
+  const amt = parseNum(el('setLongAmt').value), mo = el('setLongMonth').value;
+  if(isNaN(amt)||amt<=0){ shake(el('setLongAmt')); return; }
+  if(!/^\d{4}-\d{2}$/.test(mo)){ shake(el('setLongMonth')); return; }
+  saveSettings({longTarget:{amount:amt, month:mo}}); toast('Đã lưu mục tiêu dài hạn');
+};
+for(const id of ['setLongAmt','setLongMonth']) el(id).addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveLong').click(); } });
 function addCat(kind){ const inp=el(kind==='exp'?'newExpCat':'newIncCat'); const v=inp.value.trim(); if(!v) return; const key=kind==='exp'?'expenseCats':'incomeCats'; if(settings()[key].includes(v)){ shake(inp); return; } saveSettings({[key]:[...settings()[key],v]}); inp.value=''; }
 el('addExpCat').onclick=()=>addCat('exp'); el('addIncCat').onclick=()=>addCat('inc');
 el('newExpCat').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addCat('exp'); } });
@@ -1050,10 +1870,12 @@ async function importInitialData(opts={}){
     ops.push({op:'set',col:'debts',id:store.newId(), data:{party,direction:dir,unit:priceKey?'GOLD_CHI':'VND',quantity,priceKey:priceKey||null,note:'',settled:false,createdAt:now+seq++,...(extra||{}),...(extra&&extra.settled?{settledAt:now}:{})}});
   IMPORT.holdings.forEach(([name,group,quantity,priceKey],i)=>ops.push({op:'set',col:'holdings',id:store.newId(), data:{name,group,quantity,priceKey,order:i+1}}));
   ops.push({op:'set',col:'prices',id:'current', data:Object.fromEntries(Object.entries(IMPORT.prices).map(([k,v])=>[k,{value:v,source:'manual',updatedAt:now}]))});
-  ops.push({op:'set',col:'settings',id:'main', data:{incomeTarget:DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS]}});
+  ops.push({op:'set',col:'settings',id:'main', data:{incomeTarget:DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS],
+    milestones:[...DEFAULT_MILESTONES], longTarget:{...DEFAULT_LONG_TARGET}, scenarios:[]}});
   await store.batch(ops);
   const d = await store.loadAll();
-  D.transactions=d.transactions; D.debts=d.debts; D.holdings=d.holdings; D.months=d.months; D.prices=d.prices; Object.assign(D.settings, d.settings||{});
+  D.transactions=d.transactions; D.debts=d.debts; D.holdings=d.holdings; D.transfers=d.transfers||[]; D.months=d.months; D.prices=d.prices;
+  Object.assign(D.settings, d.settings||{}); normalizeSettings();
   state.month = IMPORT.txDate.slice(0,7);
   render();
   const r = { totalAssets: totalAssets(), netDebt: debtTotals().net, netWorth: netWorth(), expected: IMPORT.expected };
@@ -1061,7 +1883,13 @@ async function importInitialData(opts={}){
   return r;
 }
 window.importInitialData = importInitialData;
-window.FinTrace = { state, calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount}, importInitialData };
+window.attribution = attribution;
+window.testAttribution = testAttribution;
+window.FinTrace = { state, data:D,
+  calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
+        attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
+        transferValue, scnPrice, scnNetWorth, netQty},
+  importInitialData, testAttribution };
 
 boot();
 </script>
