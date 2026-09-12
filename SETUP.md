@@ -1,13 +1,21 @@
 # SETUP — nối FinTrace với Firebase và đưa lên GitHub Pages
 
-Làm một lần, khoảng 15 phút. Trước khi làm xong bước 6, app vẫn chạy được ở **chế độ thử cục bộ**
-(dữ liệu nằm trong localStorage của trình duyệt, mở máy khác là mất).
+Làm một lần, khoảng 15 phút, **toàn bộ trên trình duyệt**, không cần terminal.
+Trước khi làm xong bước 6, app chạy ở **chế độ thử cục bộ** (dữ liệu nằm trong localStorage của
+trình duyệt, mở máy khác là mất).
 
-Toàn bộ cấu hình nằm trong object `CONFIG` ở đầu thẻ `<script>` của `index.html`.
+Toàn bộ cấu hình nằm trong object `CONFIG` ở đầu thẻ `<script>` của `index.html`. Owner không tự
+sửa file: chép 4 giá trị ở bước 6 gửi cho Claude, Claude điền và merge lên `main`.
+
+> **Nếu bạn đã nhập dữ liệu ở chế độ thử cục bộ** thì trước khi làm gì khác, mở app →
+> **Cài đặt → Nâng cao → Tải bản sao lưu**, giữ file JSON đó lại. Bước 8 sẽ nạp nó lên Firebase.
+> Không có bước này thì dữ liệu cục bộ mất khi chuyển sang Firebase.
 
 ---
 
 ## 1. Tạo project Firebase
+
+Tạo **project mới hoàn toàn**, không dùng lại project cũ.
 
 1. Vào <https://console.firebase.google.com> → **Add project**.
 2. Đặt tên, ví dụ `fintrace`. Tên thật sẽ thành `fintrace-xxxx`.
@@ -50,7 +58,8 @@ với *Authenticated* tắt → phải **Denied**.
 1. Console → biểu tượng bánh răng cạnh **Project Overview** → **Project settings**.
 2. Kéo xuống mục **Your apps** → bấm icon **`</>`** (Web).
 3. App nickname: `fintrace`. **Không** tick "Also set up Firebase Hosting". → **Register app**.
-4. Firebase in ra một object `firebaseConfig`. Chép 4 giá trị sang `index.html`:
+4. Firebase in ra một object `firebaseConfig`. Chép **4 giá trị** `apiKey`, `authDomain`,
+   `projectId`, `appId` rồi gửi cho Claude. Claude điền vào `index.html` và merge lên `main`:
 
 ```js
 const CONFIG = {
@@ -65,6 +74,7 @@ const CONFIG = {
 ```
 
 Chỉ cần đúng 4 khoá này; `storageBucket`, `messagingSenderId`, `measurementId` bỏ qua.
+Gửi cả 4 giá trị trong một tin nhắn là đủ, không cần chụp màn hình.
 
 `apiKey` của Firebase **không phải bí mật** — nó chỉ định danh project. Thứ bảo vệ dữ liệu là
 Authentication (bước 2–3) và `firestore.rules` (bước 5). Vẫn để repo private nếu muốn.
@@ -82,16 +92,25 @@ Quay lại Firebase → **Authentication → Settings → Authorized domains** �
 thêm `<tên-github>.github.io`. Không có bước này thì đăng nhập trên Pages sẽ báo
 `auth/unauthorized-domain`.
 
-## 8. Import dữ liệu ban đầu
+## 8. Đưa dữ liệu vào Firebase
 
-Chạy **một lần duy nhất**, sau khi đã đăng nhập được bằng tài khoản ở bước 3:
+Đăng nhập bằng tài khoản ở bước 3, vào tab **Cài đặt** → mở **Nâng cao**, rồi chọn **một** trong
+hai đường:
 
-1. Mở app → đăng nhập → tab **Cài đặt** → mở **Nâng cao** → **Import dữ liệu ban đầu**.
-2. Xong sẽ hiện bảng tổng. Đối chiếu: tổng tài sản ≈ **347.350k**, công nợ ròng ≈ **−30.330k**,
-   tài sản ròng ≈ **317.030k**. Lệch dưới 1% là đạt.
+**A. Đã có dữ liệu ở chế độ thử cục bộ** → **Khôi phục từ file**, chọn file JSON đã tải ở đầu tài
+liệu. App xoá sạch dữ liệu trên Firebase rồi ghi lại toàn bộ từ file, và báo số bản ghi đã ghi.
 
-Nếu cần import lại: tick *xoá dữ liệu hiện có trước khi import* rồi bấm lại, hoặc gõ trong
-console `importInitialData({force:true})`.
+**B. Bắt đầu từ đầu** → **Import dữ liệu ban đầu**, nạp dữ liệu gốc từ sheet (SPEC mục 6).
+Chạy **một lần duy nhất**. Nếu cần làm lại: tick *xoá dữ liệu hiện có trước khi import* rồi bấm lại.
+
+Dù đi đường nào, đối chiếu con số cuối: tổng tài sản ≈ **347.350k**, công nợ ròng ≈ **−30.330k**,
+tài sản ròng ≈ **317.030k**. Lệch dưới 1% là đạt.
+
+### Sao lưu về sau
+
+**Cài đặt → Nâng cao → Tải bản sao lưu** cho ra một file JSON chứa toàn bộ dữ liệu. Nên tải một bản
+trước mỗi lần làm gì lớn, và thỉnh thoảng tải một bản để phòng thân. File này cũng là cách chuyển
+sang một project Firebase khác nếu sau này cần.
 
 ---
 
@@ -100,6 +119,7 @@ console `importInitialData({force:true})`.
 - Đăng xuất rồi đăng nhập lại → dữ liệu còn nguyên.
 - Mở trên điện thoại cùng địa chỉ → đăng nhập được, đọc và nhập được.
 - Mở console gõ `testAttribution()` → phải ra `25 đạt · 0 hỏng` (test phân rã tăng trưởng).
+- **Cài đặt → Nâng cao → Tải bản sao lưu** → tải được một file `fintrace-YYYY-MM-DD.json`.
 - Trong Firestore console, mở `users/<uid>/` → thấy các collection `transactions`, `debts`,
   `holdings`, `transfers`, `months`, `prices`, `settings`.
 

@@ -482,6 +482,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <section class="card pad">
           <details>
             <summary>Nâng cao</summary>
+            <div class="row"><button class="btn" id="btnBackup">Tải bản sao lưu</button><button class="btn" id="btnRestore">Khôi phục từ file</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
+            <div class="hint" style="padding:8px 0 14px">Sao lưu ra một file JSON chứa toàn bộ dữ liệu. Dùng để chuyển dữ liệu từ chế độ thử cục bộ lên Firebase, đổi sang project Firebase khác, hoặc giữ một bản phòng thân trước khi làm gì đó lớn. Khôi phục sẽ xoá sạch dữ liệu hiện có rồi ghi lại từ file.</div>
             <div class="row"><button class="btn" id="btnImport">Import dữ liệu ban đầu</button><label class="chk"><input type="checkbox" id="importForce"> xoá dữ liệu hiện có trước khi import</label></div>
             <div class="hint" style="padding:8px 0 0">Chạy một lần. Cũng gọi được từ console: <code>importInitialData()</code> hoặc <code>importInitialData({force:true})</code>.</div>
           </details>
@@ -980,10 +982,7 @@ el('loginForm').addEventListener('submit', async e=>{
 });
 async function start(user){
   state.uid=user.uid; state.email=user.email;
-  const d = await store.loadAll();
-  D.transactions=d.transactions; D.debts=d.debts; D.holdings=d.holdings; D.transfers=d.transfers||[]; D.months=d.months; D.prices=d.prices||{};
-  D.settings = { incomeTarget: DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS], ...(d.settings||{}) };
-  normalizeSettings();
+  applyLoaded(await store.loadAll());
   el('login').hidden=true; el('app').hidden=false;
   el('modeBadge').textContent = state.mode==='local' ? 'Chế độ thử cục bộ — chưa nối Firebase. Dữ liệu chỉ nằm trong trình duyệt này.' : state.email;
   fillStaticSelects();
@@ -1790,6 +1789,74 @@ el('btnLogout').onclick = logout;
 el('btnImport').onclick = async ()=>{ const force=el('importForce').checked; if(!confirm(force?'Xoá TOÀN BỘ dữ liệu hiện có rồi import dữ liệu ban đầu?':'Import dữ liệu ban đầu từ sheet?')) return; try{ const r=await importInitialData({force}); alert(`Import xong.\nTổng tài sản: ${fmtK(Math.round(r.totalAssets))}\nCông nợ ròng: ${fmtK(Math.round(r.netDebt))}\nTài sản ròng: ${fmtK(Math.round(r.netWorth))}`); }catch(e){ alert(e.message); } };
 
 /* =====================================================================
+   SAO LƯU & KHÔI PHỤC — một file JSON chứa toàn bộ dữ liệu.
+   Đường đi chính: chế độ thử cục bộ → tải sao lưu → nối Firebase →
+   đăng nhập → khôi phục. Cũng dùng được để đổi project hoặc giữ bản phòng thân.
+   ===================================================================== */
+const BACKUP_VERSION = 1;
+
+/* Nạp kết quả store.loadAll() vào state. Dùng chung cho đăng nhập, import và khôi phục. */
+function applyLoaded(d){
+  D.transactions = d.transactions || []; D.debts = d.debts || []; D.holdings = d.holdings || [];
+  D.transfers = d.transfers || []; D.months = d.months || {}; D.prices = d.prices || {};
+  D.settings = { incomeTarget: DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS], ...(d.settings||{}) };
+  normalizeSettings();
+}
+
+function backupPayload(){
+  return { app:'fintrace', version:BACKUP_VERSION, exportedAt:new Date().toISOString(), mode:state.mode,
+    data:{ transactions:D.transactions, debts:D.debts, holdings:D.holdings, transfers:D.transfers,
+           months:Object.values(D.months), prices:D.prices, settings:D.settings } };
+}
+
+function downloadBackup(){
+  const blob = new Blob([JSON.stringify(backupPayload(), null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = `fintrace-${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  return backupPayload();
+}
+
+/* Ghi đè toàn bộ dữ liệu bằng nội dung một bản sao lưu. Trả về số bản ghi đã ghi. */
+async function restoreBackup(payload){
+  if(!store) throw new Error('Chưa đăng nhập');
+  if(!payload || payload.app!=='fintrace' || !payload.data) throw new Error('File không phải bản sao lưu FinTrace');
+  if(Number(payload.version) > BACKUP_VERSION) throw new Error('Bản sao lưu mới hơn phiên bản app; hãy cập nhật app trước');
+  const d = payload.data, ops = [], counts = {};
+  const rowsOf = v => Array.isArray(v) ? v : (v && typeof v==='object' ? Object.values(v) : []);
+  for(const col of ['transactions','debts','holdings','transfers','months']){
+    const rows = rowsOf(d[col]); counts[col] = rows.length;
+    for(const row of rows){
+      const {id, ...rest} = row;
+      if(col==='months' && !id) throw new Error('Bản sao lưu hỏng: có tháng thiếu id');
+      ops.push({op:'set', col, id: id || store.newId(), data: rest});
+    }
+  }
+  if(d.prices)   ops.push({op:'set', col:'prices',   id:'current', data:d.prices});
+  if(d.settings) ops.push({op:'set', col:'settings', id:'main',    data:d.settings});
+  await store.clearAll();
+  await store.batch(ops);
+  applyLoaded(await store.loadAll());
+  state.month = thisMonth();
+  render();
+  console.log('Khôi phục xong:', counts);
+  return counts;
+}
+
+el('btnBackup').onclick = ()=>{ downloadBackup(); toast('Đã tải bản sao lưu'); };
+el('btnRestore').onclick = ()=> el('restoreFile').click();
+el('restoreFile').onchange = async e=>{
+  const file = e.target.files[0]; e.target.value='';
+  if(!file) return;
+  if(!confirm('Khôi phục sẽ XOÁ toàn bộ dữ liệu hiện có rồi ghi lại từ file.\n\nTiếp tục?')) return;
+  try{
+    const c = await restoreBackup(JSON.parse(await file.text()));
+    alert(`Khôi phục xong.\nGiao dịch: ${c.transactions}\nCông nợ: ${c.debts}\nTài sản: ${c.holdings}\nChuyển đổi: ${c.transfers}\nTháng đã chốt: ${c.months}\n\nTài sản ròng: ${fmtK(Math.round(netWorth()))}`);
+  }catch(err){ console.error(err); alert('Khôi phục thất bại: '+(err.message||err)); }
+};
+
+/* =====================================================================
    IMPORT DỮ LIỆU BAN ĐẦU (SPEC mục 6) — chạy một lần.
    importInitialData()              → từ chối nếu đã có dữ liệu
    importInitialData({force:true})  → xoá toàn bộ rồi import lại
@@ -1872,9 +1939,7 @@ async function importInitialData(opts={}){
   ops.push({op:'set',col:'settings',id:'main', data:{incomeTarget:DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS],
     milestones:[...DEFAULT_MILESTONES], longTarget:{...DEFAULT_LONG_TARGET}, scenarios:[]}});
   await store.batch(ops);
-  const d = await store.loadAll();
-  D.transactions=d.transactions; D.debts=d.debts; D.holdings=d.holdings; D.transfers=d.transfers||[]; D.months=d.months; D.prices=d.prices;
-  Object.assign(D.settings, d.settings||{}); normalizeSettings();
+  applyLoaded(await store.loadAll());
   state.month = IMPORT.txDate.slice(0,7);
   render();
   const r = { totalAssets: totalAssets(), netDebt: debtTotals().net, netWorth: netWorth(), expected: IMPORT.expected };
@@ -1882,13 +1947,15 @@ async function importInitialData(opts={}){
   return r;
 }
 window.importInitialData = importInitialData;
+window.downloadBackup = downloadBackup;
+window.restoreBackup = restoreBackup;
 window.attribution = attribution;
 window.testAttribution = testAttribution;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
         transferValue, scnPrice, scnNetWorth, netQty},
-  importInitialData, testAttribution };
+  importInitialData, testAttribution, downloadBackup, restoreBackup, backupPayload };
 
 boot();
 </script>
