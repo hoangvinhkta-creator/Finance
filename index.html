@@ -209,6 +209,15 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .sbar i{display:block;height:100%;background:var(--ink)}
 .tbl td.pt{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
 .tbl td.meas,.tbl th.meas{color:var(--mute);white-space:nowrap}
+.plan3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.pblock{min-width:0}
+.pblock .lbl{font-size:12px;color:var(--mute);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.pblock .pn{font-size:19px;font-weight:600;letter-spacing:-.02em}
+.pblock .pn .u{font-size:12px;font-weight:400;color:var(--mute);letter-spacing:0}
+.pblock .prog{margin:8px 0 7px}
+.pblock .psub{font-size:12px;color:var(--ink2);display:grid;gap:2px}
+.pblock .psub .off{color:var(--mute)}
+.suggest{border:1px solid var(--line);border-radius:6px;padding:9px 13px;font-size:13px;background:var(--tint);margin-bottom:14px}
 
 /* ---------- responsive ---------- */
 @media (max-width:1100px){
@@ -244,6 +253,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   .tbl td.last,.tbl th.last{padding-right:10px}
   .tbl td.c,.tbl th.c{display:none}
   #dcaScoreTable td.bcol,#dcaScoreTable th.bcol{display:none}
+  .plan3{grid-template-columns:minmax(0,1fr);gap:16px}
   #dcaScoreTable td.meas,#dcaScoreTable th.meas{white-space:normal}
   #priceTable .key{display:none}
   #priceTable td.first:not(.key),#priceTable th.first:not(.key){padding-left:10px}
@@ -472,6 +482,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <div class="warnline" id="dcaWarn" hidden></div>
       </section>
 
+      <section class="card pad" id="dcaPlanCard" style="margin-bottom:16px">
+        <div class="colhead" style="padding:0 0 12px"><h2>Tháng này <small id="dcaPlanMonth"></small></h2><small class="mute" id="dcaPlanBudget"></small></div>
+        <div id="dcaPlanBody"></div>
+      </section>
+
       <div class="stats" id="dcaStats"></div>
 
       <section class="card" id="dcaBreakdownCard" style="margin-bottom:16px">
@@ -526,6 +541,21 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <section class="card pad">
           <h2>Mục tiêu dài hạn</h2>
           <div class="row"><input id="setLongAmt" style="max-width:170px" placeholder="2000000"><span class="mute">nghìn đồng, trước</span><input id="setLongMonth" type="month" style="max-width:170px"><button class="btn" id="saveLong">Lưu</button></div>
+        </section>
+        <section class="card pad">
+          <h2>DCA — kế hoạch vốn tháng</h2>
+          <div class="row"><span class="mute" style="min-width:120px">Ngân sách tháng</span><input id="setDcaBudget" inputmode="decimal" style="max-width:160px" placeholder="0"><span class="mute">nghìn đồng</span></div>
+          <div class="row"><span class="mute" style="min-width:120px">Tỷ lệ Base / Smart / Opportunity</span>
+            <input id="setDcaBase" inputmode="decimal" style="max-width:80px"><span class="mute">/</span>
+            <input id="setDcaSmart" inputmode="decimal" style="max-width:80px"><span class="mute">/</span>
+            <input id="setDcaOpp" inputmode="decimal" style="max-width:80px"><span class="mute">%, cộng lại phải bằng 100</span></div>
+          <div class="row"><span class="mute" style="min-width:120px">Lịch Base</span>
+            <input id="setDcaDays" style="max-width:150px" placeholder="3, 13, 23"><span class="mute">ngày, tỷ lệ</span>
+            <input id="setDcaWeights" style="max-width:150px" placeholder="40, 30, 30"><span class="mute">%</span></div>
+          <div class="row"><span class="mute" style="min-width:120px">Tháng bắt đầu</span><input id="setDcaStart" type="month" style="max-width:170px">
+            <span class="mute">Cap Opportunity</span><input id="setDcaCap" inputmode="decimal" style="max-width:80px"><span class="mute">tháng góp</span></div>
+          <div class="row"><button class="btn" id="saveDca">Lưu</button></div>
+          <div class="hint" style="padding:8px 0 0">Ngân sách 0 thì card "Tháng này" ở tab DCA tắt. Số ngày và số tỷ lệ của lịch Base phải bằng nhau; lệch thì tự chia đều. Opportunity Fund không có sổ riêng: số dư = số tháng đã góp × phần góp mỗi tháng − các lần chuyển đổi gắn nhãn Opportunity, chặn trên ở cap.</div>
         </section>
         <section class="card pad">
           <h2>Nhóm chi</h2>
@@ -647,6 +677,17 @@ const BUY_SCORE_V1 = {
            [25,'NEUTRAL','Trung tính'],[0,'EXPENSIVE','Đắt']],
   confLabel: {HIGH:'Cao', MEDIUM:'Vừa', LOW:'Thấp'},
 };
+
+/* ---- Kế hoạch vốn tháng (SPEC-DCA Khối B) ------------------------------
+   Không có state riêng: mọi con số suy ra từ cài đặt + transfers, giống cách tính công nợ ròng.
+   Bảng mở khoá là [điểm tối thiểu, phần trăm được mua], xét từ trên xuống. */
+const DCA_PLAN_V1 = {
+  version: 'v1',
+  smartUnlock: [[75,100],[60,75],[45,50],[30,25],[0,0]],   // mục 10 — Smart bám theo Buy Score
+  oppUnlock:   [[85,100],[75,50],[65,25],[0,0]],           // mục 11 — Opportunity dè dặt hơn, chỉ mở khi thật rẻ
+};
+const DEFAULT_DCA = { budget:0, split:{base:50, smart:30, opp:20}, baseDays:[3,13,23], baseWeights:[40,30,30],
+                      startMonth:'', oppCapMonths:6 };   // startMonth rỗng ⇒ normalizeSettings điền tháng hiện tại
 const priceLabel = k => (PRICE_KEYS.find(p=>p.key===k)||{label:k}).label;
 
 /* ---------------- định dạng ---------------- */
@@ -807,6 +848,24 @@ function normalizeSettings(){
   st.longTarget = { amount: Number(lt.amount)>0 ? Number(lt.amount) : DEFAULT_LONG_TARGET.amount,
                     month: /^\d{4}-\d{2}$/.test(lt.month||'') ? lt.month : DEFAULT_LONG_TARGET.month };
   st.scenarios = Array.isArray(st.scenarios) ? st.scenarios.filter(x=>x&&x.name).slice(0,MAX_SCENARIOS) : [];
+
+  /* DCA (Khối B): thiếu hoặc sai thì về mặc định, không để card kế hoạch vốn tính trên rác. */
+  const d = st.dca && typeof st.dca==='object' ? st.dca : {};
+  const nums = (v, def) => { const a = (Array.isArray(v)?v:[]).map(Number).filter(x=>isFinite(x)&&x>0); return a.length ? a : [...def]; };
+  const sp = d.split && typeof d.split==='object' ? d.split : {};
+  let split = {base:Number(sp.base), smart:Number(sp.smart), opp:Number(sp.opp)};
+  const spSum = split.base+split.smart+split.opp;
+  if(!isFinite(spSum) || Math.abs(spSum-100)>0.01 || split.base<0 || split.smart<0 || split.opp<0) split = {...DEFAULT_DCA.split};
+  let days = nums(d.baseDays, DEFAULT_DCA.baseDays).filter(x=>x>=1&&x<=28).sort((a,b)=>a-b);
+  if(!days.length) days = [...DEFAULT_DCA.baseDays];
+  let weights = nums(d.baseWeights, DEFAULT_DCA.baseWeights);
+  if(weights.length!==days.length) weights = days.map(()=>100/days.length);   // lệch số lượng ⇒ chia đều
+  st.dca = {
+    budget: Number(d.budget)>0 ? Number(d.budget) : 0,
+    split, baseDays:days, baseWeights:weights,
+    startMonth: /^\d{4}-\d{2}$/.test(d.startMonth||'') ? d.startMonth : thisMonth(),
+    oppCapMonths: Number(d.oppCapMonths)>0 ? Number(d.oppCapMonths) : DEFAULT_DCA.oppCapMonths,
+  };
 }
 const r6 = x => Math.round((Number(x)||0)*1e6)/1e6;          // tiền: 6 chữ số là thừa đủ
 const rq = x => Math.round((Number(x)||0)*1e10)/1e10;        // số lượng: đủ mịn để cộng/trừ rồi đảo lại không lệch
@@ -1250,6 +1309,78 @@ function testDca(){
   return {pass:ok, fail:bad};
 }
 
+/* ---- DCA: kế hoạch vốn tháng (SPEC-DCA Khối B) --------------------------
+   Hàm thuần: nhận cài đặt DCA, danh sách lần mua ETH và Buy Score, trả về mọi con số của card
+   "Tháng này". Không đọc D, không có document trạng thái riêng — Opportunity Fund cũng chỉ là
+   phép trừ trên dữ liệu gốc, đúng cách công nợ ròng được suy ra. */
+const unlockPct = (table, score) => { const r = table.find(([min])=>Number(score)>=min); return r ? r[1] : 0; };
+const monthDiff = (from, to) => { const [y1,m1]=from.split('-').map(Number), [y2,m2]=to.split('-').map(Number); return (y2-y1)*12+(m2-m1); };
+const sumBy = (rows, f) => rows.reduce((a,r)=>a+(Number(f(r))||0), 0);
+
+/* cfg: settings().dca đã chuẩn hoá · purchases: mảng transfer đích ETH (mọi thời điểm)
+   score: Buy Score gần nhất, null nếu chưa có · today: ngày trong tháng đang xét, null nếu tháng đã qua */
+function dcaPlan(month, cfg, purchases, score, today){
+  const budget = Number(cfg.budget)||0;
+  const sp = cfg.split, days = cfg.baseDays, w = cfg.baseWeights;
+  const baseTotal = budget*sp.base/100, smartTotal = budget*sp.smart/100, oppMonthly = budget*sp.opp/100;
+  const inMonth = purchases.filter(t=>String(t.date||'').slice(0,7)===month);
+  const spentBy = src => sumBy(inMonth.filter(t=>(t.source||'MANUAL')===src), t=>t.valueVnd);
+
+  /* Base: chia theo lịch, tiền đã mua lấp lần lượt từ kỳ đầu. Tháng đã qua coi như mọi kỳ đã tới hạn. */
+  const wSum = w.reduce((a,b)=>a+b,0) || 1;
+  let left = spentBy('BASE');
+  const legs = days.map((d,i)=>{
+    const amount = baseTotal*w[i]/wSum;
+    const paid = Math.min(left, amount); left -= paid;
+    const due = today==null || d<=today;
+    return { day:d, amount, paid, remaining:Math.max(0, amount-paid), due,
+             status: paid>=amount-0.5 ? 'done' : due ? 'due' : 'waiting' };
+  });
+  const baseDueAmount = sumBy(legs.filter(l=>l.due), l=>l.amount);
+  const basePaid = spentBy('BASE');
+  const baseRemaining = Math.max(0, baseDueAmount-basePaid);
+
+  /* Smart: mở theo Buy Score. Chưa có điểm ⇒ chưa mở đồng nào, không đoán. */
+  const smartPct = score==null ? 0 : unlockPct(DCA_PLAN_V1.smartUnlock, score);
+  const smartUnlocked = smartTotal*smartPct/100, smartPaid = spentBy('SMART');
+  const smartRemaining = Math.max(0, smartUnlocked-smartPaid);
+
+  /* Opportunity Fund: số dư = số tháng đã góp × góp mỗi tháng − đã tiêu, chặn trên ở cap. */
+  const start = cfg.startMonth && monthDiff(cfg.startMonth, month)>=0 ? cfg.startMonth : month;
+  const months = monthDiff(start, month)+1;
+  const contributed = months*oppMonthly;
+  const oppSpent = sumBy(purchases.filter(t=>t.source==='OPPORTUNITY'), t=>t.valueVnd);
+  const cap = Number(cfg.oppCapMonths)*oppMonthly;
+  const oppBalance = Math.max(0, Math.min(cap, contributed-oppSpent));
+  const oppPct = score==null ? 0 : unlockPct(DCA_PLAN_V1.oppUnlock, score);
+  const oppAvailable = oppBalance*oppPct/100;
+
+  return { month, budget, baseTotal, smartTotal, oppMonthly,
+    base:{ legs, total:baseTotal, dueAmount:baseDueAmount, paid:basePaid, remaining:baseRemaining },
+    smart:{ total:smartTotal, pct:smartPct, unlocked:smartUnlocked, paid:smartPaid, remaining:smartRemaining },
+    opp:{ monthly:oppMonthly, months, contributed, spent:oppSpent, cap, balance:oppBalance,
+          pct:oppPct, available:oppAvailable, paidThisMonth:spentBy('OPPORTUNITY') },
+    score };
+}
+
+/* Một dòng gợi ý tĩnh — mô tả trạng thái, không phải lệnh, không lưu ở đâu cả. */
+function dcaSuggestion(plan){
+  if(!plan.budget) return '';
+  const bits = [plan.score==null ? 'Chưa có Buy Score' : 'Score '+plan.score];
+  const dueLeg = plan.base.legs.find(l=>l.status==='due');
+  if(dueLeg) bits.push(`Base kỳ ${dueLeg.day} chưa mua đủ (${fmtK(Math.round(dueLeg.remaining))})`);
+  else if(plan.base.remaining>0.5) bits.push(`Base còn thiếu ${fmtK(Math.round(plan.base.remaining))}`);
+  else bits.push('Base đã đủ phần tới hạn');
+  bits.push(`Smart mở ${plan.smart.pct}%` + (plan.smart.remaining>0.5 ? ` (${fmtK(Math.round(plan.smart.remaining))})` : ' — đã mua đủ phần mở'));
+  if(plan.opp.pct>0 && plan.opp.available>0.5) bits.push(`Opportunity mở ${plan.opp.pct}% (${fmtK(Math.round(plan.opp.available))})`);
+  return bits.join(' · ');
+}
+/* Điểm vào cho UI: lấy tháng hiện tại, cài đặt và Buy Score đã cache. */
+function dcaPlanNow(){
+  const m = thisMonth(), c = dcaCache();
+  return dcaPlan(m, settings().dca, ethPurchases(), c && c.score!=null ? c.score : null, new Date().getDate());
+}
+
 /* Dựng chuỗi nến giả lập để kiểm tra hàm tính mà không cần gọi mạng.
    closes: mảng giá đóng cửa; nến cách nhau đúng 1 ngày. */
 function makeCandles(closes, volumes, startTime=Date.UTC(2025,0,1)){
@@ -1331,6 +1462,83 @@ function testBuyScore(){
     chk('Đủ dữ liệu, cũ hơn 48 giờ', buyScore(eth,btc,{ageHours:80}).confidence, 'LOW', 0);
     chk('Thiếu BTC ⇒ Vừa', buyScore(eth,[],{ageHours:2}).confidence, 'MEDIUM', 0);
     chk('Thiếu BTC vẫn ra điểm', buyScore(eth,[],{ageHours:2}).score!=null, true); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
+function testDcaPlan(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.01)=>{
+    const p = want===null ? got===null
+      : (typeof want==='number' && typeof got==='number') ? Math.abs(got-want)<=tol
+      : got===want;
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${got==null?'null':got}${p?'':`   (mong đợi ${want===null?'null':want})`}`); p?ok++:bad++; };
+  /* Cấu hình chuẩn: 10.000k/tháng, 50/30/20, lịch Base ngày 3/13/23 với 40/30/30. */
+  const CFG = { budget:10000, split:{base:50,smart:30,opp:20}, baseDays:[3,13,23], baseWeights:[40,30,30],
+                startMonth:'2026-09', oppCapMonths:6 };
+  const buy = (date, valueVnd, source) => ({date, valueVnd, qtyIn:1, source});
+
+  console.log('%c1 — chia ngân sách: Base 5.000k (2.000/1.500/1.500), Smart 3.000k, Opportunity góp 2.000k','font-weight:600');
+  { const p = dcaPlan('2026-09', CFG, [], 50, 14);
+    chk('Base cả tháng', p.base.total, 5000); chk('Smart cả tháng', p.smart.total, 3000); chk('Opportunity góp/tháng', p.opp.monthly, 2000);
+    chk('Kỳ ngày 3', p.base.legs[0].amount, 2000); chk('Kỳ ngày 13', p.base.legs[1].amount, 1500); chk('Kỳ ngày 23', p.base.legs[2].amount, 1500); }
+
+  console.log('%c2 — ngày 14: kỳ 3 và 13 đã tới hạn, kỳ 23 chưa; chưa mua gì ⇒ còn thiếu 3.500k','font-weight:600');
+  { const p = dcaPlan('2026-09', CFG, [], 50, 14);
+    chk('Phần đã tới hạn', p.base.dueAmount, 3500); chk('Còn phải mua', p.base.remaining, 3500);
+    chk('Kỳ 3', p.base.legs[0].status, 'due'); chk('Kỳ 13', p.base.legs[1].status, 'due'); chk('Kỳ 23', p.base.legs[2].status, 'waiting'); }
+
+  console.log('%c3 — đã mua Base 2.000k: kỳ 3 xong, kỳ 13 vẫn tới hạn và còn thiếu 1.500k','font-weight:600');
+  { const p = dcaPlan('2026-09', CFG, [buy('2026-09-03',2000,'BASE')], 50, 14);
+    chk('Kỳ 3', p.base.legs[0].status, 'done'); chk('Kỳ 13', p.base.legs[1].status, 'due');
+    chk('Kỳ 13 còn thiếu', p.base.legs[1].remaining, 1500); chk('Base còn phải mua', p.base.remaining, 1500);
+    chk('Gợi ý nêu đúng kỳ tới hạn', dcaSuggestion(p).includes('Base kỳ 13'), true); }
+
+  console.log('%c4 — tháng đã qua (không truyền ngày) ⇒ mọi kỳ đều đã tới hạn','font-weight:600');
+  { const p = dcaPlan('2026-08', CFG, [], 50, null);
+    chk('Phần đã tới hạn = cả Base', p.base.dueAmount, 5000);
+    chk('Không kỳ nào còn "chưa tới hạn"', p.base.legs.every(l=>l.status!=='waiting'), true); }
+
+  console.log('%c5 — Smart mở theo Buy Score đúng bảng mục 10','font-weight:600');
+  { const at = sc => dcaPlan('2026-09', CFG, [], sc, 14).smart;
+    chk('Score 80 ⇒ 100%', at(80).pct, 100); chk('Score 80 ⇒ 3.000k', at(80).unlocked, 3000);
+    chk('Score 70 ⇒ 75%', at(70).pct, 75);  chk('Score 50 ⇒ 50%', at(50).pct, 50);
+    chk('Score 35 ⇒ 25%', at(35).pct, 25);  chk('Score 10 ⇒ 0%', at(10).pct, 0);
+    chk('Chưa có điểm ⇒ 0% (không đoán)', dcaPlan('2026-09', CFG, [], null, 14).smart.pct, 0); }
+
+  console.log('%c6 — Smart đã mua rồi thì trừ vào phần đang mở, không âm','font-weight:600');
+  { const p = dcaPlan('2026-09', CFG, [buy('2026-09-10',1000,'SMART')], 50, 14);
+    chk('Đang mở', p.smart.unlocked, 1500); chk('Đã mua', p.smart.paid, 1000); chk('Còn được mua', p.smart.remaining, 500);
+    const q = dcaPlan('2026-09', CFG, [buy('2026-09-10',9000,'SMART')], 50, 14);
+    chk('Mua quá phần mở ⇒ còn 0, không âm', q.smart.remaining, 0); }
+
+  console.log('%c7 — Opportunity Fund: góp dồn theo tháng, trừ phần đã tiêu, chặn ở cap','font-weight:600');
+  { const p = dcaPlan('2026-12', CFG, [], 50, 14);          // 09,10,11,12 ⇒ 4 tháng × 2.000k
+    chk('Số tháng đã góp', p.opp.months, 4); chk('Đã góp', p.opp.contributed, 8000);
+    chk('Cap 6 tháng', p.opp.cap, 12000); chk('Số dư', p.opp.balance, 8000);
+    const q = dcaPlan('2026-12', CFG, [buy('2026-10-05',3000,'OPPORTUNITY')], 50, 14);
+    chk('Trừ phần đã tiêu', q.opp.balance, 5000); chk('Đã tiêu', q.opp.spent, 3000);
+    const r = dcaPlan('2027-09', CFG, [], 50, 14);           // 13 tháng ⇒ 26.000k, chặn ở cap
+    chk('Chặn trên ở cap', r.opp.balance, 12000);
+    const z = dcaPlan('2026-09', CFG, [buy('2026-09-05',9000,'OPPORTUNITY')], 50, 14);
+    chk('Tiêu quá số góp ⇒ 0, không âm', z.opp.balance, 0); }
+
+  console.log('%c8 — Opportunity mở theo Buy Score đúng bảng mục 11 (dè dặt hơn Smart)','font-weight:600');
+  { const at = sc => dcaPlan('2026-12', CFG, [], sc, 14).opp;
+    chk('Score 90 ⇒ 100%', at(90).pct, 100); chk('Score 90 ⇒ được mua 8.000k', at(90).available, 8000);
+    chk('Score 80 ⇒ 50%', at(80).pct, 50);   chk('Score 70 ⇒ 25%', at(70).pct, 25);
+    chk('Score 60 ⇒ 0% (Smart đã mở 75% nhưng Opportunity vẫn đóng)', at(60).pct, 0); }
+
+  console.log('%c9 — ngân sách 0 ⇒ mọi con số về 0 và không có dòng gợi ý','font-weight:600');
+  { const p = dcaPlan('2026-09', {...CFG, budget:0}, [], 80, 14);
+    chk('Base', p.base.total, 0); chk('Smart đang mở', p.smart.unlocked, 0); chk('Số dư Opportunity', p.opp.balance, 0);
+    chk('Không có gợi ý', dcaSuggestion(p), ''); }
+
+  console.log('%c10 — chỉ đếm lần mua của đúng tháng đang xét, đúng nhãn nguồn','font-weight:600');
+  { const rows = [buy('2026-08-03',2000,'BASE'), buy('2026-09-03',1200,'BASE'), buy('2026-09-04',800,'MANUAL')];
+    const p = dcaPlan('2026-09', CFG, rows, 50, 14);
+    chk('Base tháng 9 (bỏ tháng 8 và nhãn Tay)', p.base.paid, 1200); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -2001,9 +2209,58 @@ function renderDcaScore(){
     `</tbody>`;
 }
 
+/* ---- DCA Khối B: card "Tháng này" ---- */
+const LEG_TEXT = { done:'đã mua đủ', due:'tới hạn, chưa mua đủ', waiting:'chưa tới hạn' };
+function renderDcaPlan(){
+  const p = dcaPlanNow();
+  el('dcaPlanMonth').textContent = fmtMonthLong(p.month).toLowerCase();
+  el('dcaPlanBudget').textContent = p.budget ? 'ngân sách '+fmtK(Math.round(p.budget))+' · '+
+    `Base ${settings().dca.split.base}% · Smart ${settings().dca.split.smart}% · Opportunity ${settings().dca.split.opp}%` : '';
+
+  if(!p.budget){
+    el('dcaPlanBody').innerHTML = '<div class="mute">Chưa đặt ngân sách tháng. Vào <a class="link" href="#caidat">Cài đặt → DCA</a> để nhập ngân sách và tỷ lệ Base/Smart/Opportunity, card này sẽ tự tính phần vốn tháng này.</div>';
+    return;
+  }
+  const bar = (a,b) => `<div class="prog"><i style="width:${b>0?Math.min(100,Math.round(100*a/b)):0}%"></i></div>`;
+  const k = x => fmtK(Math.round(x));
+
+  const baseLegs = p.base.legs.map(l=>
+    `<div class="${l.status==='waiting'?'off':''}">Ngày ${l.day} · ${k(l.amount)} · ${LEG_TEXT[l.status]}${l.status==='due'?` (còn ${k(l.remaining)})`:''}</div>`).join('');
+
+  el('dcaPlanBody').innerHTML =
+    (dcaSuggestion(p) ? `<div class="suggest">${esc(dcaSuggestion(p))}</div>` : '')+
+    `<div class="plan3">
+      <div class="pblock">
+        <div class="lbl">Base <span class="badge">${k(p.base.total)}/tháng</span></div>
+        <div class="pn">${k(p.base.paid)} <span class="u">/ ${k(p.base.dueAmount)} đã tới hạn</span></div>
+        ${bar(p.base.paid, p.base.dueAmount)}
+        <div class="psub">${baseLegs}</div>
+      </div>
+      <div class="pblock">
+        <div class="lbl">Smart <span class="badge">${k(p.smart.total)}/tháng</span></div>
+        <div class="pn">${k(p.smart.paid)} <span class="u">/ ${k(p.smart.unlocked)} đang mở</span></div>
+        ${bar(p.smart.paid, p.smart.unlocked)}
+        <div class="psub">
+          <div>Mở <b>${p.smart.pct}%</b> theo Buy Score ${p.score==null?'<span class="off">(chưa có điểm ⇒ chưa mở)</span>':'<b>'+p.score+'</b>'}</div>
+          <div class="${p.smart.remaining>0.5?'':'off'}">${p.smart.remaining>0.5?'Còn được mua '+k(p.smart.remaining):'Đã mua hết phần đang mở'}</div>
+        </div>
+      </div>
+      <div class="pblock">
+        <div class="lbl">Opportunity Fund <span class="badge">góp ${k(p.opp.monthly)}/tháng</span></div>
+        <div class="pn">${k(p.opp.balance)} <span class="u">/ cap ${k(p.opp.cap)}</span></div>
+        ${bar(p.opp.balance, p.opp.cap)}
+        <div class="psub">
+          <div>Đã góp ${p.opp.months} tháng ${k(p.opp.contributed)} · đã tiêu ${k(p.opp.spent)}</div>
+          <div class="${p.opp.available>0.5?'':'off'}">Mở <b>${p.opp.pct}%</b> theo Buy Score${p.opp.available>0.5?' ⇒ được mua '+k(p.opp.available):' ⇒ chưa mở'}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
 /* ---- DCA (SPEC-DCA Khối C): giá vốn, lịch sử mua, lọc theo nguồn ---- */
 function renderDca(){
   renderDcaScore();
+  renderDcaPlan();
   const usdt = price('usdt'), cur = price('eth');
   const basis = dcaCostBasis(ethPurchases(), usdt);
   const s = dcaSummary(basis, cur, usdt);
@@ -2300,12 +2557,33 @@ function renderSettings(){
   el('setMilestones').value = (settings().milestones||[]).join(', ');
   el('setLongAmt').value = String(settings().longTarget.amount);
   el('setLongMonth').value = settings().longTarget.month;
+  const dc = settings().dca;
+  el('setDcaBudget').value = dc.budget ? String(dc.budget) : '';
+  el('setDcaBase').value = String(dc.split.base); el('setDcaSmart').value = String(dc.split.smart); el('setDcaOpp').value = String(dc.split.opp);
+  el('setDcaDays').value = dc.baseDays.join(', '); el('setDcaWeights').value = dc.baseWeights.map(x=>Math.round(x*100)/100).join(', ');
+  el('setDcaStart').value = dc.startMonth; el('setDcaCap').value = String(dc.oppCapMonths);
   const used = new Set(D.transactions.map(t=>t.category));
   const tags = (list, kind) => list.map(c=>`<span>${esc(c)}<button data-kind="${kind}" data-cat="${esc(c)}" ${used.has(c)?'disabled title="Đã có giao dịch dùng nhóm này"':''} aria-label="xoá">×</button></span>`).join('');
   el('expCats').innerHTML = tags(settings().expenseCats,'exp'); el('incCats').innerHTML = tags(settings().incomeCats,'inc');
   el('acctInfo').textContent = state.mode==='local' ? 'Chế độ thử cục bộ (chưa điền CONFIG Firebase)' : 'Đăng nhập: '+state.email;
   el('btnLogout').hidden = state.mode==='local';
 }
+el('saveDca').onclick = ()=>{
+  const numList = v => String(v||'').split(',').map(x=>parseNum(x.trim())).filter(x=>!isNaN(x));
+  const budget = el('setDcaBudget').value.trim()==='' ? 0 : parseNum(el('setDcaBudget').value);
+  if(isNaN(budget) || budget<0){ shake(el('setDcaBudget')); return; }
+  const b=parseNum(el('setDcaBase').value), sm=parseNum(el('setDcaSmart').value), op=parseNum(el('setDcaOpp').value);
+  if([b,sm,op].some(x=>isNaN(x)||x<0) || Math.abs(b+sm+op-100)>0.01){ [el('setDcaBase'),el('setDcaSmart'),el('setDcaOpp')].forEach(shake); toast('Tỷ lệ Base + Smart + Opportunity phải cộng lại bằng 100'); return; }
+  const days = numList(el('setDcaDays').value).filter(x=>x>=1&&x<=28);
+  if(!days.length){ shake(el('setDcaDays')); toast('Lịch Base cần ít nhất một ngày trong khoảng 1–28'); return; }
+  let weights = numList(el('setDcaWeights').value).filter(x=>x>0);
+  if(weights.length!==days.length){ weights = days.map(()=>Math.round(10000/days.length)/100); toast('Số tỷ lệ không khớp số ngày — đã chia đều'); }
+  const cap = parseNum(el('setDcaCap').value);
+  if(isNaN(cap) || cap<=0){ shake(el('setDcaCap')); return; }
+  const start = /^\d{4}-\d{2}$/.test(el('setDcaStart').value) ? el('setDcaStart').value : thisMonth();
+  saveSettings({dca:{budget, split:{base:b, smart:sm, opp:op}, baseDays:days.sort((x,y)=>x-y), baseWeights:weights, startMonth:start, oppCapMonths:cap}});
+  toast(budget>0 ? 'Đã lưu kế hoạch vốn '+fmtK(budget)+'/tháng' : 'Đã lưu — ngân sách 0, card "Tháng này" tắt');
+};
 el('saveTarget').onclick = ()=>{ const v=parseNum(el('setTarget').value); if(isNaN(v)||v<=0){ shake(el('setTarget')); return; } saveSettings({incomeTarget:v}); toast('Đã lưu mục tiêu '+fmtBig(v)); };
 el('setTarget').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveTarget').click(); } });
 el('saveMilestones').onclick = ()=>{
@@ -2478,7 +2756,7 @@ async function importInitialData(opts={}){
   IMPORT.holdings.forEach(([name,group,quantity,priceKey],i)=>ops.push({op:'set',col:'holdings',id:store.newId(), data:{name,group,quantity,priceKey,order:i+1}}));
   ops.push({op:'set',col:'prices',id:'current', data:Object.fromEntries(Object.entries(IMPORT.prices).map(([k,v])=>[k,{value:v,source:'manual',updatedAt:now}]))});
   ops.push({op:'set',col:'settings',id:'main', data:{incomeTarget:DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS],
-    milestones:[...DEFAULT_MILESTONES], longTarget:{...DEFAULT_LONG_TARGET}, scenarios:[]}});
+    milestones:[...DEFAULT_MILESTONES], longTarget:{...DEFAULT_LONG_TARGET}, scenarios:[], dca:{...DEFAULT_DCA}}});
   await store.batch(ops);
   applyLoaded(await store.loadAll());
   state.month = IMPORT.txDate.slice(0,7);
@@ -2494,13 +2772,15 @@ window.attribution = attribution;
 window.testAttribution = testAttribution;
 window.testDca = testDca;
 window.testBuyScore = testBuyScore;
+window.testDcaPlan = testDcaPlan;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
         transferValue, scnPrice, scnNetWorth, netQty,
         ethHolding, ethPurchases, purchaseUsdPrice, dcaCostBasis, dcaSummary, dcaState,
-        sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, BUY_SCORE_V1},
-  render, importInitialData, testAttribution, testDca, testBuyScore, refreshDca, makeCandles,
+        sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, BUY_SCORE_V1,
+        unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1},
+  render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, refreshDca, makeCandles,
   downloadBackup, restoreBackup, backupPayload };
 
 boot();
