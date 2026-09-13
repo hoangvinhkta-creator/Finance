@@ -13,7 +13,7 @@ Không mở pha sau khi pha trước chưa dùng thật.
 | Pha | Nội dung | Trạng thái |
 |---|---|---|
 | **P0** | Dữ liệu lên Firebase | **xong** |
-| **P1** | Tab DCA — nhìn là biết nên làm gì | đang làm |
+| **P1** | Tab DCA — nhìn là biết nên làm gì | **code xong 4 khối, chờ owner nghiệm thu** |
 | **P2** | Tự động hoá quyết định (ladder, cooldown, state machine) | chờ P1 dùng thật 1 tháng |
 | **P3** | Về sau — chưa cam kết | — |
 
@@ -78,13 +78,15 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 
 **Nghiệm thu:** đổi ngân sách trong Cài đặt thì mọi con số trên tab DCA đổi theo đúng tỷ lệ.
 
-### P1.D — Đồng bộ tài sản từ Binance
+### P1.D — Đồng bộ tài sản từ Binance ✅ xong — PR #15
 
 - Kéo số dư ETH, USDT, BTC, ADA từ tài khoản Binance về tab Tài sản thay vì nhập tay.
 - API key **chỉ đọc**, tắt rút tiền và giao dịch, lưu trên Firestore, không bao giờ vào repo.
 - Là nút bấm, không tự chạy. Có bảng đối chiếu Binance / FinTrace / lệch trước khi ghi đè.
 
 **Rủi ro:** endpoint cần ký chữ ký có thể bị chặn CORS. Nếu vậy dừng và hỏi owner, không tự dựng proxy.
+
+**Còn chờ owner:** tạo API key chỉ đọc trên Binance, dán vào Cài đặt, rồi bấm Đồng bộ Binance trên app thật để xác nhận endpoint đã ký gọi được từ GitHub Pages. Web Crypto chỉ ký trên HTTPS nên phải mở qua Pages, không mở file trực tiếp.
 
 ---
 
@@ -121,3 +123,4 @@ Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, nhiều coin
 | 2026-09-13 | Xong Khối C: tab DCA, nguồn vốn trên transfers, giá vốn ETH (PR #9). Tiếp theo: Khối A — Buy Score. |
 | 2026-09-13 | Xong Khối A: Buy Score 7 thành phần, nút Cập nhật gọi Binance, giá ETH/BTC/ADA thành live (PR #11). Tiếp theo: Khối B — kế hoạch vốn tháng. |
 | 2026-09-13 | Xong Khối B: cài đặt ngân sách DCA, card "Tháng này" với Base/Smart/Opportunity Fund và dòng gợi ý (PR #13). Tiếp theo: Khối D — đồng bộ tài sản từ Binance. |
+| 2026-09-13 | Xong Khối D: nút Đồng bộ Binance, khoá chỉ đọc trong Cài đặt, bảng đối chiếu trước khi ghi đè (PR #15). Hết code P1 — chờ owner nghiệm thu hai việc cần mạng thật: Buy Score và đồng bộ số dư. |
