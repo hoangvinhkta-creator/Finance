@@ -84,9 +84,15 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 - API key **chỉ đọc**, tắt rút tiền và giao dịch, lưu trên Firestore, không bao giờ vào repo.
 - Là nút bấm, không tự chạy. Có bảng đối chiếu Binance / FinTrace / lệch trước khi ghi đè.
 
-**Rủi ro:** endpoint cần ký chữ ký có thể bị chặn CORS. Nếu vậy dừng và hỏi owner, không tự dựng proxy.
+**Đã xảy ra đúng rủi ro dự kiến:** owner thử trên app thật 2026-09-13, Binance chặn CORS với endpoint đã ký. Endpoint công khai (Buy Score, giá live) vẫn chạy bình thường. Đã hỏi owner và owner chốt dựng Cloudflare Worker trung gian.
 
-**Còn chờ owner:** tạo API key chỉ đọc trên Binance, dán vào Cài đặt, rồi bấm Đồng bộ Binance trên app thật để xác nhận endpoint đã ký gọi được từ GitHub Pages. Web Crypto chỉ ký trên HTTPS nên phải mở qua Pages, không mở file trực tiếp.
+### P1.D2 — Cloudflare Worker cho đồng bộ số dư ✅ xong — PR #18
+
+- Thêm `binance-worker.js`: Worker chỉ nhận `GET /account`, ký HMAC-SHA256 rồi gọi Binance, chỉ trả số dư khác 0, gác bằng `ACCESS_TOKEN`.
+- Khoá API Binance chuyển vào biến bí mật của Cloudflare — **không còn nằm trên Firestore**. Cài đặt giờ chỉ nhập địa chỉ Worker và mã truy cập, và tự gỡ khoá cũ khi lưu.
+- Hướng dẫn owner dựng từng bước: `BINANCE.md`.
+
+**Còn chờ owner:** dựng Worker theo `BINANCE.md`, dán địa chỉ và mã truy cập vào Cài đặt, rồi bấm Đồng bộ Binance trên app thật.
 
 ### P1.E — ETH và BTC song song ✅ xong
 
@@ -136,3 +142,4 @@ Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, chiến lư�
 | 2026-09-13 | Xong Khối B: cài đặt ngân sách DCA, card "Tháng này" với Base/Smart/Opportunity Fund và dòng gợi ý (PR #13). Tiếp theo: Khối D — đồng bộ tài sản từ Binance. |
 | 2026-09-13 | Xong Khối D: nút Đồng bộ Binance, khoá chỉ đọc trong Cài đặt, bảng đối chiếu trước khi ghi đè (PR #15). Hết code P1 — chờ owner nghiệm thu hai việc cần mạng thật: Buy Score và đồng bộ số dư. |
 | 2026-09-13 | Owner yêu cầu thêm BTC. Xong Khối E: tab DCA đa coin ETH/BTC, mỗi coin một ngân sách, cùng thuật toán (PR #17). |
+| 2026-09-13 | Binance chặn CORS endpoint đã ký (owner xác nhận trên app thật). Owner chốt dựng Cloudflare Worker. Xong P1.D2: `binance-worker.js` + `BINANCE.md`, khoá API rời Firestore (PR #18). |
