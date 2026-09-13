@@ -70,7 +70,7 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 
 **Còn chờ owner:** sandbox của session Claude chặn mọi kết nối ra ngoài nên chưa gọi được Binance thật; hàm tính đã kiểm bằng nến tự tạo (`testBuyScore()` — 34 ca). Owner bấm Cập nhật trên app thật để xác nhận Binance gọi được từ GitHub Pages.
 
-### P1.B — Kế hoạch vốn tháng
+### P1.B — Kế hoạch vốn tháng ✅ xong — PR #13
 
 - Cài đặt thêm: ngân sách tháng, tỷ lệ Base/Smart/Opportunity (mặc định 50/30/20), lịch Base (ngày 3, 13, 23).
 - Tab DCA hiện: Base đã mua trên tổng và kỳ nào tới hạn, Smart mở bao nhiêu theo điểm, Opportunity Fund còn bao nhiêu.
@@ -120,3 +120,4 @@ Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, nhiều coin
 | 2026-09-13 | Nối project Firebase `fintrace-353f4` (PR #7). Owner nghiệm thu đầy đủ P0. Mở P1, bắt đầu Khối C. |
 | 2026-09-13 | Xong Khối C: tab DCA, nguồn vốn trên transfers, giá vốn ETH (PR #9). Tiếp theo: Khối A — Buy Score. |
 | 2026-09-13 | Xong Khối A: Buy Score 7 thành phần, nút Cập nhật gọi Binance, giá ETH/BTC/ADA thành live (PR #11). Tiếp theo: Khối B — kế hoạch vốn tháng. |
+| 2026-09-13 | Xong Khối B: cài đặt ngân sách DCA, card "Tháng này" với Base/Smart/Opportunity Fund và dòng gợi ý (PR #13). Tiếp theo: Khối D — đồng bộ tài sản từ Binance. |
