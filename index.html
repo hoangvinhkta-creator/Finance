@@ -38,7 +38,7 @@ svg.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;str
 .side-foot a{color:var(--ink2);display:flex;align-items:center;gap:10px}
 .side-foot a.active{font-weight:600;color:var(--ink)}
 .mode{font-size:11px;color:var(--mute);line-height:1.35}
-main{padding:26px 30px 60px;width:100%;min-width:0}
+main{padding:26px 30px 26px;width:100%;min-width:0}
 .view{display:none}.view.active{display:block}
 .vhead{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}
 .vhead .right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -216,41 +216,28 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
 /* ---------- Pha 3: tổng quan, chuyển đổi, kịch bản ---------- */
 .grid2.eq{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.grid2.one{grid-template-columns:minmax(0,1fr)}
-/* Hàng đầu tab DCA: hero+phân rã | giá vốn (hẹp) | ví coin. Ba card luôn cao bằng nhau (stretch). */
-.grid3{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.72fr) minmax(0,1.13fr);gap:14px;margin-bottom:16px}
-/* Ô thống kê xếp dọc: nhãn một dòng, số và chú thích CÙNG một hàng; chú thích cắt gọn để
-   chiều cao ô không đổi giữa các coin (ETH có dòng WBETH dài, coin khác thì ngắn). */
-.stats.col{grid-template-columns:minmax(0,1fr);gap:10px;margin-bottom:0}
-.stats.col .stat{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:10px;padding:10px 14px;min-height:62px}
-.stats.col .stat .lbl{grid-column:1/-1;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Card Giá vốn hẹp: tiêu đề và bộ chọn coin xếp dọc, 4 nút chia đều bề ngang để không nút nào bị cắt. */
-#dcaBasisCard .colhead{display:flex;flex-direction:column;align-items:stretch;gap:8px}
-#dcaBasisCard .seg{display:flex}
-#dcaBasisCard .seg button{flex:1;padding:0}
-.stats.col .stat .val{font-size:20px}
-.stats.col .stat .sub{margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tbl.compact th,.tbl.compact td{padding:6px 8px;font-size:12px}
+/* Tab DCA: hai hàng card 50/50. KHÔNG pin chiều cao bằng pixel (số đo ở 1440 thành khoảng trống ở 1920);
+   thay vào đó mọi coin vẽ đúng cùng số dòng (7 phân rã, 4 vùng giá, 3 quỹ), coin không chấm điểm điền "—",
+   nên các card trong cùng hàng tự cao bằng nhau ở mọi độ rộng mà không cần đệm. */
+.stats.tight{gap:10px;margin-bottom:0}
+.stats.tight .stat{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:10px;padding:9px 12px;min-height:58px}
+.stats.tight .stat .lbl{grid-column:1/-1;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats.tight .stat .val{font-size:19px}
+.stats.tight .stat .sub{margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tbl.compact th,.tbl.compact td{padding:5px 8px;font-size:12px;white-space:nowrap}
+.tbl.compact tbody tr{height:31px}  /* chip ngân sách (Base 5.000k/th) cao hơn chữ thường 3px — khoá chiều cao hàng để card "Tháng này" không đổi khi đổi coin */
 .tbl.compact td.first,.tbl.compact th.first{padding-left:4px}
 .tbl.compact td.last,.tbl.compact th.last{padding-right:4px}
-#dcaWalletTable{table-layout:fixed;width:100%}
-#dcaWalletTable td{overflow:hidden}
-/* Khung cố định chiều cao để đổi sang ADA/USDT (không có điểm/kế hoạch) card không thấp đi.
-   Ba số dưới ĐO bằng Playwright ở trạng thái đầy nhất (ETH có điểm + có ngân sách): dòng meta 2 hàng
-   42px, bảng phân rã 7 thành phần + tổng 342px, card Tháng này đủ 3 quỹ 338px. Đổi nội dung thì đo lại. */
-#dcaScoreCard .hero{min-height:87px}
-#dcaHeroMeta{min-height:42px}
-.bkbox{min-height:342px}
-.planbox{min-height:340px}
+.tbl.compact td.cut{overflow:hidden;text-overflow:ellipsis;max-width:0}
+#dcaWalletTable,#dcaScoreTable,#dcaPlanBody .tbl{table-layout:fixed;width:100%}
+/* Dòng meta dưới giá: luôn đúng một dòng, dài quá thì cắt — để hero cao như nhau ở mọi coin. */
+.split.one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.split.one span{display:inline;margin-right:14px}
+.suggest.one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Popup rộng cho bảng lịch sử; min-width:0 để bảng bên trong cuộn ngang thay vì đẩy popup tràn màn hình. */
 .dialog{min-width:0;max-width:100%}
 #mdBody{min-width:0}
 .dialog.wide{width:min(980px,100%)}
-/* Hero thấp hơn card giá vốn bên cạnh — giãn đều để hai card cao bằng nhau mà không hụt đáy. */
-#dcaScoreCard{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
-.planc{display:grid;gap:13px}
-.planc .prow .pn{margin-top:2px}
-.planc .psub{margin-top:5px}
 .hero{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 22px}
 .hero .big{font-size:34px;font-weight:600;letter-spacing:-.03em;line-height:1}
 .hero .vs{font-size:13px;color:var(--ink2);padding-bottom:3px}
@@ -315,8 +302,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 @media (max-width:1100px){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid2{grid-template-columns:minmax(0,1fr)}
-  .grid3{grid-template-columns:minmax(0,1fr)}
-  .quick{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}
+    .quick{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}
   .quick input[type=date]{grid-column:1/3}
 }
 /* Hàng 5 ô giữ nguyên tới đúng chỗ 4 card gãy, rồi mới xuống 2 */
@@ -572,40 +558,37 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
     <section id="view-dca" class="view">
       <header class="vhead"><h1>DCA</h1><div class="right"><small id="dcaUpdated" class="mute"></small><button class="btn" id="dcaHistOpen">Lịch sử</button><button class="btn" id="dcaHoldOpen">Thêm coin</button><button class="btn" id="dcaBuyOpen">Mua nhanh</button><button class="btn primary" id="dcaRefresh">Cập nhật</button></div></header>
 
-      <div class="grid3" id="dcaTopRow">
+      <div class="grid2 eq" id="dcaTopRow" style="margin-bottom:14px">
         <section class="card pad" id="dcaScoreCard">
           <div class="hero">
             <div><div class="lbl mute" id="dcaHeroLbl" style="font-size:12px;margin-bottom:6px">Giá ETH</div><div class="big" id="dcaHeroPrice">—</div></div>
             <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Buy Score</div><div class="big" id="dcaHeroScore">—</div></div>
             <div class="vs" id="dcaHeroState"></div>
           </div>
-          <div class="split" id="dcaHeroMeta"></div>
+          <div class="split one" id="dcaHeroMeta"></div>
           <div class="warnline" id="dcaWarn" hidden></div>
-          <div class="colhead" style="padding:14px 0 6px"><h2>Phân rã điểm <small>7 thành phần, tổng 100</small></h2><small class="mute" id="dcaAlgo"></small></div>
-          <div class="scroll bkbox"><table class="tbl compact" id="dcaScoreTable"></table></div>
+          <div class="colhead" style="padding:10px 0 4px"><h2>Phân rã điểm <small>7 thành phần, tổng 100</small></h2><small class="mute" id="dcaAlgo"></small></div>
+          <div class="scroll"><table class="tbl compact" id="dcaScoreTable"></table></div>
         </section>
 
         <section class="card pad" id="dcaBasisCard">
-          <div class="colhead" style="padding:0 0 12px"><h2>Giá vốn</h2><div class="seg" id="dcaCoinPick"></div></div>
-          <div class="stats col" id="dcaStats"></div>
-        </section>
-
-        <section class="card pad" id="dcaWalletCard">
-          <div class="colhead" style="padding:0 0 12px"><h2>Ví Coin</h2><span id="dcaWalletTotal" class="mute"></span></div>
+          <div class="colhead" style="padding:0 0 10px"><h2>Giá vốn <small>&amp; Ví Coin</small></h2><div class="seg" id="dcaCoinPick"></div></div>
+          <div class="stats three tight" id="dcaStats"></div>
+          <div class="colhead" style="padding:12px 0 4px"><h2>Ví Coin</h2><span id="dcaWalletTotal" class="mute"></span></div>
           <div class="scroll"><table class="tbl compact" id="dcaWalletTable"></table></div>
-          <div id="dcaWalletAlloc" style="padding:12px 0 0"></div>
+          <div id="dcaWalletAlloc" style="padding:10px 0 0"></div>
         </section>
       </div>
 
-      <div class="grid2 eq" id="dcaPlanRow" style="margin-bottom:16px">
+      <div class="grid2 eq" id="dcaPlanRow" style="margin-bottom:0">
         <section class="card pad" id="dcaBandCard">
-          <div class="colhead" style="padding:0 0 12px"><h2>Vùng giá mua <small id="dcaBandSub">giá về mức nào thì vào vùng đó</small></h2><small class="mute" id="dcaBandNow"></small></div>
-          <div class="scroll planbox"><table class="tbl" id="dcaBandTable"></table></div>
+          <div class="colhead" style="padding:0 0 6px"><h2>Vùng giá mua <small id="dcaBandSub">giá về mức nào thì vào vùng đó</small></h2><small class="mute" id="dcaBandNow"></small></div>
+          <div class="scroll"><table class="tbl compact" id="dcaBandTable"></table></div>
         </section>
 
         <section class="card pad" id="dcaPlanCard">
-          <div class="colhead" style="padding:0 0 12px"><h2>Tháng này <small id="dcaPlanMonth"></small></h2><small class="mute" id="dcaPlanBudget"></small></div>
-          <div id="dcaPlanBody" class="planbox"></div>
+          <div class="colhead" style="padding:0 0 6px"><h2>Tháng này <small id="dcaPlanMonth"></small></h2><small class="mute" id="dcaPlanBudget"></small></div>
+          <div id="dcaPlanBody"></div>
         </section>
       </div>
     </section>
@@ -3030,13 +3013,6 @@ function donutHtml(){
 }
 /* Dòng USD nhỏ dưới một ô số. null thì không hiện gì. */
 const usdSub = v => v==null || !isFinite(v) ? '' : `<small class="mute" style="display:block;font-weight:400">≈ ${fmtUsd(v)}</small>`;
-/* Cột Giá của một coin (khoá giá live): tổng chỗ đang giữ quy ra USDT, dưới là tỉ giá 1 đơn vị.
-   Dùng chung cho bảng "Ví Coin" (tab DCA) — Danh mục ở tab Tài sản không còn liệt kê từng coin nữa. */
-function coinPriceCell(h){
-  const cUsd = holdingUsd(h), uUsd = cUsd==null ? null : priceUsd(h.priceKey);
-  if(cUsd==null || uUsd==null) return '<span class="mute">—</span>';
-  return `<b>${fmtUsdt(cUsd)}</b>${h.priceKey==='usdt' ? '' : `<small class="mute" style="display:block;font-weight:400">1 ${esc(priceLabel(h.priceKey))} ≈ ${fmtNum(uUsd, uUsd>=100?2:4)}</small>`}`;
-}
 function renderHoldings(){
   const t=debtTotals(), ta=totalAssets(), nw=ta+t.net;
   /* Coin (khoá giá live) không còn liệt kê từng dòng ở đây — gộp một dòng "Coin", chi tiết
@@ -3125,9 +3101,9 @@ function renderDcaScore(){
     el('dcaHeroPrice').innerHTML = !(cur>0) ? '—' : coin.vndFirst ? fmtK(cur,4) : (u>0 ? fmtUsd(cur/u) : '—');
     el('dcaHeroScore').innerHTML = '<span class="mute">—</span>';
     el('dcaHeroState').innerHTML = '<span class="mute" style="white-space:nowrap">không chấm Buy Score</span>';
-    el('dcaHeroMeta').innerHTML = cur>0 && !coin.vndFirst ? `<span>${esc(coin.label)} <b>${fmtK(cur,2)}</b><span class="u"> /${esc(coin.label)}</span></span>` : '';
+    el('dcaHeroMeta').innerHTML = cur>0 && !coin.vndFirst ? `<span>${esc(coin.label)} <b>${fmtK(cur,2)}</b><span class="u"> /${esc(coin.label)}</span></span>` : '<span class="u">chỉ theo dõi giá vốn</span>';
     el('dcaWarn').hidden = true; el('dcaAlgo').textContent = '';
-    el('dcaScoreTable').innerHTML = `<thead><tr><th class="first">Thành phần</th><th class="meas">Đo được</th><th class="n">Điểm</th><th class="last bcol"></th></tr></thead><tbody><tr><td class="empty" colspan="4">${esc(coin.label)} không nằm trong kịch bản DCA — chỉ ETH và BTC được chấm điểm</td></tr></tbody>`;
+    el('dcaScoreTable').innerHTML = scoreTableHtml(null, null, `${coin.label} không nằm trong kịch bản DCA`);
     return;
   }
 
@@ -3155,94 +3131,76 @@ function renderDcaScore(){
   el('dcaWarn').innerHTML = warns.join(' ');
 
   el('dcaAlgo').textContent = c ? 'Buy Score '+(c.version||BUY_SCORE_V1.version)+' · nguồn '+(c.source||'—') : '';
-  const rows = (c && c.components) || [];
-  el('dcaScoreTable').innerHTML = `<thead><tr><th class="first">Thành phần</th><th class="meas">Đo được</th><th class="n">Điểm</th><th class="last bcol"></th></tr></thead><tbody>`+
-    (rows.length ? rows.map(r=>`<tr>
-      <td class="first">${esc(r.label)}</td>
-      <td class="meas">${esc(fmtCompVal(r))}${r.note?` <small class="mute">${esc(r.note)}</small>`:''}</td>
-      <td class="pt">${fmtNum(r.points,1)}<span class="mute">/${r.max}</span></td>
-      <td class="last bcol"><span class="sbar"><i style="width:${r.max?Math.round(100*r.points/r.max):0}%"></i></span></td></tr>`).join('')
-     : `<tr><td class="empty" colspan="4">Chưa chấm điểm lần nào — bấm "Cập nhật"</td></tr>`)+
-    (rows.length ? `<tr class="total"><td class="first">Tổng</td><td class="meas"></td><td class="pt">${c.score}<span class="mute">/100</span></td><td class="last bcol"></td></tr>`:'')+
-    `</tbody>`;
+  el('dcaScoreTable').innerHTML = scoreTableHtml((c && c.components) || null, c ? c.score : null, 'chưa chấm — bấm "Cập nhật"');
+}
+/* Bảng phân rã LUÔN 7 dòng + dòng tổng, kể cả khi chưa có điểm hay coin không chấm (điền "—"):
+   cùng số dòng ⇒ card cao như nhau ở mọi coin, mọi độ rộng, không cần đệm pixel. */
+const SCORE_PARTS = ['drawdown365','ma200','rsi14','drawdownMonth','percentile365','capitulation','ethbtc30'];
+function scoreTableHtml(comps, score, emptyNote){
+  const byKey = Object.fromEntries((comps||[]).map(r=>[r.key, r]));
+  const rows = SCORE_PARTS.map(k=>{ const r = byKey[k], cfg = BUY_SCORE_V1[k];
+    return r
+      ? `<tr><td class="first cut" title="${esc(r.label)}">${esc(r.label)}</td><td class="meas cut">${esc(fmtCompVal(r))}${r.note?` <small class="mute">${esc(r.note)}</small>`:''}</td><td class="pt">${fmtNum(r.points,1)}<span class="mute">/${r.max}</span></td><td class="last bcol"><span class="sbar"><i style="width:${r.max?Math.round(100*r.points/r.max):0}%"></i></span></td></tr>`
+      : `<tr><td class="first cut mute" title="${esc(cfg.label)}">${esc(cfg.label)}</td><td class="meas mute">—</td><td class="pt mute">—<span class="mute">/${cfg.max}</span></td><td class="last bcol"><span class="sbar"><i style="width:0"></i></span></td></tr>`; }).join('');
+  const total = comps
+    ? `<tr class="total"><td class="first">Tổng</td><td class="meas"></td><td class="pt">${score}<span class="mute">/100</span></td><td class="last bcol"></td></tr>`
+    : `<tr class="total"><td class="first">Tổng</td><td class="meas mute">${esc(emptyNote||'')}</td><td class="pt mute">—<span class="mute">/100</span></td><td class="last bcol"></td></tr>`;
+  return `<colgroup><col style="width:34%"><col style="width:38%"><col style="width:13%"><col style="width:15%"></colgroup><thead><tr><th class="first">Thành phần</th><th class="meas">Đo được</th><th class="n">Điểm</th><th class="last bcol"></th></tr></thead><tbody>${rows}${total}</tbody>`;
 }
 
 /* ---- Vùng giá mua: đọc bands đã tính sẵn lúc bấm Cập nhật ---- */
 function renderDcaBands(){
-  const coin = dcaCoinOf(state.dcaCoin), c = dcaCache(coin.key);
-  if(coin.basisOnly){
-    el('dcaBandSub').textContent = 'giá về mức nào thì vào vùng đó';
-    el('dcaBandNow').textContent = '';
-    el('dcaBandTable').innerHTML = `<thead><tr><th class="first">Vùng</th><th class="n">Điểm</th><th class="n">Giá</th><th class="last n">So với hiện tại</th></tr></thead><tbody><tr><td class="empty" colspan="4">${esc(coin.label)} không chấm Buy Score nên không có vùng giá</td></tr></tbody>`;
-    return;
-  }
+  const coin = dcaCoinOf(state.dcaCoin), c = coin.basisOnly ? null : dcaCache(coin.key);
   const bands = (c && c.bands) || [], now = c && c.priceUsd, usdt = price('usdt');
   el('dcaBandSub').textContent = `giá ${coin.label} về mức nào thì vào vùng đó`;
-  el('dcaBandNow').textContent = c && c.score!=null && now ? `hiện ${fmtUsd(now)} · Score ${c.score}` : '';
+  el('dcaBandNow').textContent = coin.basisOnly ? `${coin.label} không chấm điểm` : (c && c.score!=null && now ? `hiện ${fmtUsd(now)} · Score ${c.score}` : 'bấm "Cập nhật" để dò');
   const cur = c && c.marketState ? c.marketState.key : null;
-  el('dcaBandTable').innerHTML =
-    `<thead><tr><th class="first">Vùng</th><th class="n">Điểm</th><th class="n">Giá ${esc(coin.label)}</th><th class="last n">So với hiện tại</th></tr></thead><tbody>`+
-    (bands.length ? [...bands].sort((a,b)=>a.min-b.min).map(b=>`<tr${b.key===cur?' class="total"':''}>
-      <td class="first">${esc(b.label)}${b.key===cur?' <span class="badge on">đang ở đây</span>':''}</td>
-      <td class="n mute">≥ ${b.min}</td>
-      <td class="n">${b.price==null ? '<span class="mute">không tới được</span>'
-        : `<b>${fmtUsd(b.price)}</b>${usdt>0?`<small class="mute" style="display:block;font-weight:400">≈ ${fmtK(Math.round(b.price*usdt))}</small>`:''}`}</td>
-      <td class="last n ${b.gap!=null&&b.gap<0?'':'mute'}">${b.gap==null?'—':fmtPctS(b.gap)}</td></tr>`).join('')
-     : `<tr><td class="empty" colspan="4">Chưa tính — bấm "Cập nhật" để chấm điểm và dò vùng giá</td></tr>`)+
-    `</tbody>`;
+  const byKey = Object.fromEntries(bands.map(b=>[b.key,b]));
+  /* Luôn đúng 4 dòng theo BUY_SCORE_V1.states (bỏ vùng 0 điểm) — chưa có số thì "—". */
+  const rows = [...BUY_SCORE_V1.states].filter(([m])=>m>0).sort((a,b)=>a[0]-b[0]).map(([min,key,label])=>{ const b = byKey[key];
+    return `<tr${key===cur?' class="total"':''}>
+      <td class="first">${esc(label)}${key===cur?' <span class="badge on">đang ở đây</span>':''}</td>
+      <td class="n mute">≥ ${min}</td>
+      <td class="n">${!b ? '<span class="mute">—</span>' : b.price==null ? '<span class="mute">không tới được</span>' : `<b>${fmtUsd(b.price)}</b>${usdt>0?` <small class="mute">≈ ${fmtK(Math.round(b.price*usdt))}</small>`:''}`}</td>
+      <td class="last n ${b&&b.gap!=null&&b.gap<0?'':'mute'}">${!b||b.gap==null?'—':fmtPctS(b.gap)}</td></tr>`; }).join('');
+  el('dcaBandTable').innerHTML = `<thead><tr><th class="first">Vùng</th><th class="n">Điểm</th><th class="n">Giá ${esc(coin.label)}</th><th class="last n">So với hiện tại</th></tr></thead><tbody>${rows}</tbody>`;
 }
 
 /* ---- DCA Khối B: card "Tháng này" ---- */
 const LEG_TEXT = { done:'đã mua đủ', due:'tới hạn, chưa mua đủ', waiting:'chưa tới hạn' };
 function renderDcaPlan(){
   const coin = dcaCoinOf(state.dcaCoin);
+  const k = x => fmtK(Math.round(x));
+  const bar = (a,b) => `<div class="prog" style="margin:0"><i style="width:${b>0?Math.min(100,Math.round(100*a/b)):0}%"></i></div>`;
+  /* Luôn đúng 3 dòng Base/Smart/Opportunity + một dòng gợi ý — coin không có kế hoạch thì điền "—". */
+  const table = rows => `<colgroup><col style="width:17%"><col style="width:30%"><col style="width:16%"><col style="width:37%"></colgroup><thead><tr><th class="first">Quỹ</th><th>Tháng này</th><th></th><th class="last">Ghi chú</th></tr></thead><tbody>${rows}</tbody>`;
+  const row = (name, badge, mid, prog, note) => `<tr><td class="first"><b>${name}</b>${badge?` <span class="badge">${badge}</span>`:''}</td><td class="cut" title="${esc(mid)}">${mid}</td><td>${prog}</td><td class="last cut mute" title="${esc(note)}">${note}</td></tr>`;
+  const empty = (why) => `<div class="suggest one mute">${esc(why)}</div><div class="scroll"><table class="tbl compact">${table(
+    ['Base','Smart','Opportunity'].map(n=>row(n,'','<span class="mute">—</span>',bar(0,0),'—')).join(''))}</table></div>`;
   if(coin.basisOnly){
     el('dcaPlanMonth').textContent = coin.label;
-    el('dcaPlanBudget').textContent = '';
-    el('dcaPlanBody').innerHTML = `<div class="mute">${esc(coin.label)} không nằm trong kịch bản DCA 3 mốc — không có ngân sách Base/Smart/Opportunity. Kế hoạch vốn chỉ áp cho ETH và BTC.</div>`;
+    el('dcaPlanBudget').textContent = 'không có kế hoạch vốn';
+    el('dcaPlanBody').innerHTML = empty(`${coin.label} không nằm trong kịch bản DCA 3 mốc — kế hoạch vốn chỉ áp cho ETH và BTC.`);
     return;
   }
-  const cfg = settings().dca[coin.key];
-  const p = dcaPlanNow(coin.key);
+  const cfg = settings().dca[coin.key], p = dcaPlanNow(coin.key);
   el('dcaPlanMonth').textContent = coin.label+' · '+fmtMonthLong(p.month).toLowerCase();
-  el('dcaPlanBudget').textContent = p.budget ? 'ngân sách '+fmtK(Math.round(p.budget))+' · '+
-    `Base ${cfg.split.base}% · Smart ${cfg.split.smart}% · Opportunity ${cfg.split.opp}%` : '';
-
+  el('dcaPlanBudget').textContent = p.budget ? 'ngân sách '+k(p.budget)+' · '+`Base ${cfg.split.base}% · Smart ${cfg.split.smart}% · Opp ${cfg.split.opp}%` : 'chưa đặt ngân sách';
   if(!p.budget){
-    el('dcaPlanBody').innerHTML = `<div class="mute">Chưa đặt ngân sách tháng cho ${esc(coin.label)}. Vào <a class="link" href="#caidat">Cài đặt → DCA</a>, chọn ${esc(coin.label)} rồi nhập ngân sách và tỷ lệ Base/Smart/Opportunity — card này sẽ tự tính phần vốn tháng này.</div>`;
+    el('dcaPlanBody').innerHTML = empty(`Chưa đặt ngân sách tháng cho ${coin.label} — vào Cài đặt → DCA, chọn ${coin.label} rồi nhập ngân sách và tỷ lệ.`);
     return;
   }
-  const bar = (a,b) => `<div class="prog"><i style="width:${b>0?Math.min(100,Math.round(100*a/b)):0}%"></i></div>`;
-  const k = x => fmtK(Math.round(x));
-
-  /* Card giờ chỉ rộng nửa trang: gộp lịch Base thành một dòng ngắn thay vì mỗi kỳ một dòng. */
   const LEG_SHORT = { done:'đủ', due:'chưa đủ', waiting:'chờ' };
-  const baseLegs = p.base.legs.map(l=>
-    `<span class="${l.status==='waiting'?'off':''}">ngày ${l.day} ${LEG_SHORT[l.status]}</span>`).join(' · ');
-
+  const legs = p.base.legs.map(l=>`ngày ${l.day} ${LEG_SHORT[l.status]}`).join(' · ');
   el('dcaPlanBody').innerHTML =
-    (dcaSuggestion(p) ? `<div class="suggest">${esc(dcaSuggestion(p))}</div>` : '')+
-    `<div class="planc">
-      <div class="prow">
-        <div class="lbl">Base <span class="badge">${k(p.base.total)}/tháng</span></div>
-        <div class="pn">${k(p.base.paid)} <span class="u">/ ${k(p.base.dueAmount)} đã tới hạn</span></div>
-        ${bar(p.base.paid, p.base.dueAmount)}
-        <div class="psub">${baseLegs}</div>
-      </div>
-      <div class="prow">
-        <div class="lbl">Smart <span class="badge">${k(p.smart.total)}/tháng</span></div>
-        <div class="pn">${k(p.smart.paid)} <span class="u">/ ${k(p.smart.unlocked)} đang mở</span></div>
-        ${bar(p.smart.paid, p.smart.unlocked)}
-        <div class="psub">mở <b>${p.smart.pct}%</b> theo Score ${p.score==null?'<span class="off">(chưa có điểm)</span>':'<b>'+p.score+'</b>'} · <span class="${p.smart.remaining>0.5?'':'off'}">${p.smart.remaining>0.5 ? 'còn mua được '+k(p.smart.remaining)
-          : p.smart.unlocked<=0.5 ? 'chưa mở đồng nào' : 'đã mua hết phần mở'}</span></div>
-      </div>
-      <div class="prow">
-        <div class="lbl">Opportunity <span class="badge">góp ${k(p.opp.monthly)}/tháng</span></div>
-        <div class="pn">${k(p.opp.balance)} <span class="u">/ cap ${k(p.opp.cap)}</span></div>
-        ${bar(p.opp.balance, p.opp.cap)}
-        <div class="psub">góp ${p.opp.months} tháng ${k(p.opp.contributed)} · tiêu ${k(p.opp.spent)} · <span class="${p.opp.available>0.5?'':'off'}">mở <b>${p.opp.pct}%</b>${p.opp.available>0.5?' ⇒ '+k(p.opp.available):' ⇒ chưa mở'}</span></div>
-      </div>
-    </div>`;
+    `<div class="suggest one" title="${esc(dcaSuggestion(p)||'')}">${esc(dcaSuggestion(p)||'—')}</div>`+
+    `<div class="scroll"><table class="tbl compact">${table(
+      row('Base', k(p.base.total)+'/th', `${k(p.base.paid)} <span class="u mute">/ ${k(p.base.dueAmount)} tới hạn</span>`, bar(p.base.paid, p.base.dueAmount), legs)+
+      row('Smart', k(p.smart.total)+'/th', `${k(p.smart.paid)} <span class="u mute">/ ${k(p.smart.unlocked)} đang mở</span>`, bar(p.smart.paid, p.smart.unlocked),
+          `mở ${p.smart.pct}% theo Score ${p.score==null?'—':p.score} · ${p.smart.remaining>0.5 ? 'còn '+k(p.smart.remaining) : p.smart.unlocked<=0.5 ? 'chưa mở' : 'đã mua hết'}`)+
+      row('Opp', 'góp '+k(p.opp.monthly)+'/th', `${k(p.opp.balance)} <span class="u mute">/ cap ${k(p.opp.cap)}</span>`, bar(p.opp.balance, p.opp.cap),
+          `góp ${p.opp.months} th ${k(p.opp.contributed)} · tiêu ${k(p.opp.spent)} · mở ${p.opp.pct}%${p.opp.available>0.5?' ⇒ '+k(p.opp.available):''}`)
+    )}</table></div>`;
 }
 
 /* ---- Ví Coin: toàn bộ tài sản crypto chuyển hẳn về đây, Danh mục chỉ còn một dòng gộp ---- */
@@ -3253,15 +3211,18 @@ function renderDcaWallet(){
   el('dcaWalletTotal').innerHTML = coinHs.length ? `${fmtK(Math.round(total))}${cu!=null?` <small class="mute">≈ ${fmtUsd(cu)}</small>`:''}` : '';
   /* Bề rộng cột cố định (đo: khung 402px, nội dung tự do phình tới 502px). Tổng 100%, tên cắt gọn;
      Số lượng 22% vì 19% làm ô nhập cắt mất số cuối của "0,004712". */
-  el('dcaWalletTable').innerHTML = `<colgroup><col style="width:20%"><col style="width:22%"><col style="width:33%"><col style="width:15%"><col style="width:10%"></colgroup>
-    <thead><tr><th class="first">Tên</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
-    (coinHs.map((h,i)=>`<tr data-id="${h.id}">
+  /* Mỗi coin đúng một hàng: tỉ giá 1 đơn vị và tổng USDT tách thành hai cột thay vì xếp hai tầng. */
+  el('dcaWalletTable').innerHTML = `<colgroup><col style="width:22%"><col style="width:18%"><col style="width:22%"><col style="width:19%"><col style="width:12%"><col style="width:7%"></colgroup>
+    <thead><tr><th class="first">Tên</th><th class="n">Số lượng</th><th class="n">Tỷ giá (USDT)</th><th class="n">Giá trị (USDT)</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
+    (coinHs.map(h=>{ const cUsd = holdingUsd(h), uUsd = cUsd==null ? null : priceUsd(h.priceKey);
+      return `<tr data-id="${h.id}">
       <td class="first"><input class="inline l" data-f="name" value="${esc(h.name)}" title="${esc(h.name)}" style="width:100%;min-width:0;text-overflow:ellipsis"></td>
       <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:100%;min-width:0"></td>
-      <td class="n">${coinPriceCell(h)}</td>
-      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b></td>
-      <td class="act last"><button data-act="del">xoá</button></td></tr>`).join('')
-     || '<tr><td class="empty" colspan="5">Chưa có coin nào — bấm "Thêm coin" ở góc trên</td></tr>')+`</tbody>`;
+      <td class="n mute">${h.priceKey==='usdt' ? '1' : uUsd!=null ? fmtNum(uUsd, uUsd>=100?2:4) : '—'}</td>
+      <td class="n"><b>${cUsd!=null ? fmtNum(cUsd, 2) : '—'}</b></td>
+      <td class="n">${fmtK(Math.round(holdingValue(h)))}</td>
+      <td class="act last"><button data-act="del">xoá</button></td></tr>`; }).join('')
+     || '<tr><td class="empty" colspan="6">Chưa có coin nào — bấm "Thêm coin" ở góc trên</td></tr>')+`</tbody>`;
   const rows = coinAllocation();
   el('dcaWalletAlloc').innerHTML = !rows.length ? '' :
     `<div class="catstack">${rows.map((r,i)=>`<i style="width:${total?r.v/total*100:0}%;background:${SHADES[i%SHADES.length]}" title="${esc(r.name)} · ${fmtK(Math.round(r.v))} · ${fmtPct(r.v/total)}"></i>`).join('')}</div>
