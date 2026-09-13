@@ -667,7 +667,9 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <div class="hint" style="padding:8px 0 14px">Trước khi nối Firebase, app cất dữ liệu trong bộ nhớ của chính trình duyệt. Nối Firebase xong thì chỗ đó không còn được đọc nữa nhưng vẫn nằm nguyên đó. Nút này lục lại và tải về thành file sao lưu — <b>chỉ đọc, không xoá gì</b>. Bấm trên đúng trình duyệt và đúng máy đã dùng hồi đó.</div>
             <div class="hint" style="padding:8px 0 14px">Sao lưu ra một file JSON chứa toàn bộ dữ liệu. Dùng để chuyển dữ liệu từ chế độ thử cục bộ lên Firebase, đổi sang project Firebase khác, hoặc giữ một bản phòng thân trước khi làm gì đó lớn. Khôi phục sẽ xoá sạch dữ liệu hiện có rồi ghi lại từ file.</div>
             <div class="row"><button class="btn" id="btnImport">Import dữ liệu ban đầu</button><label class="chk"><input type="checkbox" id="importForce"> xoá dữ liệu hiện có trước khi import</label></div>
-            <div class="hint" style="padding:8px 0 0">Chạy một lần. Cũng gọi được từ console: <code>importInitialData()</code> hoặc <code>importInitialData({force:true})</code>.</div>
+            <div class="hint" style="padding:8px 0 14px">Chạy một lần. Cũng gọi được từ console: <code>importInitialData()</code> hoặc <code>importInitialData({force:true})</code>.</div>
+            <div class="row"><button class="btn" id="btnImportDcaHistory">Nạp lịch sử mua coin (file cũ)</button><span class="mute" id="dcaHistoryInfo"></span></div>
+            <div class="hint" style="padding:8px 0 0">29 lần mua BTC/ETH/ADA từ file Excel theo dõi cũ, quy đổi VNĐ theo tỷ giá USDT gần ngày mua nhất. Chỉ ghi vào lịch sử Chuyển đổi để tính giá vốn — <b>không đụng số lượng coin đang có</b>. Chạy một lần, bấm lại sẽ báo đã nạp rồi.</div>
           </details>
         </section>
       </div>
@@ -1072,6 +1074,90 @@ function dcaSummary(basis, currentPriceVnd, usdtNow){
 function dcaState(coin){
   const k = coin || state.dcaCoin;
   return dcaSummary(dcaCostBasis(coinPurchases(k), price('usdt')), price(k), price('usdt'));
+}
+
+/* ---- Nạp lịch sử mua coin từ file Excel theo dõi cũ (owner cung cấp 2026-09-13) -------
+   Trước khi có FinTrace, owner tự ghi tay từng lần mua BTC/ETH/ADA vào một sheet riêng.
+   Mỗi dòng: [ngày, số lượng coin (âm = một lần bán), tổng USD tương ứng (âm nếu bán),
+   tỷ giá VNĐ/USDT — lấy từ đúng lần nạp USDT gần ngày mua nhất trong cùng sheet đó, sai số
+   xa nhất khoảng nửa tháng (~0,5%), đủ dùng để tính giá vốn tương đối.
+   USD ≈ USDT (coi 1:1, đều là đơn vị ổn định) nên "tổng USD" dùng thẳng làm số USDT đã chi. */
+const DCA_HISTORY_IMPORT = {
+  btc: [
+    ['2025-11-03', 0.00065, 70.7811, 27832],
+    ['2025-11-20', 0.00406, 359.31, 27843],
+  ],
+  eth: [
+    ['2025-11-03', 0.0276, 104.6592, 27832],
+    ['2025-11-04', 0.0336, 111.72, 28032],
+    ['2025-11-21', 0.0647, 177.9897, 27843],
+    ['2025-12-01', 0.0631, 180.01799, 27777],
+    ['2025-12-06', -0.024, -71.304, 28000],
+    ['2025-12-15', 0.0599, 177.893416, 28072],
+    ['2026-01-01', 0.0621, 185.205177, 26957],
+    ['2026-01-11', 0.0597, 184.760157, 26860],
+    ['2026-01-29', 0.0672, 184.8, 26709],
+    ['2026-02-01', 0.0744, 179.8992, 26709],
+    ['2026-02-01', 0.0756, 184.7664, 26709],
+    ['2026-02-02', 0.0803, 184.7703, 26600],
+    ['2026-02-05', 0.0944, 186.328608, 26837],
+    ['2026-02-05', 0.0988, 181.3474, 26837],
+    ['2026-02-23', 0.1503, 279.983349, 26748],
+    ['2026-03-22', 0.0856, 179.76, 27970],
+    ['2026-04-02', 0.0881, 184.7457, 27425],
+    ['2026-05-15', 0.0813, 179.815275, 26494],
+    ['2026-05-23', 0.0889, 179.840255, 26455],
+    ['2026-06-02', 0.0953, 184.92012, 26339],
+    ['2026-06-04', 0.1714, 299.95, 26339],
+    ['2026-06-06', 0.189, 299.92788, 26471],
+    ['2026-06-25', 0.1469, 229.8985, 26706],
+    ['2026-08-01', 0.0989, 184.843111, 26668],
+  ],
+  ada: [
+    ['2025-10-08', 460.5, 375.9522, 26634],
+    ['2025-10-11', 486.1, 374.97754, 26634],
+    ['2025-11-03', 122.4, 71.94672, 27832],
+  ],
+};
+/* Hàm thuần: dựng danh sách document transfer sẽ ghi, từ dữ liệu thô + id holding liên quan.
+   Không đọc D, không gọi store — test được độc lập. Thiếu id coin (holding) thì bỏ qua coin đó,
+   không lỗi. `usd` âm ⇒ một lần bán, đổi chiều from/to so với mua, và không gắn `source`
+   (không phải một lần mua nên không tính vào Base/Smart/Opportunity). */
+function dcaHistoryOps(data, ids, batch){
+  const ops = [];
+  for(const [key, rows] of Object.entries(data)){
+    const hid = ids[key]; if(!hid || !ids.usdt) continue;
+    for(const [date, qty, usd, rate] of rows){
+      const rateK = rate/1000, valueVnd = r6(Math.abs(usd)*rateK), sell = qty<0;
+      ops.push(sell
+        ? { date, month:date.slice(0,7), fromId:hid, toId:ids.usdt, qtyOut:r6(Math.abs(qty)), qtyIn:r6(Math.abs(usd)),
+            valueVnd, usdtRate:rateK, note:'', historyBatch:batch }
+        : { date, month:date.slice(0,7), fromId:ids.usdt, toId:hid, qtyOut:r6(Math.abs(usd)), qtyIn:r6(Math.abs(qty)),
+            valueVnd, usdtRate:rateK, source:'MANUAL', note:'', historyBatch:batch });
+    }
+  }
+  return ops;
+}
+/* Ghi thẳng transfers qua store.batch(), KHÔNG gọi addTransfer()/applyXfer(): số lượng coin
+   đang có trong Danh mục đã đúng theo số dư thật (nhập tay riêng), sổ mua cũ này chỉ để tính
+   giá vốn — cộng dồn lại vào holdings sẽ nhân đôi số lượng đang có. */
+async function importDcaHistory(){
+  if(!store) throw new Error('Chưa đăng nhập');
+  const BATCH = 'xlsx-2026-09';
+  if(D.transfers.some(t=>t.historyBatch===BATCH)) throw new Error('Đã nạp lịch sử này rồi — mỗi file chỉ nạp một lần.');
+  const ids = { usdt: coinHolding('usdt')?.id, btc: coinHolding('btc')?.id, eth: coinHolding('eth')?.id, ada: coinHolding('ada')?.id };
+  if(!ids.usdt) throw new Error('Chưa có tài sản USDT trong Danh mục — không quy đổi được ra VNĐ.');
+  const missing = ['btc','eth','ada'].filter(k=>DCA_HISTORY_IMPORT[k].length && !ids[k]);
+  const docs = dcaHistoryOps(DCA_HISTORY_IMPORT, ids, BATCH);
+  if(!docs.length) throw new Error('Không có dòng nào để nạp.');
+  const now = Date.now();
+  const ops = docs.map((d,i)=>({op:'set', col:'transfers', id:store.newId(), data:{...d, createdAt:now+i}}));
+  await store.batch(ops);
+  applyLoaded(await store.loadAll());
+  render();
+  return { total: docs.length,
+    counts: Object.fromEntries(['btc','eth','ada'].map(k=>[k, DCA_HISTORY_IMPORT[k].length])),
+    missing };
 }
 
 /* ---- DCA: chỉ báo và Buy Score (SPEC-DCA Khối A) -----------------------
@@ -1820,6 +1906,41 @@ function testDcaWallet(){
   { const savedH = D.holdings; D.holdings = [{id:'1', name:'Vietcombank', priceKey:null, quantity:1000}];
     chk('Mảng rỗng', coinAllocation(), []);
     D.holdings = savedH; }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
+/* Nạp lịch sử mua coin từ file Excel cũ — dcaHistoryOps() là hàm thuần duy nhất cần khoá lại
+   (mua/bán đổi chiều đúng, quy đổi VNĐ đúng, bỏ qua coin thiếu holding). */
+function testDcaHistoryImport(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.001)=>{
+    const p = typeof want==='number' && typeof got==='number' ? Math.abs(got-want)<=tol : JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+
+  console.log('%c1 — mua: từ USDT sang coin, quy đổi VNĐ đúng tỷ giá kèm theo, gắn nguồn MANUAL','font-weight:600');
+  { const ops = dcaHistoryOps({eth:[['2025-11-03', 0.0276, 104.6592, 27832]]}, {usdt:'U', eth:'E'}, 'test');
+    chk('Một dòng', ops.length, 1);
+    const o = ops[0];
+    chk('Từ USDT sang ETH', [o.fromId,o.toId], ['U','E']);
+    chk('Số USDT gửi = |usd|', o.qtyOut, 104.6592);
+    chk('Số ETH nhận = qty', o.qtyIn, 0.0276);
+    chk('Giá trị VNĐ = usd × tỷ giá/1000', o.valueVnd, 104.6592*27.832);
+    chk('Có nguồn MANUAL', o.source, 'MANUAL'); }
+
+  console.log('%c2 — bán (số lượng âm): đổi chiều, từ coin sang USDT, không gắn nguồn','font-weight:600');
+  { const ops = dcaHistoryOps({eth:[['2025-12-06', -0.024, -71.304, 28000]]}, {usdt:'U', eth:'E'}, 'test');
+    const o = ops[0];
+    chk('Từ ETH sang USDT', [o.fromId,o.toId], ['E','U']);
+    chk('Số ETH gửi = |qty|', o.qtyOut, 0.024);
+    chk('Số USDT nhận = |usd|', o.qtyIn, 71.304);
+    chk('Không gắn source (không phải một lần mua)', 'source' in o, false); }
+
+  console.log('%c3 — thiếu holding coin (hoặc thiếu USDT) thì bỏ qua, không lỗi, không bịa dữ liệu','font-weight:600');
+  { const ops = dcaHistoryOps({eth:[['2025-11-03',0.0276,104.6592,27832]], btc:[['2025-11-03',0.001,100,27832]]}, {usdt:'U', eth:'E'}, 'test');
+    chk('Chỉ ETH được ghi, BTC bỏ qua vì thiếu id', ops.length, 1);
+    chk('Thiếu cả USDT thì không ghi gì', dcaHistoryOps({eth:[['2025-11-03',0.0276,104.6592,27832]]}, {eth:'E'}, 'test').length, 0); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -3327,6 +3448,9 @@ function renderSettings(){
   el('expCats').innerHTML = tags(settings().expenseCats,'exp'); el('incCats').innerHTML = tags(settings().incomeCats,'inc');
   el('acctInfo').textContent = state.mode==='local' ? 'Chế độ thử cục bộ (chưa điền CONFIG Firebase)' : 'Đăng nhập: '+state.email;
   el('btnLogout').hidden = state.mode==='local';
+  const imported = D.transfers.some(t=>t.historyBatch==='xlsx-2026-09');
+  el('dcaHistoryInfo').textContent = imported ? 'Đã nạp rồi' : '';
+  el('btnImportDcaHistory').disabled = imported;
 }
 el('saveDca').onclick = ()=>{
   const numList = v => String(v||'').split(',').map(x=>parseNum(x.trim())).filter(x=>!isNaN(x));
@@ -3368,6 +3492,14 @@ el('newIncCat').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDe
 document.querySelectorAll('#expCats,#incCats').forEach(box=>box.addEventListener('click', e=>{ const b=e.target.closest('button[data-cat]'); if(!b||b.disabled) return; const key=b.dataset.kind==='exp'?'expenseCats':'incomeCats'; saveSettings({[key]:settings()[key].filter(c=>c!==b.dataset.cat)}); }));
 el('btnLogout').onclick = logout;
 el('btnImport').onclick = async ()=>{ const force=el('importForce').checked; if(!confirm(force?'Xoá TOÀN BỘ dữ liệu hiện có rồi import dữ liệu ban đầu?':'Import dữ liệu ban đầu từ sheet?')) return; try{ const r=await importInitialData({force}); alert(`Import xong.\nTổng tài sản: ${fmtK(Math.round(r.totalAssets))}\nCông nợ ròng: ${fmtK(Math.round(r.netDebt))}\nTài sản ròng: ${fmtK(Math.round(r.netWorth))}`); }catch(e){ alert(e.message); } };
+el('btnImportDcaHistory').onclick = async ()=>{
+  if(!confirm('Nạp lịch sử mua BTC/ETH/ADA từ file Excel cũ vào lịch sử Chuyển đổi? Không đụng số lượng coin đang có, chỉ để tính giá vốn.')) return;
+  try{
+    const r = await importDcaHistory();
+    alert(`Đã nạp ${r.total} dòng.\nBTC ${r.counts.btc} · ETH ${r.counts.eth} · ADA ${r.counts.ada}`+
+      (r.missing.length ? `\nBỏ qua (chưa có tài sản tương ứng trong Danh mục): ${r.missing.join(', ').toUpperCase()}` : ''));
+  }catch(e){ alert(e.message); }
+};
 
 /* =====================================================================
    SAO LƯU & KHÔI PHỤC — một file JSON chứa toàn bộ dữ liệu.
@@ -3610,6 +3742,8 @@ window.testBuyScore = testBuyScore;
 window.testDcaPlan = testDcaPlan;
 window.testDcaCoins = testDcaCoins;
 window.testDcaWallet = testDcaWallet;
+window.testDcaHistoryImport = testDcaHistoryImport;
+window.importDcaHistory = importDcaHistory;
 window.testUsd = testUsd;
 window.testViews = testViews;
 window.testRecovery = testRecovery;
@@ -3622,8 +3756,9 @@ window.FinTrace = { state, data:D,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, scoreBands, priceForScore, BUY_SCORE_V1,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
-        toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation},
-  render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews,
+        toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
+        dcaHistoryOps, DCA_HISTORY_IMPORT},
+  render, importInitialData, importDcaHistory, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews,
   refreshDca, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
