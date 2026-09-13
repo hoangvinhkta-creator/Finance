@@ -12,38 +12,36 @@ Không mở pha sau khi pha trước chưa dùng thật.
 
 | Pha | Nội dung | Trạng thái |
 |---|---|---|
-| **P0** | Dữ liệu lên Firebase | đang làm |
-| **P1** | Tab DCA — nhìn là biết nên làm gì | chờ P0 |
+| **P0** | Dữ liệu lên Firebase | **xong** |
+| **P1** | Tab DCA — nhìn là biết nên làm gì | đang làm |
 | **P2** | Tự động hoá quyết định (ladder, cooldown, state machine) | chờ P1 dùng thật 1 tháng |
 | **P3** | Về sau — chưa cam kết | — |
 
 ```text
-P0  dữ liệu an toàn trên Firebase
+P0  dữ liệu an toàn trên Firebase — xong
  └─ P1  C: giá vốn ETH → A: Buy Score → B: kế hoạch vốn → D: đồng bộ Binance
      └─ P2  ladder → cooldown → state machine → crash mode
 ```
 
 ---
 
-## P0 — Dữ liệu lên Firebase
+## P0 — Dữ liệu lên Firebase ✅ xong
 
 **Mục tiêu:** dữ liệu FinTrace nằm trên Firebase, mở máy nào cũng thấy, không còn phụ thuộc localStorage của một trình duyệt.
 
 | # | Việc | Ai làm | Trạng thái |
 |---|---|---|---|
-| P0.1 | Sao lưu và khôi phục bằng file JSON | Claude | **xong** — PR #5 |
-| P0.2 | Tạo project Firebase mới, bật Auth, tạo user, tạo Firestore, publish rules | Owner | **đang chờ** |
-| P0.3 | Điền `CONFIG` vào `index.html`, merge lên `main` | Claude | chờ P0.2 |
-| P0.4 | Bật GitHub Pages, thêm authorized domain | Owner | chờ P0.3 |
-| P0.5 | Nạp dữ liệu và nghiệm thu | Owner | chờ P0.4 |
-
-**Owner làm gì:** theo `SETUP.md` từ bước 1 đến bước 5, rồi gửi 4 giá trị `apiKey`, `authDomain`, `projectId`, `appId` vào session. Claude điền và merge. Sau đó owner làm bước 7 và 8.
+| P0.1 | Sao lưu và khôi phục bằng file JSON | Claude | xong — PR #5 |
+| P0.2 | Tạo project Firebase mới (`fintrace-353f4`), bật Auth, tạo user, tạo Firestore, publish rules | Owner | xong |
+| P0.3 | Điền `CONFIG` vào `index.html`, merge lên `main` | Claude | xong — PR #7 |
+| P0.4 | Bật GitHub Pages, thêm authorized domain | Owner | xong |
+| P0.5 | Nạp dữ liệu và nghiệm thu | Owner | **xong — nghiệm thu đầy đủ 2026-09-13** |
 
 **Nghiệm thu P0:** đăng nhập trên máy tính, nhập một khoản chi, mở app trên điện thoại thấy ngay khoản đó. Tổng tài sản ≈ 347.350k, công nợ ròng ≈ −30.330k, tài sản ròng ≈ 317.030k.
 
 ---
 
-## P1 — Tab DCA
+## P1 — Tab DCA (đang làm)
 
 **Mục tiêu một câu:** mở tab DCA, trong 5 giây biết ETH đang bao nhiêu, Buy Score bao nhiêu, tháng này còn bao nhiêu vốn được mua, và mình đang giữ bao nhiêu ETH với giá vốn nào.
 
@@ -117,3 +115,4 @@ Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, nhiều coin
 | Ngày | Việc |
 |---|---|
 | 2026-09-12 | Bỏ roadmap CoinDCA và repo `coin`. Thêm `CLAUDE.md`. Xong P0.1 sao lưu và khôi phục. Mở P0. |
+| 2026-09-13 | Nối project Firebase `fintrace-353f4` (PR #7). Owner nghiệm thu đầy đủ P0. Mở P1, bắt đầu Khối C. |
