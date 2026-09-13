@@ -132,6 +132,7 @@ Sổ tháng + Công nợ gộp thành một tab `#dongtien`, bốn card ngang ch
 - **Thu chưa nhận** trước đây hiện đủ ở cả hai tab. Giờ: khoản của tháng đang xem gộp thành một dòng tổng trong "Họ nợ mình" (đã thấy đầy đủ ở cột Thu ngay cạnh), khoản của tháng khác vẫn liệt kê từng dòng vì không nhìn thấy ở đâu khác.
 - **Nhóm chi "Trả nợ" giữ nguyên, chỉ là ghi chú** (owner chốt). Trả nợ thật đi qua nút Tất toán — ghi một Chuyển đổi, tài sản ròng không đổi, không vào sổ tháng. Card "Chi theo nhóm" có một dòng nhắc khi tháng đó có chi nhóm này.
 - **Ngưỡng bố cục đo bằng Playwright, không đoán:** 4 card vừa khít tới 1050px (card 193px, không bảng nào phải cuộn, không ô nhập nào tràn). Đặt ngưỡng 1040px → 2 card, 820px → 1 card. Muốn đổi bố cục thì đo lại, đừng ước lượng.
+- `main` **không còn `max-width`** (trước là 1380px, làm màn 1920 thừa 356px bên phải). Nội dung giãn hết bề ngang màn hình ở mọi tab; đã soi cả 6 tab ở 1920px và 2560px, không tab nào tràn hay vỡ.
 
 ### Không làm trong P1
 State machine, cooldown, crash mode, ACTION_PENDING, ladder/buy zones, backtest, decision log, versioning nhiều thuật toán, **chiến lược riêng cho từng coin**, tự động mua, thông báo.
