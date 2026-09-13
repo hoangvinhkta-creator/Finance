@@ -1806,6 +1806,20 @@ function testUsd(){
     chk('Số lớn không thừa số 0', fmtUsdt(83000), '83.000 USDT');
     chk('Thiếu dữ liệu', fmtUsdt(null), '—'); }
 
+  console.log('%c8 — bắt được holding WBETH gán nhầm priceKey (thường là \'eth\' từ trước khi có khoá wbeth)','font-weight:600');
+  { const hs = [{id:'1',name:'WBETH (Earn)',priceKey:'eth'},{id:'2',name:'ETH',priceKey:'eth'},
+                {id:'3',name:'wbeth ví lạnh',priceKey:'btc'},{id:'4',name:'WBETH đã đúng',priceKey:'wbeth'}];
+    const bad = wbethMismatches(hs);
+    chk('Bắt đúng 2 dòng sai', bad.length, 2);
+    chk('Không đụng ETH thường', bad.some(h=>h.id==='2'), false);
+    chk('Không đụng dòng đã đúng priceKey', bad.some(h=>h.id==='4'), false);
+    chk('Không có WBETH nào thì không báo gì', wbethMismatches([{id:'5',name:'BTC',priceKey:'btc'}]).length, 0); }
+
+  console.log('%c9 — Giá hiển thị làm tròn số nguyên cho gọn, không kéo theo số lượng/tỷ suất','font-weight:600');
+  { chk('64.955,8593 → 64.956k (làm tròn)', fmtK(64955.8593), '64.956k');
+    chk('Số lượng vẫn giữ đủ 6 chữ số thập phân', fmtQty(1.387511), '1,387511');
+    chk('Tỷ suất quy đổi vẫn giữ 4 chữ số', fmtNum(1.0538, 4), '1,0538'); }
+
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
 }
@@ -1934,6 +1948,20 @@ const LIVE_SYMBOLS = [
   {key:'wbeth', via:{symbol:'WBETHETH', of:'eth'}},
 ];
 const DCA_KLINE_LIMIT = 400;
+
+/* Hàm thuần: holding tên rõ là WBETH nhưng priceKey không phải 'wbeth' — thường do thêm
+   trước khi khoá giá `wbeth` tồn tại, lúc đó chỉ chọn tạm 'eth' vì gần đúng nhất. Hậu quả:
+   giá hiện y hệt ETH thay vì đúng tỷ giá neo WBETH/ETH. */
+function wbethMismatches(holdings){
+  return (holdings||[]).filter(h => h.priceKey!=='wbeth' && /wbeth/i.test(h.name||''));
+}
+/* Tự sửa một lần mỗi lần nạp dữ liệu — không cần owner biết để bấm gì. */
+function fixWbethPriceKey(){
+  for(const h of wbethMismatches(D.holdings)){
+    h.priceKey = 'wbeth';
+    bg(store.update('holdings', h.id, {priceKey:'wbeth'}));
+  }
+}
 
 async function fetchJson(url, ms=15000){
   const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), ms);
@@ -2564,7 +2592,7 @@ function renderHoldings(){
       <td class="first" style="min-width:120px"><input class="inline l" data-f="name" value="${esc(h.name)}"></td>
       <td><select class="inline" data-f="group">${options(HOLDING_GROUPS,h.group)}</select></td>
       <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:110px"></td>
-      <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey),4) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
+      <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey)) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
       <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b>${usdSub(LIVE_KEYS.includes(h.priceKey) ? holdingUsd(h) : null)}</td>
       <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===hs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`).join('') || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
   el('donut').innerHTML = donutHtml();
@@ -3059,6 +3087,7 @@ function applyLoaded(d){
   D.transfers = d.transfers || []; D.months = d.months || {}; D.prices = d.prices || {};
   D.settings = { incomeTarget: DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS], ...(d.settings||{}) };
   normalizeSettings();
+  fixWbethPriceKey();
 }
 
 function backupPayload(){
