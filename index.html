@@ -1495,7 +1495,20 @@ function attribution(S0, S1, transactions, transfers){
   const from = S0 ? S0.month : null;                 // loại trừ: kỳ bắt đầu SAU tháng này
   const to   = S1 ? S1.month : null;                 // bao gồm
   const asOf = S1 ? S1.asOf || null : null;
-  const inPeriod = r => (!from || r.month > from) && (!to || r.month <= to) && (!asOf || !r.date || r.date <= asOf);
+  /* Bản chốt lưu NGÀY CHỤP THẬT (snapAsOf) vì hầu như không ai bấm Chốt tháng đúng 23:59 ngày cuối tháng —
+     chốt T8 vào 13/09 thì tài sản ròng của mốc đã gồm cả thu chi 01→13/09. Lọc theo ngày chụp thì không
+     đếm những khoản đó lần nữa (trước đây chúng rơi vào "Khác"). Bản chốt cũ và tháng import không có
+     ngày chụp ⇒ vẫn lọc theo tháng đúng như trước. */
+  const fromDate = S0 && S0.snapAsOf ? S0.snapAsOf : null;
+  const toDate   = S1 && S1.snapAsOf ? S1.snapAsOf : null;
+  const inPeriod = r => {
+    if(fromDate){ if(r.date && r.date <= fromDate) return false; }
+    else if(from && !(r.month > from)) return false;
+    if(toDate){ if(r.date && r.date > toDate) return false; }
+    else { if(to && !(r.month <= to)) return false;
+           if(asOf && r.date && r.date > asOf) return false; }
+    return true;
+  };
 
   /* --- dòng tiền ngoài: Σ thu − Σ chi (thu gồm cả chưa nhận, như Pha 1) --- */
   const tx = (transactions||[]).filter(inPeriod);
@@ -1543,14 +1556,15 @@ function attribution(S0, S1, transactions, transfers){
 /* ---- snapshot ---- */
 function snapshotOf(m){
   const doc = D.months[m]; if(!doc) return null;
-  return { month:m, asOf:lastDay(m), netWorth: doc.netWorth==null?null:Number(doc.netWorth),
+  return { month:m, asOf:doc.snapAsOf || lastDay(m), snapAsOf: doc.snapAsOf || null,
+           netWorth: doc.netWorth==null?null:Number(doc.netWorth),
            totalAssets: doc.totalAssets==null?null:Number(doc.totalAssets),
            holdings: Array.isArray(doc.holdings)&&doc.holdings.length ? doc.holdings : null,
            prices: doc.prices||null, debtQty: doc.debtQty||null, debt: doc.debt||null };
 }
 function currentSnapshot(){
   const dt = debtTotals();
-  return { month:thisMonth(), asOf:todayStr(), netWorth:netWorth(), totalAssets:totalAssets(),
+  return { month:thisMonth(), asOf:todayStr(), snapAsOf:todayStr(), netWorth:netWorth(), totalAssets:totalAssets(),
            holdings:holdingSnapshot(), prices:priceSnapshot(), debtQty:debtQtySnapshot(), debt:dt, live:true };
 }
 /* Tháng import từ sheet không có transactions — dựng hai dòng thay thế để dòng tiền
@@ -1705,6 +1719,18 @@ function testAttribution(){
     const c = attribution(old0, old1, [], []);
     chk('bản chốt cũ không có debtQty ⇒ thị trường 0', c.market, 0);
     chk('… phần vàng vẫn rơi vào Khác như trước', c.other, 2000); }
+
+  console.log('%c9 — chốt tháng muộn: chỉ tính từ NGÀY CHỤP, không đếm trùng thu chi đã nằm trong mốc','font-weight:600');
+  { /* Chốt T8 vào 13/09 ⇒ tài sản ròng của mốc đã gồm khoản thu 5.000 ngày 05/09. Kỳ T9 chỉ được tính khoản 20/09. */
+    const S0 = {month:'2026-08', asOf:'2026-09-13', snapAsOf:'2026-09-13', holdings:[H('vcb',55000,null,1)], prices:{}, netWorth:55000};
+    const S1 = {month:'2026-09', asOf:'2026-09-30', snapAsOf:null, holdings:[H('vcb',58000,null,1)], prices:{}, netWorth:58000};
+    const tx = [{type:'thu',amount:5000,month:'2026-09',date:'2026-09-05'},{type:'thu',amount:3000,month:'2026-09',date:'2026-09-20'}];
+    const a = attribution(S0, S1, tx, []);
+    chk('DòngTiền chỉ còn khoản sau ngày chụp', a.cashFlow, 3000);
+    chk('Khác = 0 (trước đây lệch đúng 5.000 vì đếm trùng)', a.other, 0);
+    /* Không có snapAsOf ⇒ giữ nguyên cách lọc theo tháng như bản chốt cũ. */
+    const b = attribution({...S0, snapAsOf:null, asOf:'2026-08-31'}, S1, tx, []);
+    chk('bản chốt cũ vẫn lọc theo tháng: đếm cả hai khoản', b.cashFlow, 8000); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -2640,7 +2666,7 @@ function closeMonth(m, note){
   const doc = { income:t.income, expense:t.expense, byCategory:t.byCategory, netWorth:Math.round(netWorth()),
     totalAssets: Math.round(totalAssets()),
     debt: { recv:Math.round(dt.recv), pay:Math.round(dt.pay), pending:Math.round(dt.pending), net:Math.round(dt.net) },
-    holdings: holdingSnapshot(), prices: priceSnapshot(), debtQty: debtQtySnapshot(),
+    holdings: holdingSnapshot(), prices: priceSnapshot(), debtQty: debtQtySnapshot(), snapAsOf: todayStr(),
     note:note||'', closedAt:Date.now() };
   D.months[m] = {id:m, ...doc}; render(); bg(store.set('months',m,doc), 'Đã chốt '+fmtMonthLong(m).toLowerCase());
 }
@@ -2787,7 +2813,7 @@ function renderOverview(){
   const nw = netWorth();
   const baseM = p0.S0 ? p0.S0.month : null;
   el('ovBase').textContent = baseM
-    ? `Baseline: bản chốt ${fmtMonth(baseM)}${p0.marketKnown?' (có snapshot danh mục)':' — chưa có snapshot danh mục'}`
+    ? `Mốc so sánh: bản chốt ${fmtMonth(baseM)}${p0.S0.snapAsOf?' chụp '+fmtDate(p0.S0.snapAsOf):''}${p0.marketKnown?'':' — chưa có ảnh chụp danh mục'}`
     : (Object.keys(D.months).length ? `Chưa chốt ${fmtMonth(shiftMonth(m,-1))} — chưa có mốc so sánh cho tháng này`
                                     : 'Chưa chốt tháng nào — chưa có mốc so sánh');
   const parts = p0.dNW==null ? '' :
