@@ -203,7 +203,9 @@ select.inline:hover{border-color:var(--line)}
 .dialog .kv b{text-align:right;font-weight:600}
 .dialog .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 14px;border-radius:6px;font-size:13px;z-index:60;max-width:90vw}
-.settings{display:grid;gap:14px;max-width:640px}
+/* Cài đặt: hai cột trên desktop để vừa một màn hình (một cột 640px bỏ trống 2/3 màn 1920). */
+.settings{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.settings .scol{display:grid;gap:14px;min-width:0}
 .settings .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .settings .row input{width:auto;flex:1}
 .taglist{display:flex;flex-wrap:wrap;gap:6px}
@@ -216,6 +218,10 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
 /* ---------- Pha 3: tổng quan, chuyển đổi, kịch bản ---------- */
 .grid2.eq{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+/* Tổng quan hàng 2: biểu đồ tháng | phân rã tăng trưởng | cơ cấu — ba card cùng chiều cao. */
+.grid3.ov{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,.85fr);gap:14px}
+/* Khung giữ các bảng dài của Tổng quan: bình thường ẩn, mở popup thì DOM được chuyển vào modal rồi trả về. */
+.holders{display:none}
 /* Tab DCA: hai hàng card 50/50. KHÔNG pin chiều cao bằng pixel (số đo ở 1440 thành khoảng trống ở 1920);
    thay vào đó mọi coin vẽ đúng cùng số dòng (7 phân rã, 4 vùng giá, 3 quỹ), coin không chấm điểm điền "—",
    nên các card trong cùng hàng tự cao bằng nhau ở mọi độ rộng mà không cần đệm. */
@@ -224,6 +230,18 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .stats.tight .stat .lbl{grid-column:1/-1;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stats.tight .stat .val{font-size:19px}
 .stats.tight .stat .sub{margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Ô "Mục tiêu" chữ dài (Cần thu thêm …/ngày) — xếp số và chú thích thành hai dòng thay vì cùng hàng, kẻo chú thích bị bóp về 0. */
+.stats.tight .stat.wide{grid-template-columns:minmax(0,1fr)}
+.stats.tight .stat.wide .val{font-size:15px;font-weight:500}
+/* Cơ cấu ở Tổng quan nằm trong cột hẹp (310px ở màn 1440): donut nhỏ hơn, chú giải cắt gọn thay vì tràn card. */
+#ovMixCard .donut{grid-template-columns:110px 1fr;gap:12px}
+#ovMixCard .donut svg{width:110px;height:110px}
+#ovMixCard .dl{font-size:12px;min-width:0}
+#ovMixCard .dl div{grid-template-columns:12px minmax(0,1fr) auto auto;gap:6px}
+#ovMixCard .dl span:first-of-type{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ovMixCard .dl .p{min-width:38px}
+#ovGoalCard .goal{margin-top:10px;padding-top:8px}
+#ovGoalCard .prog{margin:6px 0 4px}
 .tbl.compact th,.tbl.compact td{padding:5px 8px;font-size:12px;white-space:nowrap}
 .tbl.compact tbody tr{height:31px}  /* chip ngân sách (Base 5.000k/th) cao hơn chữ thường 3px — khoá chiều cao hàng để card "Tháng này" không đổi khi đổi coin */
 .tbl.compact td.first,.tbl.compact th.first{padding-left:4px}
@@ -302,6 +320,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 @media (max-width:1100px){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid2{grid-template-columns:minmax(0,1fr)}
+  .grid3.ov{grid-template-columns:minmax(0,1fr)}
+  .settings{grid-template-columns:minmax(0,1fr)}
     .quick{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}
   .quick input[type=date]{grid-column:1/3}
 }
@@ -316,7 +336,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   .stats.five{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stats{gap:8px}
   .stat{padding:12px 14px}.stat .val{font-size:20px}
-  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
+  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
   .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--mute);padding:4px 0}
   .tabbar a.active{color:var(--ink);font-weight:600}
   .quick{grid-template-columns:1fr 1fr;padding:0 10px 10px}
@@ -366,7 +386,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       <a href="#dongtien" data-view="dongtien"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Dòng tiền</a>
       <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
       <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
-      <a href="#lichsu" data-view="lichsu"><svg class="ic" viewBox="0 0 18 18"><path d="M3.5 15.5V9M8.5 15.5V3.5M13.5 15.5V7M2 15.5h14"/></svg>Lịch sử</a>
     </nav>
     <div class="side-foot">
       <a href="#caidat" data-view="caidat"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 5.5h13M2.5 12.5h13"/><circle cx="7" cy="5.5" r="1.8" fill="#fff"/><circle cx="11" cy="12.5" r="1.8" fill="#fff"/></svg>Cài đặt</a>
@@ -377,37 +396,46 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   <main>
     <!-- ===== Tổng quan (Pha 3) ===== -->
     <section id="view-tong" class="view">
-      <header class="vhead"><h1>Tổng quan</h1><div class="right"><small id="ovBase"></small></div></header>
+      <header class="vhead"><h1>Tổng quan</h1><div class="right"><small id="ovBase"></small><button class="btn" id="ovMonthsOpen">Bảng tháng</button><button class="btn" id="ovCatOpen">Chi theo nhóm</button><button class="btn" id="ovSrcOpen">Thu theo nguồn</button></div></header>
 
-      <section class="card pad" style="margin-bottom:14px"><div id="ovHero"></div></section>
-
-      <div class="stats" id="ovMonth"></div>
-
-      <section class="card pad" style="margin-bottom:14px">
-        <div class="colhead" style="padding:0 0 12px">
-          <h2>Phân rã tăng trưởng</h2>
-          <select id="ovPeriod" style="width:auto;min-width:132px">
-            <option value="m0">tháng này</option><option value="m1">tháng trước</option>
-            <option value="m3">3 tháng</option><option value="m12">12 tháng</option>
-          </select>
-        </div>
-        <div id="ovWaterfall"></div>
-        <div id="ovWfNote"></div>
-      </section>
-
-      <div class="grid2 eq">
-        <section class="card pad"><h2>Mốc</h2><div id="ovGoal"></div></section>
-        <section class="card pad"><h2>12 tháng</h2><div id="ovSpark" class="spark"></div></section>
+      <div class="grid2 eq" style="margin-bottom:14px">
+        <section class="card pad" id="ovHeroCard"><div id="ovHero"></div><div class="stats tight" id="ovMonth" style="margin-top:14px"></div></section>
+        <section class="card pad" id="ovGoalCard"><h2>Mốc <small>giả định giá đứng yên — chỉ tính phần tự tích lũy</small></h2><div id="ovGoal"></div></section>
       </div>
 
-      <section class="card" style="margin-bottom:14px">
-        <div class="colhead"><h2>Chi theo nhóm <small>tháng này so với TB 6 tháng</small></h2><label class="chk"><input type="checkbox" id="ovUnusual"> bỏ khoản bất thường</label></div>
-        <div class="scroll"><table class="tbl" id="ovByCat"></table></div>
-      </section>
+      <div class="grid3 ov" style="margin-bottom:0">
+        <section class="card pad" id="ovChartCard">
+          <div class="colhead" style="padding:0 0 8px;flex-wrap:wrap;gap:6px 14px"><h2>Thu chi &amp; tài sản ròng <small id="ovChartSub"></small></h2>
+            <div class="legend" style="padding:0"><span><i style="background:var(--ink)"></i>Thu</span><span><i style="background:var(--bar2)"></i>Chi</span><span><i class="line" style="background:var(--ink)"></i>Tài sản ròng</span><span><i class="line" style="background:repeating-linear-gradient(90deg,var(--mute) 0 3px,transparent 3px 6px)"></i>TB thu 12 tháng</span></div></div>
+          <div id="histChart"></div>
+        </section>
+        <section class="card pad" id="ovWfCard">
+          <div class="colhead" style="padding:0 0 8px">
+            <h2>Phân rã tăng trưởng</h2>
+            <select id="ovPeriod" style="width:auto;min-width:132px">
+              <option value="m0">tháng này</option><option value="m1">tháng trước</option>
+              <option value="m3">3 tháng</option><option value="m12">12 tháng</option>
+            </select>
+          </div>
+          <div id="ovWaterfall"></div>
+          <div id="ovWfNote"></div>
+        </section>
+        <section class="card pad" id="ovMixCard"><h2>Cơ cấu và thanh khoản</h2><div id="ovDonut" style="margin:10px 0 14px"></div><div id="ovRunway"></div></section>
+      </div>
 
-      <div class="grid2">
-        <section class="card"><div class="colhead"><h2>Thu theo nguồn <small>6 tháng gần nhất</small></h2><span id="ovSrcTotal"></span></div><div class="scroll"><table class="tbl" id="ovSource"></table></div></section>
-        <section class="card pad"><h2>Cơ cấu và thanh khoản</h2><div id="ovDonut" style="margin:10px 0 14px"></div><div id="ovRunway"></div></section>
+      <!-- Ba bảng dài chỉ mở bằng popup. DOM nằm sẵn ở đây (để giữ listener), lúc mở được chuyển vào modal rồi trả về. -->
+      <div class="holders" id="ovHolders">
+        <div id="histHolder"><div class="scroll"><table class="tbl compact" id="histTable"></table></div></div>
+        <div id="ovCatHolder">
+          <div class="colhead" style="padding:0 0 8px"><h2>Tháng này so với TB 6 tháng</h2><label class="chk"><input type="checkbox" id="ovUnusual"> bỏ khoản bất thường</label></div>
+          <div class="scroll"><table class="tbl compact" id="ovByCat"></table></div>
+          <div class="colhead" style="padding:16px 0 8px"><h2>Chi theo nhóm × tháng</h2></div>
+          <div class="scroll"><table class="tbl compact" id="catTable"></table></div>
+        </div>
+        <div id="ovSrcHolder">
+          <div class="colhead" style="padding:0 0 8px"><h2>Thu theo nguồn <small>6 tháng gần nhất</small></h2><span id="ovSrcTotal"></span></div>
+          <div class="scroll"><table class="tbl compact" id="ovSource"></table></div>
+        </div>
       </div>
     </section>
 
@@ -423,7 +451,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         </div>
         <div class="right"><label class="chk"><input type="checkbox" id="showSettled"> Hiện nợ đã tất toán</label><span id="closedInfo" class="mute" style="font-size:12px"></span><button class="btn" id="btnClose">Chốt tháng</button></div>
       </header>
-      <div id="importNotice" class="notice" hidden>Tháng đã import từ sheet — xem chi tiết theo nhóm ở Lịch sử. Số dưới đây là số đã chốt, không có từng dòng giao dịch.</div>
+      <div id="importNotice" class="notice" hidden>Tháng đã import từ sheet — xem chi tiết theo nhóm ở Tổng quan → Chi theo nhóm. Số dưới đây là số đã chốt, không có từng dòng giao dịch.</div>
 
       <div class="grid2 cashtop">
         <section class="card pad statcard">
@@ -593,21 +621,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       </div>
     </section>
 
-    <!-- ===== Lịch sử ===== -->
-    <section id="view-lichsu" class="view">
-      <header class="vhead"><h1>Lịch sử</h1></header>
-      <section class="card pad" style="margin-bottom:14px">
-        <div class="legend"><span><i style="background:var(--ink)"></i>Thu</span><span><i style="background:var(--bar2)"></i>Chi</span><span><i class="line" style="background:var(--ink)"></i>Tài sản ròng</span><span><i class="line" style="background:repeating-linear-gradient(90deg,var(--mute) 0 3px,transparent 3px 6px)"></i>TB thu 12 tháng</span></div>
-        <div id="histChart"></div>
-      </section>
-      <section class="card scroll" style="margin-bottom:14px"><table class="tbl" id="histTable"></table></section>
-      <section class="card scroll"><div class="colhead"><h2>Chi theo nhóm × tháng</h2></div><table class="tbl" id="catTable"></table></section>
-    </section>
-
     <!-- ===== Cài đặt ===== -->
     <section id="view-caidat" class="view">
       <header class="vhead"><h1>Cài đặt</h1></header>
       <div class="settings">
+        <div class="scol">
         <section class="card pad">
           <h2>Mục tiêu thu nhập tháng</h2>
           <div class="row"><input id="setTarget" inputmode="decimal" style="max-width:160px"><span class="mute">nghìn đồng / tháng</span><button class="btn" id="saveTarget">Lưu</button></div>
@@ -621,6 +639,19 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <h2>Mục tiêu dài hạn</h2>
           <div class="row"><input id="setLongAmt" style="max-width:170px" placeholder="2000000"><span class="mute">nghìn đồng, trước</span><input id="setLongMonth" type="month" style="max-width:170px"><button class="btn" id="saveLong">Lưu</button></div>
         </section>
+        <section class="card pad">
+          <h2>Nhóm chi</h2>
+          <div class="taglist" id="expCats"></div>
+          <div class="row"><input id="newExpCat" placeholder="Thêm nhóm chi"><button class="btn" id="addExpCat">Thêm</button></div>
+          <div class="hint" style="padding:8px 0 0">Không xoá được nhóm đã có giao dịch.</div>
+        </section>
+        <section class="card pad">
+          <h2>Nhóm thu</h2>
+          <div class="taglist" id="incCats"></div>
+          <div class="row"><input id="newIncCat" placeholder="Thêm nhóm thu"><button class="btn" id="addIncCat">Thêm</button></div>
+        </section>
+        </div>
+        <div class="scol">
         <section class="card pad">
           <h2>DCA — kế hoạch vốn tháng</h2>
           <div class="row"><span class="mute" style="min-width:120px">Coin</span><div class="seg" id="setDcaCoinPick"></div><span class="mute">mỗi coin một ngân sách riêng</span></div>
@@ -636,17 +667,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <span class="mute">Cap Opportunity</span><input id="setDcaCap" inputmode="decimal" style="max-width:80px"><span class="mute">tháng góp</span></div>
           <div class="row"><button class="btn" id="saveDca">Lưu</button></div>
           <div class="hint" style="padding:8px 0 0">Mỗi coin có ngân sách, tỷ lệ và lịch Base riêng — đổi ô Coin ở trên để sửa coin còn lại. Ngân sách 0 thì card "Tháng này" của coin đó ở tab DCA tắt. Số ngày và số tỷ lệ của lịch Base phải bằng nhau; lệch thì tự chia đều. Opportunity Fund không có sổ riêng: số dư = số tháng đã góp × phần góp mỗi tháng − các lần chuyển đổi gắn nhãn Opportunity, chặn trên ở cap.</div>
-        </section>
-        <section class="card pad">
-          <h2>Nhóm chi</h2>
-          <div class="taglist" id="expCats"></div>
-          <div class="row"><input id="newExpCat" placeholder="Thêm nhóm chi"><button class="btn" id="addExpCat">Thêm</button></div>
-          <div class="hint" style="padding:8px 0 0">Không xoá được nhóm đã có giao dịch.</div>
-        </section>
-        <section class="card pad">
-          <h2>Nhóm thu</h2>
-          <div class="taglist" id="incCats"></div>
-          <div class="row"><input id="newIncCat" placeholder="Thêm nhóm thu"><button class="btn" id="addIncCat">Thêm</button></div>
         </section>
         <section class="card pad">
           <h2>Tài khoản</h2>
@@ -665,6 +685,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <div class="hint" style="padding:8px 0 0">29 lần mua BTC/ETH/ADA và 39 lần nạp/rút USDT từ file Excel theo dõi cũ. Mua coin quy đổi VNĐ theo tỷ giá của lần nạp USDT gần ngày đó nhất. Chỉ ghi vào lịch sử Chuyển đổi để tính giá vốn — <b>không đụng số lượng đang có</b>. Hai mẻ tách riêng, mỗi mẻ chỉ nạp một lần.</div>
           </details>
         </section>
+        </div>
       </div>
     </section>
   </main>
@@ -675,7 +696,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   <a href="#dongtien" data-view="dongtien"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Dòng tiền</a>
   <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
   <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
-  <a href="#lichsu" data-view="lichsu"><svg class="ic" viewBox="0 0 18 18"><path d="M3.5 15.5V9M8.5 15.5V3.5M13.5 15.5V7M2 15.5h14"/></svg>Lịch sử</a>
   <a href="#caidat" data-view="caidat"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 5.5h13M2.5 12.5h13"/><circle cx="7" cy="5.5" r="1.8" fill="#fff"/><circle cx="11" cy="12.5" r="1.8" fill="#fff"/></svg>Cài đặt</a>
 </nav>
 
@@ -2174,6 +2194,7 @@ function testViews(){
   console.log('%c4 — hash cũ vẫn dẫn về đúng tab sau khi gộp','font-weight:600');
   { chk('#so → dongtien', VIEW_ALIAS['so'], 'dongtien');
     chk('#congno → dongtien', VIEW_ALIAS['congno'], 'dongtien');
+    chk('#lichsu → tong', VIEW_ALIAS['lichsu'], 'tong');
     chk('Mọi alias trỏ tới view có thật', Object.values(VIEW_ALIAS).filter(v=>!VIEWS.includes(v)), []);
     chk('Alias không trùng tên view thật', Object.keys(VIEW_ALIAS).filter(k=>VIEWS.includes(k)), []); }
 
@@ -2541,19 +2562,27 @@ function showModal(title, bodyHtml, okLabel, onOk, opts={}){
   el('mdTitle').textContent=title; el('mdBody').innerHTML=bodyHtml; el('mdOk').textContent=okLabel; el('modal').hidden=false;
   const dlg = el('modal').querySelector('.dialog');
   dlg.classList.toggle('wide', !!opts.wide); el('mdCancel').hidden = !!opts.noCancel;
-  const done=()=>{ el('modal').hidden=true; el('mdOk').onclick=null; el('mdCancel').onclick=null; dlg.classList.remove('wide'); el('mdCancel').hidden=false; };
+  const done=()=>{ el('modal').hidden=true; el('mdOk').onclick=null; el('mdCancel').onclick=null; dlg.classList.remove('wide'); el('mdCancel').hidden=false; el('modal').__done=null; if(opts.onClose) opts.onClose(); };
+  el('modal').__done = done;
   /* onOk trả về false ⇒ giữ popup mở (dùng khi số nhập chưa hợp lệ). */
   el('mdOk').onclick=()=>{ if(onOk()===false) return; done(); }; el('mdCancel').onclick=done;
   el('modal').onclick=e=>{ if(e.target===el('modal')) done(); };
   const first=el('mdBody').querySelector('input,textarea'); if(first){ first.focus(); first.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); el('mdOk').click(); } }; }
 }
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !el('modal').hidden){ el('modal').hidden=true; } });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !el('modal').hidden){ (el('modal').__done || (()=>{ el('modal').hidden=true; }))(); } });
+/* Popup từ một khối DOM có sẵn (bảng dài + listener đã gắn): chuyển khối vào modal, đóng thì trả về chỗ cũ.
+   Không dựng lại HTML nên mọi listener gắn theo id vẫn chạy y nguyên trong popup. */
+function openHolder(id, title){
+  const node = el(id), home = node.parentNode;
+  showModal(title, '', 'Đóng', ()=>{}, {wide:true, noCancel:true, onClose:()=>home.appendChild(node)});
+  el('mdBody').appendChild(node);
+}
 
 /* =====================================================================
    ROUTING + RENDER
    ===================================================================== */
-const VIEWS = ['tong','dongtien','taisan','dca','lichsu','caidat'];
-const VIEW_ALIAS = {so:'dongtien', congno:'dongtien'};        // hai tab cũ đã gộp, giữ link cũ chạy được
+const VIEWS = ['tong','dongtien','taisan','dca','caidat'];
+const VIEW_ALIAS = {so:'dongtien', congno:'dongtien', lichsu:'tong'};   // các tab cũ đã gộp, giữ link cũ chạy được
 function route(){
   const raw = location.hash.replace('#','');
   const v = VIEW_ALIAS[raw] || raw;
@@ -2564,11 +2593,11 @@ function route(){
   if(state.view==='dongtien' && isDesktop() && !state.edit.chi && !state.edit.thu) el('formChi').name.focus();
 }
 addEventListener('hashchange', route);
-addEventListener('resize', ()=>{ clearTimeout(window.__rt); window.__rt=setTimeout(()=>{ if(state.view==='lichsu') renderHistory(); if(state.view==='taisan') renderHoldings(); if(state.view==='tong') renderOverview(); },120); });
+addEventListener('resize', ()=>{ clearTimeout(window.__rt); window.__rt=setTimeout(()=>{ if(state.view==='taisan') renderHoldings(); if(state.view==='tong') renderOverview(); },120); });
 
 function render(){
   fillStaticSelects();
-  ({tong:renderOverview, dongtien:renderCashflow, taisan:renderHoldings, dca:renderDca, lichsu:renderHistory, caidat:renderSettings})[state.view]();
+  ({tong:renderOverview, dongtien:renderCashflow, taisan:renderHoldings, dca:renderDca, caidat:renderSettings})[state.view]();
 }
 function fillStaticSelects(){
   setOptions(el('formChi').category, settings().expenseCats);
@@ -2713,18 +2742,10 @@ function renderOverview(){
           <span>cần để ra <b>${mi.ltNeed!=null?fmtBig(mi.ltNeed):'—'}</b>/tháng</span>
           <span>đang tích lũy TB <b>${avgTxt}</b>${gap!=null?` → ${gap>=0?'đạt, dư '+fmtBig(gap):'thiếu '+fmtBig(-gap)}/tháng`:''}</span>
         </div></div>
-      <div class="hint" style="padding:10px 0 0">Giả định giá đứng yên — chỉ tính phần tự tích lũy.</div>`;
+      `;
 
-  /* 5. 12 tháng */
-  const hist = sortedMonths().slice(-12);
-  const sw = 260, nwSeries = hist.map(x=>x.netWorth==null?null:Number(x.netWorth));
-  const accSeries = hist.map(x=>{ const f=monthFigures(x.id, ex); return f ? f.income-f.expense : 0; });
-  const lastNw = [...nwSeries].reverse().find(x=>x!=null);
-  el('ovSpark').innerHTML = hist.length ? `
-    <div class="s"><div class="t"><span>Tài sản ròng · ${hist.length} tháng</span><b>${fmtBig(lastNw)}</b></div>${sparkLine(nwSeries, sw, 46)}</div>
-    <div class="s"><div class="t"><span>Tích lũy hàng tháng</span><b>TB ${fmtBig(sum(accSeries)/accSeries.length)}</b></div>${sparkBars(accSeries, sw, 46)}
-      <div class="t"><span>${fmtMonth(hist[0].id)}</span><span>${fmtMonth(hist[hist.length-1].id)}</span></div></div>`
-    : '<div class="mute">Chưa chốt tháng nào</div>';
+  /* 5. Biểu đồ thu chi + tài sản ròng theo tháng, bảng tháng và chi theo nhóm × tháng (gộp từ tab Lịch sử cũ) */
+  renderHistory();
 
   /* 6. Chi theo nhóm so với TB 6 tháng */
   el('ovUnusual').checked = ex;
@@ -2772,6 +2793,9 @@ function renderOverview(){
 }
 el('ovPeriod').onchange = e=>{ state.period=e.target.value; renderOverview(); };
 el('ovUnusual').onchange = e=>{ state.exUnusual=e.target.checked; renderOverview(); };
+el('ovMonthsOpen').onclick = ()=>openHolder('histHolder', 'Bảng tháng đã chốt');
+el('ovCatOpen').onclick = ()=>openHolder('ovCatHolder', 'Chi theo nhóm');
+el('ovSrcOpen').onclick = ()=>openHolder('ovSrcHolder', 'Thu theo nguồn');
 
 /* =====================================================================
    SỔ THÁNG
@@ -3646,7 +3670,9 @@ function renderHistory(){
     (avg?`<tr class="avg"><td class="first">TB ${last12.length} tháng gần nhất</td><td class="n">${fmtK(Math.round(avg.income))}</td><td class="n">${fmtK(Math.round(avg.expense))}</td><td class="n">${fmtK(Math.round(avg.income-avg.expense))}</td><td colspan="6"></td></tr>`:'')+`</tbody>`;
   // ---- biểu đồ cột thu/chi + đường tài sản ròng ----
   const box = el('histChart'); const data = rows.slice(-24);
-  if(!data.length){ box.innerHTML='<div class="mute">Chưa có dữ liệu</div>'; return renderCatTable(rows); }
+  el('ovChartSub').textContent = data.length ? `${data.length} tháng gần nhất` : '';
+  el('ovMonthsOpen').textContent = `Bảng tháng${rows.length?' ('+rows.length+')':''}`;
+  if(!data.length){ box.innerHTML='<div class="mute">Chưa chốt tháng nào</div>'; return renderCatTable(rows); }
   const W = Math.max(320, box.clientWidth||800), H = 280, L=54, Rr=64, T=14, B=30, pw=W-L-Rr, ph=H-T-B;
   const yMax = niceMax(Math.max(...data.map(r=>Math.max(r.income,r.expense))));
   const nws = data.filter(r=>r.nw!=null).map(r=>r.nw);
