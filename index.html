@@ -217,6 +217,35 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 /* ---------- Pha 3: tổng quan, chuyển đổi, kịch bản ---------- */
 .grid2.eq{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .grid2.one{grid-template-columns:minmax(0,1fr)}
+/* Hàng đầu tab DCA: hero+phân rã | giá vốn (hẹp) | ví coin. Ba card luôn cao bằng nhau (stretch). */
+.grid3{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.72fr) minmax(0,1.13fr);gap:14px;margin-bottom:16px}
+/* Ô thống kê xếp dọc: nhãn một dòng, số và chú thích CÙNG một hàng; chú thích cắt gọn để
+   chiều cao ô không đổi giữa các coin (ETH có dòng WBETH dài, coin khác thì ngắn). */
+.stats.col{grid-template-columns:minmax(0,1fr);gap:10px;margin-bottom:0}
+.stats.col .stat{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:10px;padding:10px 14px;min-height:62px}
+.stats.col .stat .lbl{grid-column:1/-1;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Card Giá vốn hẹp: tiêu đề và bộ chọn coin xếp dọc, 4 nút chia đều bề ngang để không nút nào bị cắt. */
+#dcaBasisCard .colhead{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+#dcaBasisCard .seg{display:flex}
+#dcaBasisCard .seg button{flex:1;padding:0}
+.stats.col .stat .val{font-size:20px}
+.stats.col .stat .sub{margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tbl.compact th,.tbl.compact td{padding:6px 8px;font-size:12px}
+.tbl.compact td.first,.tbl.compact th.first{padding-left:4px}
+.tbl.compact td.last,.tbl.compact th.last{padding-right:4px}
+#dcaWalletTable{table-layout:fixed;width:100%}
+#dcaWalletTable td{overflow:hidden}
+/* Khung cố định chiều cao để đổi sang ADA/USDT (không có điểm/kế hoạch) card không thấp đi.
+   Ba số dưới ĐO bằng Playwright ở trạng thái đầy nhất (ETH có điểm + có ngân sách): dòng meta 2 hàng
+   42px, bảng phân rã 7 thành phần + tổng 342px, card Tháng này đủ 3 quỹ 338px. Đổi nội dung thì đo lại. */
+#dcaScoreCard .hero{min-height:87px}
+#dcaHeroMeta{min-height:42px}
+.bkbox{min-height:342px}
+.planbox{min-height:340px}
+/* Popup rộng cho bảng lịch sử; min-width:0 để bảng bên trong cuộn ngang thay vì đẩy popup tràn màn hình. */
+.dialog{min-width:0;max-width:100%}
+#mdBody{min-width:0}
+.dialog.wide{width:min(980px,100%)}
 /* Hero thấp hơn card giá vốn bên cạnh — giãn đều để hai card cao bằng nhau mà không hụt đáy. */
 #dcaScoreCard{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
 .planc{display:grid;gap:13px}
@@ -286,6 +315,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 @media (max-width:1100px){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid2{grid-template-columns:minmax(0,1fr)}
+  .grid3{grid-template-columns:minmax(0,1fr)}
   .quick{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}
   .quick input[type=date]{grid-column:1/3}
 }
@@ -540,9 +570,9 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
     <!-- ===== DCA ===== -->
     <section id="view-dca" class="view">
-      <header class="vhead"><h1>DCA</h1><div class="right"><small id="dcaUpdated" class="mute"></small><button class="btn" id="dcaBuyOpen">Mua nhanh</button><button class="btn primary" id="dcaRefresh">Cập nhật</button></div></header>
+      <header class="vhead"><h1>DCA</h1><div class="right"><small id="dcaUpdated" class="mute"></small><button class="btn" id="dcaHistOpen">Lịch sử</button><button class="btn" id="dcaHoldOpen">Thêm coin</button><button class="btn" id="dcaBuyOpen">Mua nhanh</button><button class="btn primary" id="dcaRefresh">Cập nhật</button></div></header>
 
-      <div class="grid2 eq" id="dcaTopRow" style="margin-bottom:16px">
+      <div class="grid3" id="dcaTopRow">
         <section class="card pad" id="dcaScoreCard">
           <div class="hero">
             <div><div class="lbl mute" id="dcaHeroLbl" style="font-size:12px;margin-bottom:6px">Giá ETH</div><div class="big" id="dcaHeroPrice">—</div></div>
@@ -551,61 +581,33 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           </div>
           <div class="split" id="dcaHeroMeta"></div>
           <div class="warnline" id="dcaWarn" hidden></div>
+          <div class="colhead" style="padding:14px 0 6px"><h2>Phân rã điểm <small>7 thành phần, tổng 100</small></h2><small class="mute" id="dcaAlgo"></small></div>
+          <div class="scroll bkbox"><table class="tbl compact" id="dcaScoreTable"></table></div>
         </section>
 
         <section class="card pad" id="dcaBasisCard">
-          <div class="colhead" style="padding:0 0 12px"><h2>Giá vốn <small id="dcaBasisNow"></small></h2><div class="seg" id="dcaCoinPick"></div></div>
-          <div class="stats three" id="dcaStats"></div>
+          <div class="colhead" style="padding:0 0 12px"><h2>Giá vốn</h2><div class="seg" id="dcaCoinPick"></div></div>
+          <div class="stats col" id="dcaStats"></div>
+        </section>
+
+        <section class="card pad" id="dcaWalletCard">
+          <div class="colhead" style="padding:0 0 12px"><h2>Ví Coin</h2><span id="dcaWalletTotal" class="mute"></span></div>
+          <div class="scroll"><table class="tbl compact" id="dcaWalletTable"></table></div>
+          <div id="dcaWalletAlloc" style="padding:12px 0 0"></div>
         </section>
       </div>
 
       <div class="grid2 eq" id="dcaPlanRow" style="margin-bottom:16px">
         <section class="card pad" id="dcaBandCard">
           <div class="colhead" style="padding:0 0 12px"><h2>Vùng giá mua <small id="dcaBandSub">giá về mức nào thì vào vùng đó</small></h2><small class="mute" id="dcaBandNow"></small></div>
-          <div class="scroll"><table class="tbl" id="dcaBandTable"></table></div>
+          <div class="scroll planbox"><table class="tbl" id="dcaBandTable"></table></div>
         </section>
 
         <section class="card pad" id="dcaPlanCard">
           <div class="colhead" style="padding:0 0 12px"><h2>Tháng này <small id="dcaPlanMonth"></small></h2><small class="mute" id="dcaPlanBudget"></small></div>
-          <div id="dcaPlanBody"></div>
+          <div id="dcaPlanBody" class="planbox"></div>
         </section>
       </div>
-
-      <section class="card pad" id="dcaWalletCard" style="margin-bottom:16px">
-        <div class="colhead" style="padding:0 0 12px"><h2>Ví Coin <small>toàn bộ tài sản crypto — Danh mục ở tab Tài sản chỉ ghi gộp một dòng "Coin"</small></h2><span id="dcaWalletTotal" class="mute"></span></div>
-        <div class="scroll"><table class="tbl" id="dcaWalletTable"></table></div>
-        <div id="dcaWalletAlloc" style="padding:14px 16px 0"></div>
-        <form class="quick debt" id="formDcaHold" autocomplete="off" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px;grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr) minmax(0,1.2fr) auto">
-          <input name="name" placeholder="Tên tài sản" required>
-          <input name="quantity" placeholder="Số lượng" inputmode="decimal" required>
-          <select name="priceKey"></select>
-          <span class="acts-row"><button type="submit" class="btn primary">Thêm coin</button></span>
-        </form>
-      </section>
-
-      <section class="card" id="dcaBreakdownCard" style="margin-bottom:16px">
-        <div class="colhead"><h2>Phân rã điểm <small>7 thành phần, tổng 100</small></h2><small class="mute" id="dcaAlgo"></small></div>
-        <div class="scroll"><table class="tbl" id="dcaScoreTable"></table></div>
-      </section>
-
-      <section class="card" id="dcaEmpty" hidden>
-        <div class="pad mute">Chưa có lần mua ETH nào qua tab Tài sản → Chuyển đổi. Đổi USDT (hoặc tài sản khác) sang ETH để bắt đầu theo dõi giá vốn ở đây.</div>
-      </section>
-
-      <section class="card" id="dcaHistoryCard">
-        <div class="colhead">
-          <h2>Lịch sử mua</h2>
-          <select id="dcaFilterSource" style="width:auto;min-width:140px">
-            <option value="">Tất cả nguồn</option>
-            <option value="BASE">Base</option>
-            <option value="SMART">Smart</option>
-            <option value="OPPORTUNITY">Opportunity</option>
-            <option value="MANUAL">Tay</option>
-          </select>
-        </div>
-        <div class="scroll"><table class="tbl" id="dcaTable"></table></div>
-        <div class="hint" style="padding:10px 12px 0" id="dcaHint"></div>
-      </section>
     </section>
 
     <!-- ===== Lịch sử ===== -->
@@ -2552,9 +2554,11 @@ function shake(node){ node.classList.remove('shake'); void node.offsetWidth; nod
 function options(list, selected, labelOf=x=>x, valueOf=x=>x){ return list.map(x=>`<option value="${esc(valueOf(x))}"${valueOf(x)===selected?' selected':''}>${esc(labelOf(x))}</option>`).join(''); }
 function setOptions(sel, list, labelOf, valueOf){ const cur=sel.value; sel.innerHTML=options(list, cur, labelOf, valueOf); if(![...sel.options].some(o=>o.selected)) sel.selectedIndex=0; }
 function isDesktop(){ return matchMedia('(pointer:fine)').matches && innerWidth>820; }
-function showModal(title, bodyHtml, okLabel, onOk){
+function showModal(title, bodyHtml, okLabel, onOk, opts={}){
   el('mdTitle').textContent=title; el('mdBody').innerHTML=bodyHtml; el('mdOk').textContent=okLabel; el('modal').hidden=false;
-  const done=()=>{ el('modal').hidden=true; el('mdOk').onclick=null; el('mdCancel').onclick=null; };
+  const dlg = el('modal').querySelector('.dialog');
+  dlg.classList.toggle('wide', !!opts.wide); el('mdCancel').hidden = !!opts.noCancel;
+  const done=()=>{ el('modal').hidden=true; el('mdOk').onclick=null; el('mdCancel').onclick=null; dlg.classList.remove('wide'); el('mdCancel').hidden=false; };
   /* onOk trả về false ⇒ giữ popup mở (dùng khi số nhập chưa hợp lệ). */
   el('mdOk').onclick=()=>{ if(onOk()===false) return; done(); }; el('mdCancel').onclick=done;
   el('modal').onclick=e=>{ if(e.target===el('modal')) done(); };
@@ -2592,7 +2596,6 @@ function fillStaticSelects(){
   /* Coin quản lý riêng ở "Ví Coin" (tab DCA) — bớt một chỗ nữa có thể sửa cùng một dữ liệu. */
   setOptions(el('formHold').group, HOLDING_GROUPS.filter(g=>g!=='Crypto'));
   setOptions(el('formHold').priceKey, [{key:'',label:'giá = số lượng (VND)'},...PRICE_KEYS.filter(p=>!LIVE_KEYS.includes(p.key))], p=>p.label, p=>p.key);
-  setOptions(el('formDcaHold').priceKey, PRICE_KEYS.filter(p=>LIVE_KEYS.includes(p.key)), p=>p.label, p=>p.key);
   fillXferSelects();
 }
 function fillXferSelects(){
@@ -3032,7 +3035,7 @@ const usdSub = v => v==null || !isFinite(v) ? '' : `<small class="mute" style="d
 function coinPriceCell(h){
   const cUsd = holdingUsd(h), uUsd = cUsd==null ? null : priceUsd(h.priceKey);
   if(cUsd==null || uUsd==null) return '<span class="mute">—</span>';
-  return `<b>${fmtUsdt(cUsd)}</b>${h.priceKey==='usdt' ? '' : `<small class="mute" style="display:block;font-weight:400">1 ${esc(priceLabel(h.priceKey))} ≈ ${fmtUsdt(uUsd)}</small>`}`;
+  return `<b>${fmtUsdt(cUsd)}</b>${h.priceKey==='usdt' ? '' : `<small class="mute" style="display:block;font-weight:400">1 ${esc(priceLabel(h.priceKey))} ≈ ${fmtNum(uUsd, uUsd>=100?2:4)}</small>`}`;
 }
 function renderHoldings(){
   const t=debtTotals(), ta=totalAssets(), nw=ta+t.net;
@@ -3114,12 +3117,19 @@ function renderDcaScore(){
   renderCoinPick('dcaCoinPick');
   el('dcaRefresh').disabled = dcaBusy;
   el('dcaRefresh').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật';
-  /* ADA/USDT chỉ theo dõi giá vốn: giấu hẳn hero, vùng giá và kế hoạch vốn thay vì hiện ô rỗng. */
-  el('dcaScoreCard').hidden = !!coin.basisOnly;
-  el('dcaTopRow').classList.toggle('one', !!coin.basisOnly);
-  el('dcaPlanRow').hidden = !!coin.basisOnly;
-  el('dcaBreakdownCard').hidden = !!coin.basisOnly;
-  if(coin.basisOnly) return;
+  /* ADA/USDT chỉ theo dõi giá vốn. KHÔNG giấu card (giấu là hàng card đổi hình khi đổi coin) —
+     vẫn hiện giá, còn điểm và phân rã thì ghi rõ "không chấm", giữ nguyên khung. */
+  if(coin.basisOnly){
+    const cur = price(coin.key), u = price('usdt');
+    el('dcaHeroLbl').textContent = 'Giá '+coin.label;
+    el('dcaHeroPrice').innerHTML = !(cur>0) ? '—' : coin.vndFirst ? fmtK(cur,4) : (u>0 ? fmtUsd(cur/u) : '—');
+    el('dcaHeroScore').innerHTML = '<span class="mute">—</span>';
+    el('dcaHeroState').innerHTML = '<span class="mute" style="white-space:nowrap">không chấm Buy Score</span>';
+    el('dcaHeroMeta').innerHTML = cur>0 && !coin.vndFirst ? `<span>${esc(coin.label)} <b>${fmtK(cur,2)}</b><span class="u"> /${esc(coin.label)}</span></span>` : '';
+    el('dcaWarn').hidden = true; el('dcaAlgo').textContent = '';
+    el('dcaScoreTable').innerHTML = `<thead><tr><th class="first">Thành phần</th><th class="meas">Đo được</th><th class="n">Điểm</th><th class="last bcol"></th></tr></thead><tbody><tr><td class="empty" colspan="4">${esc(coin.label)} không nằm trong kịch bản DCA — chỉ ETH và BTC được chấm điểm</td></tr></tbody>`;
+    return;
+  }
 
   const priceUsd = (c && (c.priceUsd || c.ethUsd)) || dcaCacheUsd(coin.key);
   el('dcaHeroLbl').textContent = 'Giá '+coin.label;
@@ -3160,7 +3170,12 @@ function renderDcaScore(){
 /* ---- Vùng giá mua: đọc bands đã tính sẵn lúc bấm Cập nhật ---- */
 function renderDcaBands(){
   const coin = dcaCoinOf(state.dcaCoin), c = dcaCache(coin.key);
-  if(coin.basisOnly) return;
+  if(coin.basisOnly){
+    el('dcaBandSub').textContent = 'giá về mức nào thì vào vùng đó';
+    el('dcaBandNow').textContent = '';
+    el('dcaBandTable').innerHTML = `<thead><tr><th class="first">Vùng</th><th class="n">Điểm</th><th class="n">Giá</th><th class="last n">So với hiện tại</th></tr></thead><tbody><tr><td class="empty" colspan="4">${esc(coin.label)} không chấm Buy Score nên không có vùng giá</td></tr></tbody>`;
+    return;
+  }
   const bands = (c && c.bands) || [], now = c && c.priceUsd, usdt = price('usdt');
   el('dcaBandSub').textContent = `giá ${coin.label} về mức nào thì vào vùng đó`;
   el('dcaBandNow').textContent = c && c.score!=null && now ? `hiện ${fmtUsd(now)} · Score ${c.score}` : '';
@@ -3181,7 +3196,12 @@ function renderDcaBands(){
 const LEG_TEXT = { done:'đã mua đủ', due:'tới hạn, chưa mua đủ', waiting:'chưa tới hạn' };
 function renderDcaPlan(){
   const coin = dcaCoinOf(state.dcaCoin);
-  if(coin.basisOnly) return;
+  if(coin.basisOnly){
+    el('dcaPlanMonth').textContent = coin.label;
+    el('dcaPlanBudget').textContent = '';
+    el('dcaPlanBody').innerHTML = `<div class="mute">${esc(coin.label)} không nằm trong kịch bản DCA 3 mốc — không có ngân sách Base/Smart/Opportunity. Kế hoạch vốn chỉ áp cho ETH và BTC.</div>`;
+    return;
+  }
   const cfg = settings().dca[coin.key];
   const p = dcaPlanNow(coin.key);
   el('dcaPlanMonth').textContent = coin.label+' · '+fmtMonthLong(p.month).toLowerCase();
@@ -3231,14 +3251,16 @@ function renderDcaWallet(){
   const coinHs = [...D.holdings].filter(h=>LIVE_KEYS.includes(h.priceKey)).sort((a,b)=>(a.order||0)-(b.order||0));
   const total = sum(coinHs, holdingValue), cu = cryptoUsd();
   el('dcaWalletTotal').innerHTML = coinHs.length ? `${fmtK(Math.round(total))}${cu!=null?` <small class="mute">≈ ${fmtUsd(cu)}</small>`:''}` : '';
-  el('dcaWalletTable').innerHTML = `<thead><tr><th class="first">Tên</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
+  /* Bề rộng cột cố định (đo: khung 402px, nội dung tự do phình tới 502px). Tổng 100%, tên cắt gọn. */
+  el('dcaWalletTable').innerHTML = `<colgroup><col style="width:23%"><col style="width:19%"><col style="width:33%"><col style="width:15%"><col style="width:10%"></colgroup>
+    <thead><tr><th class="first">Tên</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
     (coinHs.map((h,i)=>`<tr data-id="${h.id}">
-      <td class="first" style="min-width:110px"><input class="inline l" data-f="name" value="${esc(h.name)}"></td>
-      <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:110px"></td>
+      <td class="first"><input class="inline l" data-f="name" value="${esc(h.name)}" title="${esc(h.name)}" style="width:100%;min-width:0;text-overflow:ellipsis"></td>
+      <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:100%;min-width:0"></td>
       <td class="n">${coinPriceCell(h)}</td>
       <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b></td>
-      <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===coinHs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`).join('')
-     || '<tr><td class="empty" colspan="5">Chưa có coin nào — thêm ở form bên dưới</td></tr>')+`</tbody>`;
+      <td class="act last"><button data-act="del">xoá</button></td></tr>`).join('')
+     || '<tr><td class="empty" colspan="5">Chưa có coin nào — bấm "Thêm coin" ở góc trên</td></tr>')+`</tbody>`;
   const rows = coinAllocation();
   el('dcaWalletAlloc').innerHTML = !rows.length ? '' :
     `<div class="catstack">${rows.map((r,i)=>`<i style="width:${total?r.v/total*100:0}%;background:${SHADES[i%SHADES.length]}" title="${esc(r.name)} · ${fmtK(Math.round(r.v))} · ${fmtPct(r.v/total)}"></i>`).join('')}</div>
@@ -3355,38 +3377,31 @@ function renderDca(){
                        { pnlRate: coin.pnlRate });
   const hasAny = basis.rows.length>0;
 
-  el('dcaEmpty').hidden = hasAny;
-  el('dcaEmpty').innerHTML = `<div class="pad mute">Chưa có lần mua ${esc(L)} nào. Bấm <b>Mua nhanh</b> ở góc trên bên phải để ghi lần đầu — giá vốn sẽ tự hiện ở đây.</div>`;
-  el('dcaHistoryCard').hidden = !hasAny;
-
   el('dcaUpdated').textContent = D.prices[coin.key] ? '' : (hasAny ? `Chưa có giá ${L} — bấm Cập nhật, hoặc nhập tay ở tab Tài sản` : '');
+  el('dcaHistOpen').textContent = hasAny ? `Lịch sử (${basis.rows.length})` : 'Lịch sử';
 
   /* Đang giữ gồm cả họ coin — ETH thì cộng luôn WBETH đã quy về ETH, ghi rõ ở dòng nhỏ. */
   const fam = familyHoldings(coin.key).filter(h=>Number(h.quantity)>0);
-  const famSub = fam.length>1 ? fam.map(h=>`${fmtQty(h.quantity)} ${esc(priceLabel(h.priceKey))}`).join(' + ')+' · ' : '';
-  const soldSub = basis.soldQty>0 ? ` · đã trừ ${fmtQty(basis.soldQty)} bán ra` : '';
-
-  /* Giá hiện tại đã nằm ở hero nên bỏ khỏi đây; coin không có hero thì ghi vào tiêu đề card. */
-  el('dcaBasisNow').textContent = coin.basisOnly && cur
-    ? `${L} đang ${coin.vndFirst ? fmtK(cur,4) : fmtUsd(s.currentPriceUsd)}` : '';
+  const famLbl = fam.length>1 ? ' · '+fam.map(h=>`${fmtNum(h.quantity,3)} ${esc(priceLabel(h.priceKey))}`).join(' + ') : '';
+  const soldSub = basis.soldQty>0 ? ` · trừ ${fmtQty(basis.soldQty)} bán` : '';
   /* USDT quy ra USD thì luôn bằng 1 nên lấy nghìn đồng làm số chính. */
   const avgMain = coin.vndFirst ? (s.avgCostVnd ? fmtK(s.avgCostVnd, 4) : '—') : fmtUsd(s.avgCostUsd);
   const avgSub  = coin.vndFirst ? (s.currentPriceVnd ? 'nay '+fmtK(s.currentPriceVnd,4) : '—')
                                 : (s.avgCostVnd ? fmtK(Math.round(s.avgCostVnd),2)+'/'+esc(L) : '—');
+  /* Số và chú thích nằm cùng một hàng (CSS .stats.col), chú thích cắt gọn ⇒ ô cao bằng nhau ở mọi coin. */
   el('dcaStats').innerHTML = `
-    <div class="stat"><div class="lbl">Đang giữ (${esc(L)})</div><div class="val">${fmtQty(s.qtyHeld)}</div><div class="sub">${famSub}${coin.fiatOnly?'đã nạp ròng '+fmtQty(basis.totalEth):'vốn ròng '+fmtK(Math.round(s.totalCostVnd))}</div></div>
-    <div class="stat"><div class="lbl">${coin.fiatOnly?'Tỷ giá vốn TB':'Giá vốn trung bình'}</div><div class="val">${avgMain}</div><div class="sub">${avgSub}${soldSub}</div></div>
+    <div class="stat"><div class="lbl" title="Đang giữ ${esc(L)}${famLbl}">Đang giữ${famLbl}</div><div class="val">${fmtQty(s.qtyHeld)}</div><div class="sub">${coin.fiatOnly?'đã nạp ròng '+fmtQty(basis.totalEth):'vốn ròng '+fmtK(Math.round(s.totalCostVnd))}</div></div>
+    <div class="stat"><div class="lbl">${coin.fiatOnly?'Tỷ giá vốn TB':'Giá vốn trung bình'}</div><div class="val">${avgMain}</div><div class="sub" title="${avgSub}${soldSub}">${avgSub}${soldSub}</div></div>
     <div class="stat strong"><div class="lbl">Lãi / lỗ</div><div class="val">${signed(s.pnl)}</div><div class="sub">${fmtPct(s.pnlPct)} ${coin.pnlRate?'chênh tỷ giá':'so với vốn đã bỏ'}</div></div>`;
+}
 
-  /* USDT quy ra USD thì lần nào cũng $1 — cột giá đổi thành tỷ giá VNĐ của chính lần nạp đó.
-     Coin không có kế hoạch vốn thì cột Nguồn và bộ lọc nguồn cũng không còn nghĩa gì. */
-  const rateCol = !!coin.vndFirst, hasPlan = !coin.basisOnly;
-  el('dcaFilterSource').hidden = !hasPlan;
-  if(!hasPlan) state.dcaFilter = '';
-  el('dcaFilterSource').value = state.dcaFilter;
-  const filtered = state.dcaFilter ? basis.rows.filter(t=>(t.source||'MANUAL')===state.dcaFilter) : basis.rows;
+/* Bảng lịch sử mua — dựng HTML để đổ vào popup. USDT quy ra USD thì lần nào cũng $1 nên cột giá
+   đổi thành tỷ giá VNĐ của chính lần nạp đó; coin không có kế hoạch vốn thì bỏ cột Nguồn và Buy Score. */
+function dcaHistoryTableHtml(coin, basis, filter){
+  const L = coin.label, rateCol = !!coin.vndFirst, hasPlan = !coin.basisOnly, hasAny = basis.rows.length>0;
+  const filtered = filter ? basis.rows.filter(t=>(t.source||'MANUAL')===filter) : basis.rows;
   const sorted = [...filtered].reverse();  // mới nhất trước, cùng quy ước với các bảng khác
-  el('dcaTable').innerHTML = `<thead><tr><th class="first">Ngày</th><th class="n">${rateCol?'Tỷ giá':'Giá '+esc(L)+' (USD)'}</th><th class="n">Số tiền</th><th class="n">${esc(L)} nhận</th>${hasPlan?'<th>Nguồn</th><th class="n">Buy Score</th>':''}<th class="n">${rateCol?'Tỷ giá vốn TB sau':'Giá vốn TB sau'}</th></tr></thead><tbody>`+
+  return `<thead><tr><th class="first">Ngày</th><th class="n">${rateCol?'Tỷ giá':'Giá '+esc(L)+' (USD)'}</th><th class="n">Số tiền</th><th class="n">${esc(L)} nhận</th>${hasPlan?'<th>Nguồn</th><th class="n">Buy Score</th>':''}<th class="last n">${rateCol?'Tỷ giá vốn TB sau':'Giá vốn TB sau'}</th></tr></thead><tbody>`+
     (sorted.length ? sorted.map(t=>`<tr>
       <td class="d first">${fmtDate(t.date)}</td>
       <td class="n">${rateCol ? (t.usdtRate>0?fmtK(t.usdtRate,4):'—')
@@ -3394,14 +3409,30 @@ function renderDca(){
       <td class="n">${fmtK(Math.round(t.valueVnd))}</td>
       <td class="n">${fmtQty(t.qtyIn)}</td>
       ${hasPlan?`<td>${esc(DCA_SOURCE_LABEL[t.source]||'Tay')}</td><td class="n mute">${t.buyScore!=null?t.buyScore:'—'}</td>`:''}
-      <td class="n">${rateCol?fmtK(t.avgAfter,4):fmtK(Math.round(t.avgAfter))}</td></tr>`).join('')
-     : `<tr><td class="empty" colspan="${hasPlan?7:5}">${hasAny?'Không có lần mua nào theo nguồn đã lọc':'Chưa có lần mua '+esc(L)+' nào'}</td></tr>`)+`</tbody>`;
-
-  el('dcaHint').innerHTML = basis.rows.some(r=>r.usdEstimated)
-    ? 'Giá USD ngầm định của các lần mua chưa lưu tỷ giá lúc đó dùng tạm tỷ giá USDT hiện tại — đánh dấu "ước tính".'
-    : '';
+      <td class="last n">${rateCol?fmtK(t.avgAfter,4):fmtK(Math.round(t.avgAfter))}</td></tr>`).join('')
+     : `<tr><td class="empty" colspan="${hasPlan?7:5}">${hasAny?'Không có lần mua nào theo nguồn đã lọc':'Chưa có lần mua '+esc(L)+' nào — bấm Mua nhanh để ghi lần đầu'}</td></tr>`)+`</tbody>`;
 }
-el('dcaFilterSource').onchange = e=>{ state.dcaFilter = e.target.value; renderDca(); };
+/* Lịch sử mua: popup rộng mở từ nút cạnh Mua nhanh. Bộ lọc nguồn nằm ngay trong popup. */
+function openDcaHistory(){
+  const coin = dcaCoinOf(state.dcaCoin), usdt = price('usdt'), led = coinLedger(coin.key);
+  const basis = dcaCostBasis(led.buys, usdt, led.sells), hasPlan = !coin.basisOnly;
+  const filterHtml = hasPlan ? `<select id="dcaFilterSource" style="width:auto;min-width:140px">
+      <option value="">Tất cả nguồn</option><option value="BASE">Base</option><option value="SMART">Smart</option>
+      <option value="OPPORTUNITY">Opportunity</option><option value="MANUAL">Tay</option></select>` : '';
+  const hint = basis.rows.some(r=>r.usdEstimated)
+    ? '<div class="hint" style="padding:8px 0 0">Giá USD ngầm định của các lần mua chưa lưu tỷ giá lúc đó dùng tạm tỷ giá USDT hiện tại — đánh dấu "ước tính".</div>' : '';
+  showModal(`Lịch sử mua · ${coin.label}`,
+    `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">
+       <small class="mute">${basis.rows.length} lần${basis.soldQty>0?` · đã bán ${fmtQty(basis.soldQty)}`:''}</small>${filterHtml}</div>
+     <div class="scroll" style="max-height:min(60vh,520px);overflow-y:auto"><table class="tbl" id="dcaTable"></table></div>${hint}`,
+    'Đóng', ()=>{}, {wide:true, noCancel:true});
+  const draw = () => { el('dcaTable').innerHTML = dcaHistoryTableHtml(coin, basis, state.dcaFilter); };
+  const sel = el('dcaFilterSource');
+  if(sel){ sel.value = state.dcaFilter; sel.onchange = e=>{ state.dcaFilter = e.target.value; draw(); }; }
+  else state.dcaFilter = '';
+  draw();
+}
+el('dcaHistOpen').onclick = openDcaHistory;
 el('dcaRefresh').onclick = ()=> refreshDca();
 el('priceLive').onclick = ()=> refreshDca();
 
@@ -3431,14 +3462,28 @@ el('dcaWalletTable').addEventListener('click', e=>{
   if(b.dataset.act==='del'){ if(confirm(`Xoá tài sản "${h.name}"?`)) removeHolding(h.id); }
   else { const j = b.dataset.act==='up' ? i-1 : i+1; if(j<0||j>=hs.length) return; hs.splice(i,1); hs.splice(j,0,h); hs.forEach((x,k)=>{ if(x.order!==k+1) updateHolding(x.id,{order:k+1}); }); }
 });
-el('formDcaHold').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.tagName!=='BUTTON'){ e.preventDefault(); el('formDcaHold').requestSubmit(); } });
-el('formDcaHold').addEventListener('submit', e=>{
-  e.preventDefault(); const f=e.target; const q=parseNum(f.quantity.value); const name=f.name.value.trim();
-  if(!name){ shake(f.name); return; } if(isNaN(q)){ shake(f.quantity); return; }
-  if(!f.priceKey.value){ shake(f.priceKey); return; }
-  addHolding({name, group:'Crypto', quantity:q, priceKey:f.priceKey.value});
-  f.name.value=''; f.quantity.value=''; f.name.focus();
-});
+/* Thêm coin: popup mở từ nút cạnh Mua nhanh. Trả về false ⇒ giữ popup khi nhập sai. */
+function openDcaHold(){
+  const lb = 'display:block;font-size:11px;color:var(--mute);margin:10px 0 3px';
+  showModal('Thêm coin vào Ví', `
+    <form autocomplete="off" id="formDcaHold">
+      <label style="${lb};margin-top:0">Tên tài sản</label><input name="name" style="width:100%" placeholder="vd: WBETH (Earn)">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1"><label style="${lb}">Số lượng</label><input name="quantity" inputmode="decimal" style="width:100%"></div>
+        <div style="flex:1"><label style="${lb}">Khoá giá</label><select name="priceKey" style="width:100%"></select></div>
+      </div>
+      <div style="font-size:12px;color:var(--mute);margin-top:10px">Giá trị nghìn đồng và USDT app tự tính theo bảng giá. Coin mới xuất hiện ngay trong Ví Coin.</div>
+    </form>`, 'Thêm', ()=>{
+      const f = el('formDcaHold'); const q = parseNum(f.quantity.value), name = f.name.value.trim();
+      if(!name){ shake(f.name); return false; }
+      if(isNaN(q) || q<0){ shake(f.quantity); return false; }
+      if(!f.priceKey.value){ shake(f.priceKey); return false; }
+      addHolding({name, group:'Crypto', quantity:q, priceKey:f.priceKey.value});
+      toast(`Đã thêm ${name} vào Ví Coin`);
+    });
+  setOptions(el('formDcaHold').priceKey, PRICE_KEYS.filter(p=>LIVE_KEYS.includes(p.key)), p=>p.label, p=>p.key);
+}
+el('dcaHoldOpen').onclick = openDcaHold;
 el('formHold').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.tagName!=='BUTTON'){ e.preventDefault(); el('formHold').requestSubmit(); } });
 el('formHold').addEventListener('submit', e=>{
   e.preventDefault(); const f=e.target; const q=parseNum(f.quantity.value); const name=f.name.value.trim();
