@@ -99,12 +99,22 @@ Làm theo thứ tự **Khối C → Khối A → Khối B**, mỗi khối một 
 - Opportunity Fund **không có ledger**: số dư = số tháng từ tháng bắt đầu × đóng góp tháng − Σ transfers `source = OPPORTUNITY`, chặn ở cap. Cùng cách "suy ra từ dữ liệu gốc" như công nợ ròng.
 - Một dòng gợi ý tĩnh, ví dụ: "Score 72 · Smart mở 100% (3.000k) · Base kỳ 13 chưa mua (1.500k)". Không phải lệnh, không có trạng thái.
 
-### Đồng bộ tài sản từ Binance (làm sau khi 3 khối chạy)
-- Mục đích: kéo số dư ETH/USDT/BTC/ADA từ tài khoản Binance về `holdings` thay vì nhập tay.
-- Chỉ dùng **API key read-only**, tắt withdraw và trade. **Không bao giờ** commit key vào repo.
-- Đồng bộ là nút bấm, không tự chạy. Có bảng đối chiếu "Binance / FinTrace / lệch" trước khi ghi đè quantity.
-- **Đã xác nhận 2026-09-13: Binance chặn CORS với endpoint đã ký.** Ký thẳng trong trình duyệt không dùng được. Owner đã đồng ý dựng Cloudflare Worker trung gian (`binance-worker.js`, hướng dẫn `BINANCE.md`). Worker giữ `BINANCE_KEY` / `BINANCE_SECRET` làm biến bí mật, chỉ nhận `GET /account`, chỉ trả số dư khác 0, gác bằng `ACCESS_TOKEN`. Firestore giờ chỉ giữ `binance.workerUrl` và `binance.accessToken` — khoá API không còn ở đó nữa; `normalizeSettings` đặt cờ `legacyKey` để Cài đặt nhắc gỡ khoá cũ.
-- Endpoint **công khai** của Binance (klines, ticker) vẫn gọi thẳng từ trình duyệt bình thường — Buy Score và giá live không cần Worker.
+### Đồng bộ tài sản từ Binance — ❌ ĐÃ GỠ, ĐỪNG LÀM LẠI
+Thử hai lần, hỏng vì hai bức tường khác nhau của Binance, cả hai đều không sửa được từ phía mình:
+1. **Ký thẳng trong trình duyệt** → Binance chặn CORS với endpoint đã ký (cố ý: không muốn secret nằm trong trang web).
+2. **Qua Cloudflare Worker** → Binance trả HTTP 403 kèm trang HTML của WAF, chặn theo dải IP trung tâm dữ liệu.
+
+Owner đã chốt gỡ bỏ 2026-09-13. `binance-worker.js` và `BINANCE.md` đã xoá; nút Đồng bộ, mục cài đặt khoá, `binanceDiff`, `syncBinance`, `testBinance` đã gỡ khỏi `index.html`. `normalizeSettings` xoá luôn khoá `binance` để lần lưu cài đặt tới gỡ khoá API cũ khỏi Firestore.
+
+**Đường duy nhất còn khả thi** (chưa làm, chỉ ghi lại): serverless **chọn được vùng** ở châu Á — Vercel `sin1`, Google Cloud Run `asia-southeast1` — hoặc một máy có IP dân dụng. Đổi lại là một thứ nữa phải nuôi. Với vài lần nhập tay mỗi tháng thì không đáng. Chỉ mở lại khi owner yêu cầu rõ.
+
+Endpoint **công khai** của Binance (klines, ticker) vẫn gọi thẳng từ trình duyệt bình thường — Buy Score và giá live chạy tốt, không đụng gì tới phần đã gỡ.
+
+### Quy đổi USD và WBETH (thêm 2026-09-13, owner yêu cầu)
+- Nhập tay chỉ nhập **số lượng**; giá trị nghìn đồng và quy đổi USD app tự tính. Bảng Danh mục hiện `≈ $…` dưới cột Giá trị cho mọi tài sản có khoá giá live; Bảng giá có cột **USD** riêng; đầu Danh mục có tổng `crypto ≈ $…`.
+- Chưa có giá `usdt` thì mọi chỗ quy đổi trả `null` và **không hiện gì** — không bao giờ đoán tỷ giá.
+- `wbeth` là một khoá giá live như các khoá khác. Binance có thể không niêm yết cặp `WBETHUSDT`, nên `LIVE_SYMBOLS` cho khai cặp dự phòng `via` (`WBETHETH` × giá ETH). `resolveLiveUsd` là hàm thuần ghép hai nguồn đó.
+- Giá live hỏi **từng mã một** chứ không gộp một lệnh: Binance trả lỗi cho cả lô nếu chỉ một mã không tồn tại. Mã nào hỏng thì bỏ mã đó, toast nói rõ mã nào không lấy được.
 
 ### Khối E — ETH và BTC song song (thêm 2026-09-13, owner yêu cầu)
 - Tab DCA có bộ chọn coin **ETH / BTC** áp cho cả bốn phần: Buy Score, kế hoạch vốn tháng, giá vốn, lịch sử mua.
@@ -132,4 +142,5 @@ Mở khi P1 đã dùng thật ít nhất một tháng. Thứ tự dự kiến: L
 | 2026-09-12 | Bỏ roadmap Finance × CoinDCA và repo `coin`. DCA thành tab nhẹ trong FinTrace. Firebase project mới. Binance trước, CoinGecko dự phòng. P1 = 3 khối C/A/B; state machine, ladder... để P2. |
 | 2026-09-13 | Owner yêu cầu theo dõi BTC đầy đủ như ETH. Mở Khối E: tab DCA thành đa coin (ETH/BTC), cùng thuật toán, mỗi coin một ngân sách. "Nhiều coin" ra khỏi mục Không làm; thay bằng "chiến lược riêng cho từng coin". |
 | 2026-09-13 | Owner thử trên app thật: Binance chặn CORS endpoint đã ký, endpoint công khai vẫn chạy. Đã hỏi và owner chốt **dựng Cloudflare Worker**. Thêm `binance-worker.js` + `BINANCE.md`; khoá API rời Firestore, chuyển vào biến bí mật của Worker. |
+| 2026-09-13 | **Gỡ hẳn đồng bộ số dư Binance.** Worker bị Binance trả 403 (chặn IP trung tâm dữ liệu) — bức tường thứ hai sau CORS. Owner chốt dừng. Đổi lại: nhập tay chỉ nhập số lượng, app tự quy ra nghìn đồng và USD; thêm khoá giá `wbeth` với cặp dự phòng `WBETHETH` vì Binance có thể không có `WBETHUSDT`. |
 | 2026-09-13 | **Sự cố mất dữ liệu.** Owner khôi phục file cũ lên Firebase và mất dữ liệu cả tháng 9. Firestore không có đường hoàn tác: `getFirestore()` mặc định là cache trong RAM nên không còn bản sao trong IndexedDB, và PITR phải bật trước (Blaze). Hai việc đã làm: (1) nút **Tìm dữ liệu cũ trong trình duyệt này** đọc lại `localStorage` còn sót từ thời chế độ thử cục bộ — chế độ Firebase không bao giờ đụng vào chỗ đó; (2) `restoreBackup` và `importInitialData({force})` giờ **tự tải một bản sao lưu về máy trước khi gọi `clearAll()`**. Mọi thao tác xoá sạch về sau phải giữ chốt này. |

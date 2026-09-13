@@ -78,7 +78,11 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 
 **Nghiệm thu:** đổi ngân sách trong Cài đặt thì mọi con số trên tab DCA đổi theo đúng tỷ lệ.
 
-### P1.D — Đồng bộ tài sản từ Binance ✅ xong — PR #15
+### P1.D — Đồng bộ tài sản từ Binance ❌ đã gỡ — PR #20
+
+**Không làm lại.** Thử hai lần, hỏng vì hai bức tường khác nhau của Binance: ký thẳng trong trình duyệt bị chặn CORS, qua Cloudflare Worker bị trả 403 vì chặn IP trung tâm dữ liệu. Owner chốt gỡ bỏ 2026-09-13. Nhập số lượng tay như trước, vài lần một tháng, không đáng đánh đổi thêm gì. Chi tiết ở `CLAUDE.md` mục 5.
+
+<details><summary>Mô tả cũ (giữ để tra lại)</summary>
 
 - Kéo số dư ETH, USDT, BTC, ADA từ tài khoản Binance về tab Tài sản thay vì nhập tay.
 - API key **chỉ đọc**, tắt rút tiền và giao dịch, lưu trên Firestore, không bao giờ vào repo.
@@ -86,13 +90,22 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 
 **Đã xảy ra đúng rủi ro dự kiến:** owner thử trên app thật 2026-09-13, Binance chặn CORS với endpoint đã ký. Endpoint công khai (Buy Score, giá live) vẫn chạy bình thường. Đã hỏi owner và owner chốt dựng Cloudflare Worker trung gian.
 
-### P1.D2 — Cloudflare Worker cho đồng bộ số dư ✅ xong — PR #18
+### P1.D2 — Cloudflare Worker cho đồng bộ số dư ❌ đã gỡ — PR #20
 
 - Thêm `binance-worker.js`: Worker chỉ nhận `GET /account`, ký HMAC-SHA256 rồi gọi Binance, chỉ trả số dư khác 0, gác bằng `ACCESS_TOKEN`.
 - Khoá API Binance chuyển vào biến bí mật của Cloudflare — **không còn nằm trên Firestore**. Cài đặt giờ chỉ nhập địa chỉ Worker và mã truy cập, và tự gỡ khoá cũ khi lưu.
 - Hướng dẫn owner dựng từng bước: `BINANCE.md`.
 
-**Còn chờ owner:** dựng Worker theo `BINANCE.md`, dán địa chỉ và mã truy cập vào Cài đặt, rồi bấm Đồng bộ Binance trên app thật.
+</details>
+
+### P1.F — Quy đổi USD và WBETH ✅ xong — PR #20
+
+- Nhập tay chỉ nhập **số lượng**; app tự ra giá trị nghìn đồng và quy đổi USD.
+- Bảng Danh mục hiện `≈ $…` dưới Giá trị, Bảng giá có cột USD riêng, đầu Danh mục có tổng `crypto ≈ $…`.
+- Thêm khoá giá **WBETH** (ETH stake qua Binance Earn), lấy giá live như ETH/BTC/ADA. Binance có thể không có cặp `WBETHUSDT` nên có cặp dự phòng `WBETHETH` × giá ETH.
+- Chưa có giá USDT thì không hiện số USD nào — không đoán tỷ giá.
+
+**Nghiệm thu:** thêm một tài sản WBETH, bấm Cập nhật giá live, thấy giá WBETH và dòng `≈ $…` ở cột Giá trị. Sửa số lượng thì cả hai đổi theo.
 
 ### P1.E — ETH và BTC song song ✅ xong
 
@@ -143,3 +156,5 @@ Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, chiến lư�
 | 2026-09-13 | Xong Khối D: nút Đồng bộ Binance, khoá chỉ đọc trong Cài đặt, bảng đối chiếu trước khi ghi đè (PR #15). Hết code P1 — chờ owner nghiệm thu hai việc cần mạng thật: Buy Score và đồng bộ số dư. |
 | 2026-09-13 | Owner yêu cầu thêm BTC. Xong Khối E: tab DCA đa coin ETH/BTC, mỗi coin một ngân sách, cùng thuật toán (PR #17). |
 | 2026-09-13 | Binance chặn CORS endpoint đã ký (owner xác nhận trên app thật). Owner chốt dựng Cloudflare Worker. Xong P1.D2: `binance-worker.js` + `BINANCE.md`, khoá API rời Firestore (PR #18). |
+| 2026-09-13 | Cứu dữ liệu tháng 9 từ localStorage; mọi thao tác xoá sạch giờ tự sao lưu trước (PR #19). |
+| 2026-09-13 | Worker cũng bị Binance chặn (403, IP trung tâm dữ liệu). **Gỡ hẳn đồng bộ số dư.** Đổi lại: quy đổi USD tự động và thêm WBETH (PR #20). |
