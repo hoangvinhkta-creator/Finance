@@ -591,6 +591,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <details>
             <summary>Nâng cao</summary>
             <div class="row"><button class="btn" id="btnBackup">Tải bản sao lưu</button><button class="btn" id="btnRestore">Khôi phục từ file</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
+            <div class="row" style="margin-top:10px"><button class="btn" id="btnFindOld">Tìm dữ liệu cũ trong trình duyệt này</button><span class="mute" id="findOldInfo"></span></div>
+            <div class="hint" style="padding:8px 0 14px">Trước khi nối Firebase, app cất dữ liệu trong bộ nhớ của chính trình duyệt. Nối Firebase xong thì chỗ đó không còn được đọc nữa nhưng vẫn nằm nguyên đó. Nút này lục lại và tải về thành file sao lưu — <b>chỉ đọc, không xoá gì</b>. Bấm trên đúng trình duyệt và đúng máy đã dùng hồi đó.</div>
             <div class="hint" style="padding:8px 0 14px">Sao lưu ra một file JSON chứa toàn bộ dữ liệu. Dùng để chuyển dữ liệu từ chế độ thử cục bộ lên Firebase, đổi sang project Firebase khác, hoặc giữ một bản phòng thân trước khi làm gì đó lớn. Khôi phục sẽ xoá sạch dữ liệu hiện có rồi ghi lại từ file. File sao lưu chứa cả khoá API Binance nếu đã lưu — giữ file cẩn thận.</div>
             <div class="row"><button class="btn" id="btnImport">Import dữ liệu ban đầu</button><label class="chk"><input type="checkbox" id="importForce"> xoá dữ liệu hiện có trước khi import</label></div>
             <div class="hint" style="padding:8px 0 0">Chạy một lần. Cũng gọi được từ console: <code>importInitialData()</code> hoặc <code>importInitialData({force:true})</code>.</div>
@@ -1714,6 +1716,59 @@ function testDcaCoins(){
     const c7 = r.components.find(c=>c.key==='ethbtc30');
     chk('Thành phần thứ 7', c7.points, 0); chk('Có ghi chú thiếu dữ liệu', c7.note.length>0, true);
     chk('Vẫn ra điểm', r.score!=null, true); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
+function testRecovery(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+  const KEY = 'fintrace.__test__';
+  const cleanup = () => localStorage.removeItem(KEY);
+
+  console.log('%c1 — đọc được dữ liệu chế độ thử cục bộ và dựng thành bản sao lưu đúng hình dạng','font-weight:600');
+  { localStorage.setItem(KEY, JSON.stringify({
+      transactions:{t1:{type:'chi',name:'Ăn',amount:50,date:'2026-09-02',month:'2026-09'},
+                    t2:{type:'thu',name:'Lương',amount:9000,date:'2026-09-11',month:'2026-09'}},
+      debts:{d1:{party:'A',direction:'receivable',quantity:100}},
+      holdings:{h1:{name:'ETH',priceKey:'eth',quantity:1.5}},
+      transfers:{}, months:{'2026-08':{income:1,expense:2}},
+      prices:{current:{eth:{value:66000}}}, settings:{main:{incomeTarget:50000}}}));
+    const f = scanLocalData().find(x=>x.key===KEY);
+    chk('Tìm thấy', !!f, true);
+    chk('Đếm đủ dòng', f.total, 5);
+    chk('Khoảng ngày giao dịch', [f.from, f.to], ['2026-09-02','2026-09-11']);
+    chk('Bản sao lưu nhận dạng được', [f.payload.app, f.payload.version], ['fintrace', BACKUP_VERSION]);
+    chk('Giữ id của từng dòng', f.payload.data.transactions.map(t=>t.id).sort(), ['t1','t2']);
+    chk('Lấy đúng prices/current', f.payload.data.prices.eth.value, 66000);
+    chk('Lấy đúng settings/main', f.payload.data.settings.incomeTarget, 50000);
+    cleanup(); }
+
+  console.log('%c2 — bỏ qua khoá rỗng, khoá hỏng, và khoá không phải của FinTrace','font-weight:600');
+  { const before = scanLocalData().length;
+    localStorage.setItem(KEY, JSON.stringify({transactions:{}, debts:{}, holdings:{}, transfers:{}, months:{}}));
+    chk('Bộ rỗng bị bỏ qua', scanLocalData().length, before);
+    localStorage.setItem(KEY, '{ hỏng');
+    chk('JSON hỏng không làm vỡ hàm', scanLocalData().length, before);
+    localStorage.setItem(KEY, 'null');
+    chk('Giá trị null bị bỏ qua', scanLocalData().length, before);
+    cleanup();
+    localStorage.setItem('khong-phai-fintrace', JSON.stringify({transactions:{a:{name:'x'}}}));
+    chk('Khoá của app khác bị bỏ qua', scanLocalData().length, before);
+    localStorage.removeItem('khong-phai-fintrace'); }
+
+  console.log('%c3 — chỉ đọc: không sửa, không xoá gì trong localStorage','font-weight:600');
+  { localStorage.setItem(KEY, JSON.stringify({transactions:{t1:{name:'x',date:'2026-09-01'}}}));
+    const snapshot = {}; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); snapshot[k]=localStorage.getItem(k); }
+    scanLocalData();
+    const after = {}; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); after[k]=localStorage.getItem(k); }
+    chk('localStorage không đổi một byte', after, snapshot);
+    cleanup(); }
+
+  console.log('%c4 — không có gì thì trả mảng rỗng, không lỗi','font-weight:600');
+  { chk('Là mảng', Array.isArray(scanLocalData()), true); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -2963,13 +3018,58 @@ function backupPayload(){
            months:Object.values(D.months), prices:D.prices, settings:D.settings } };
 }
 
-function downloadBackup(){
-  const blob = new Blob([JSON.stringify(backupPayload(), null, 2)], {type:'application/json'});
+function downloadJson(payload, filename){
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob), a = document.createElement('a');
-  a.href = url; a.download = `fintrace-${todayStr()}.json`;
+  a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
-  return backupPayload();
+}
+function downloadBackup(){
+  const p = backupPayload();
+  downloadJson(p, `fintrace-${todayStr()}.json`);
+  return p;
+}
+
+/* ---- Cứu dữ liệu cũ còn sót trong trình duyệt -----------------------------
+   Trước khi nối Firebase, app chạy chế độ thử cục bộ và cất tất cả trong localStorage.
+   Nối Firebase xong thì localStorage không còn được đọc nữa nhưng vẫn nằm nguyên đó,
+   và clearAll() ở chế độ Firebase cũng không đụng tới. Hàm này lôi nó ra thành bản sao lưu.
+   Chỉ đọc, không ghi, không xoá gì. */
+function scanLocalData(){
+  const out = [];
+  for(let i=0;i<localStorage.length;i++){
+    const key = localStorage.key(i);
+    if(!/^fintrace\./.test(key)) continue;
+    let db = null;
+    try{ db = JSON.parse(localStorage.getItem(key)||'null'); }catch(e){ continue; }
+    if(!db || typeof db!=='object') continue;
+    const rows = c => Object.entries(db[c]||{}).map(([id,d])=>({id,...(d&&typeof d==='object'?d:{})}));
+    const transactions = rows('transactions'), debts = rows('debts'), holdings = rows('holdings'),
+          transfers = rows('transfers'), months = rows('months');
+    const total = transactions.length+debts.length+holdings.length+transfers.length+months.length;
+    if(!total) continue;
+    const dates = transactions.map(t=>t.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+    out.push({ key, total,
+      counts:{ 'giao dịch':transactions.length, 'công nợ':debts.length, 'tài sản':holdings.length,
+               'chuyển đổi':transfers.length, 'tháng đã chốt':months.length },
+      from: dates[0]||null, to: dates[dates.length-1]||null,
+      payload:{ app:'fintrace', version:BACKUP_VERSION, exportedAt:new Date().toISOString(), mode:'local',
+        data:{ transactions, debts, holdings, transfers, months,
+               prices:(db.prices&&db.prices.current)||{}, settings:(db.settings&&db.settings.main)||null } } });
+  }
+  return out.sort((a,b)=>b.total-a.total);
+}
+
+/* Tự tải một bản sao lưu về máy ngay trước khi xoá sạch. Không chặn việc chính nếu lỗi. */
+function autoBackupBeforeWipe(reason){
+  try{
+    const p = backupPayload(), d = p.data;
+    if(!(d.transactions.length || d.debts.length || d.holdings.length || d.transfers.length || d.months.length)) return false;
+    p.note = 'Tự động tạo trước khi '+reason;
+    downloadJson(p, `fintrace-truoc-khi-ghi-de-${todayStr()}.json`);
+    return true;
+  }catch(e){ console.error(e); return false; }
 }
 
 /* Ghi đè toàn bộ dữ liệu bằng nội dung một bản sao lưu. Trả về số bản ghi đã ghi. */
@@ -2989,9 +3089,11 @@ async function restoreBackup(payload){
   }
   if(d.prices)   ops.push({op:'set', col:'prices',   id:'current', data:d.prices});
   if(d.settings) ops.push({op:'set', col:'settings', id:'main',    data:d.settings});
+  const saved = autoBackupBeforeWipe('khôi phục từ file');
   await store.clearAll();
   await store.batch(ops);
   applyLoaded(await store.loadAll());
+  if(saved) toast('Đã tải một bản sao lưu của dữ liệu cũ về máy trước khi ghi đè');
   state.month = thisMonth();
   render();
   console.log('Khôi phục xong:', counts);
@@ -2999,6 +3101,29 @@ async function restoreBackup(payload){
 }
 
 el('btnBackup').onclick = ()=>{ downloadBackup(); toast('Đã tải bản sao lưu'); };
+el('btnFindOld').onclick = ()=>{
+  const found = scanLocalData();
+  if(!found.length){
+    showModal('Không tìm thấy gì',
+      `<div class="mute">Trình duyệt này không còn dữ liệu chế độ thử cục bộ nào của FinTrace.<br><br>
+       Thử lại trên đúng trình duyệt và đúng máy bạn đã dùng hồi đầu tháng 9 — dữ liệu nằm riêng theo từng trình duyệt,
+       và cửa sổ ẩn danh thì không giữ gì cả.</div>`, 'Đóng', ()=>{});
+    return;
+  }
+  const body = found.map((f,i)=>`
+    <div class="warnline" style="margin:0 0 10px;background:var(--card)">
+      <div style="font-weight:600;color:var(--ink)">Bộ dữ liệu ${found.length>1?'#'+(i+1)+' ':''}— ${f.total} dòng</div>
+      <div style="margin-top:4px">${Object.entries(f.counts).filter(([,n])=>n).map(([k,n])=>`${n} ${k}`).join(' · ')}</div>
+      ${f.from?`<div style="margin-top:4px">Giao dịch từ <b>${esc(fmtDate(f.from))}</b> đến <b>${esc(fmtDate(f.to))}</b></div>`:''}
+      <div class="mute" style="margin-top:4px;font-size:11px">khoá <code>${esc(f.key)}</code></div>
+    </div>`).join('');
+  showModal('Tìm thấy dữ liệu cũ',
+    body+`<div class="hint" style="padding:4px 0 0">Bấm nút dưới để tải về máy thành file sao lưu. <b>Mở file ra xem cho chắc đã đúng dữ liệu bạn cần</b>, rồi mới dùng <b>Khôi phục từ file</b> để nạp lên Firebase — khôi phục sẽ xoá sạch dữ liệu đang có nên đừng làm vội.</div>`,
+    'Tải '+(found.length>1?found.length+' file về máy':'về máy'), ()=>{
+      found.forEach((f,i)=>downloadJson(f.payload, `fintrace-cuu-du-lieu-${todayStr()}${found.length>1?'-'+(i+1):''}.json`));
+      toast('Đã tải '+found.length+' file — mở ra xem trước khi khôi phục');
+    });
+};
 el('btnRestore').onclick = ()=> el('restoreFile').click();
 el('restoreFile').onchange = async e=>{
   const file = e.target.files[0]; e.target.value='';
@@ -3075,7 +3200,8 @@ async function importInitialData(opts={}){
   if(!store) throw new Error('Chưa đăng nhập');
   const hasData = D.transactions.length || D.debts.length || D.holdings.length || Object.keys(D.months).length;
   if(hasData && !opts.force) throw new Error('Đã có dữ liệu. Gọi importInitialData({force:true}) để xoá và import lại.');
-  if(opts.force) await store.clearAll();
+  let saved = false;
+  if(opts.force){ saved = autoBackupBeforeWipe('import dữ liệu ban đầu'); await store.clearAll(); }
   const ops=[], now=Date.now(); let seq=0;
   const amt = v => Array.isArray(v) ? {amount:Math.round(sum(v)*1e6)/1e6, parts:v} : {amount:v};
   for(const [id,expense,income,nw] of IMPORT.months){
@@ -3094,6 +3220,7 @@ async function importInitialData(opts={}){
     milestones:[...DEFAULT_MILESTONES], longTarget:{...DEFAULT_LONG_TARGET}, scenarios:[], dca:migrateDcaSettings(null)}});
   await store.batch(ops);
   applyLoaded(await store.loadAll());
+  if(saved) toast('Đã tải một bản sao lưu của dữ liệu cũ về máy trước khi ghi đè');
   state.month = IMPORT.txDate.slice(0,7);
   render();
   const r = { totalAssets: totalAssets(), netDebt: debtTotals().net, netWorth: netWorth(), expected: IMPORT.expected };
@@ -3110,6 +3237,8 @@ window.testBuyScore = testBuyScore;
 window.testDcaPlan = testDcaPlan;
 window.testBinance = testBinance;
 window.testDcaCoins = testDcaCoins;
+window.testRecovery = testRecovery;
+window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
@@ -3120,7 +3249,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1, binanceDiff, workerAccountUrl},
   render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testBinance, testDcaCoins,
   refreshDca, syncBinance, makeCandles,
-  downloadBackup, restoreBackup, backupPayload };
+  downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
 boot();
 </script>
