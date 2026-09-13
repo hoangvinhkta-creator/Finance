@@ -88,6 +88,17 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 
 **Còn chờ owner:** tạo API key chỉ đọc trên Binance, dán vào Cài đặt, rồi bấm Đồng bộ Binance trên app thật để xác nhận endpoint đã ký gọi được từ GitHub Pages. Web Crypto chỉ ký trên HTTPS nên phải mở qua Pages, không mở file trực tiếp.
 
+### P1.E — ETH và BTC song song ✅ xong
+
+Owner yêu cầu thêm sau khi C/A/B/D đã chạy. Cùng thuật toán, không phải hai chiến lược.
+
+- Tab DCA có bộ chọn **ETH / BTC** áp cho cả Buy Score, kế hoạch vốn tháng, giá vốn và lịch sử mua.
+- Mỗi coin một ngân sách, tỷ lệ và lịch Base riêng trong Cài đặt.
+- Một lần bấm Cập nhật chấm điểm cả hai coin, không thêm lệnh gọi mạng nào.
+- Nhãn nguồn Base/Smart/Opportunity giờ hiện cho mọi chuyển đổi sang ETH **hoặc** BTC.
+
+**Nghiệm thu:** đổi ngân sách BTC trong Cài đặt thì chỉ card BTC đổi, card ETH giữ nguyên. Điểm hai coin khác nhau và thành phần thứ 7 hiện đúng "ETH/BTC" hay "BTC/ETH".
+
 ---
 
 ## P2 — Tự động hoá quyết định
@@ -110,7 +121,7 @@ Backtest so sánh chiến lược, nhật ký quyết định, xu hướng chi t
 
 ## Không làm
 
-Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, nhiều coin có chiến lược riêng, nhiều người dùng, kế toán thuế, đổi kiến trúc sang framework hay có build step.
+Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, chiến lược riêng cho từng coin, nhiều người dùng, kế toán thuế, đổi kiến trúc sang framework hay có build step.
 
 ---
 
@@ -124,3 +135,4 @@ Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, nhiều coin
 | 2026-09-13 | Xong Khối A: Buy Score 7 thành phần, nút Cập nhật gọi Binance, giá ETH/BTC/ADA thành live (PR #11). Tiếp theo: Khối B — kế hoạch vốn tháng. |
 | 2026-09-13 | Xong Khối B: cài đặt ngân sách DCA, card "Tháng này" với Base/Smart/Opportunity Fund và dòng gợi ý (PR #13). Tiếp theo: Khối D — đồng bộ tài sản từ Binance. |
 | 2026-09-13 | Xong Khối D: nút Đồng bộ Binance, khoá chỉ đọc trong Cài đặt, bảng đối chiếu trước khi ghi đè (PR #15). Hết code P1 — chờ owner nghiệm thu hai việc cần mạng thật: Buy Score và đồng bộ số dư. |
+| 2026-09-13 | Owner yêu cầu thêm BTC. Xong Khối E: tab DCA đa coin ETH/BTC, mỗi coin một ngân sách, cùng thuật toán (PR #17). |

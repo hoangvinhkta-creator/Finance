@@ -105,8 +105,16 @@ Làm theo thứ tự **Khối C → Khối A → Khối B**, mỗi khối một 
 - Endpoint `GET /api/v3/account` cần ký HMAC-SHA256 bằng Web Crypto ngay trong trình duyệt. Nếu Binance chặn CORS với endpoint đã ký thì dừng, báo owner, không tự dựng proxy khi chưa hỏi.
 - Đồng bộ là nút bấm, không tự chạy. Có bảng đối chiếu "Binance / FinTrace / lệch" trước khi ghi đè quantity.
 
+### Khối E — ETH và BTC song song (thêm 2026-09-13, owner yêu cầu)
+- Tab DCA có bộ chọn coin **ETH / BTC** áp cho cả bốn phần: Buy Score, kế hoạch vốn tháng, giá vốn, lịch sử mua.
+- Cùng một thuật toán, không có chiến lược riêng cho từng coin. Thành phần điểm thứ 7 soi gương nhau: ETH chấm theo ETH/BTC, BTC chấm theo BTC/ETH (`DCA_COINS[].ref`).
+- Mỗi coin một khối cài đặt riêng: `settings.dca = {eth:{...}, btc:{...}}`. Cài đặt bản cũ (một khối phẳng) tự chuyển thành khối ETH qua `migrateDcaSettings`.
+- Cache điểm đổi thành `prices/current.dca = {usd, coins:{eth, btc}}`; bản cache cũ vẫn đọc được cho ETH.
+- Một lần bấm Cập nhật chấm điểm cả hai coin, **không** thêm lệnh gọi mạng nào (ETH và BTC vốn đã tải sẵn để tính thành phần thứ 7).
+- Thêm coin thứ ba = thêm một dòng vào `DCA_COINS` và một holding có `priceKey` tương ứng. Không đụng hàm tính.
+
 ### Không làm trong P1
-State machine, cooldown, crash mode, ACTION_PENDING, ladder/buy zones, backtest, decision log, versioning nhiều thuật toán, nhiều coin, tự động mua, thông báo.
+State machine, cooldown, crash mode, ACTION_PENDING, ladder/buy zones, backtest, decision log, versioning nhiều thuật toán, **chiến lược riêng cho từng coin**, tự động mua, thông báo.
 
 ---
 
@@ -121,3 +129,4 @@ Mở khi P1 đã dùng thật ít nhất một tháng. Thứ tự dự kiến: L
 | Ngày | Quyết định |
 |---|---|
 | 2026-09-12 | Bỏ roadmap Finance × CoinDCA và repo `coin`. DCA thành tab nhẹ trong FinTrace. Firebase project mới. Binance trước, CoinGecko dự phòng. P1 = 3 khối C/A/B; state machine, ladder... để P2. |
+| 2026-09-13 | Owner yêu cầu theo dõi BTC đầy đủ như ETH. Mở Khối E: tab DCA thành đa coin (ETH/BTC), cùng thuật toán, mỗi coin một ngân sách. "Nhiều coin" ra khỏi mục Không làm; thay bằng "chiến lược riêng cho từng coin". |
