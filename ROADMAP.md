@@ -47,7 +47,7 @@ P0  dữ liệu an toàn trên Firebase — xong
 
 Làm đúng thứ tự C → A → B → D, mỗi khối một PR, merge xong mới làm khối sau.
 
-### P1.C — Lịch sử mua và giá vốn ETH
+### P1.C — Lịch sử mua và giá vốn ETH ✅ xong — PR #9
 
 Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có ích ngay và rủi ro thấp nhất.
 
@@ -55,7 +55,7 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 - Tab DCA hiện: tổng ETH, tổng vốn, giá vốn trung bình, giá hiện tại, giá trị, lãi lỗ.
 - Bảng lịch sử mua, lọc theo nguồn.
 
-**Nghiệm thu:** giá vốn trung bình khớp với con số owner tự tính tay từ 2 đến 3 lần mua gần nhất.
+**Nghiệm thu:** giá vốn trung bình khớp với con số owner tự tính tay từ 2 đến 3 lần mua gần nhất. Owner kiểm tra tab DCA trên app thật sau khi có vài lần chuyển đổi USDT → ETH.
 
 ### P1.A — Buy Score và chỉ báo
 
@@ -116,3 +116,4 @@ Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, nhiều coin
 |---|---|
 | 2026-09-12 | Bỏ roadmap CoinDCA và repo `coin`. Thêm `CLAUDE.md`. Xong P0.1 sao lưu và khôi phục. Mở P0. |
 | 2026-09-13 | Nối project Firebase `fintrace-353f4` (PR #7). Owner nghiệm thu đầy đủ P0. Mở P1, bắt đầu Khối C. |
+| 2026-09-13 | Xong Khối C: tab DCA, nguồn vốn trên transfers, giá vốn ETH (PR #9). Tiếp theo: Khối A — Buy Score. |
