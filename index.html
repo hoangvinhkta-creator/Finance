@@ -556,6 +556,23 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <div id="dcaPlanBody"></div>
       </section>
 
+      <section class="card" id="dcaBuyCard" style="margin-bottom:16px">
+        <div class="colhead"><h2>Mua nhanh <small>chuyển sang <span id="dcaBuyCoinLabel">ETH</span>, không cần rời tab này</small></h2></div>
+        <div id="dcaBuyBody"></div>
+      </section>
+
+      <section class="card pad" id="dcaWalletCard" style="margin-bottom:16px">
+        <div class="colhead" style="padding:0 0 12px"><h2>Ví Coin <small>toàn bộ tài sản crypto — Danh mục ở tab Tài sản chỉ ghi gộp một dòng "Coin"</small></h2><span id="dcaWalletTotal" class="mute"></span></div>
+        <div class="scroll"><table class="tbl" id="dcaWalletTable"></table></div>
+        <div id="dcaWalletAlloc" style="padding:14px 16px 0"></div>
+        <form class="quick debt" id="formDcaHold" autocomplete="off" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px;grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr) minmax(0,1.2fr) auto">
+          <input name="name" placeholder="Tên tài sản" required>
+          <input name="quantity" placeholder="Số lượng" inputmode="decimal" required>
+          <select name="priceKey"></select>
+          <span class="acts-row"><button type="submit" class="btn primary">Thêm coin</button></span>
+        </form>
+      </section>
+
       <div class="stats" id="dcaStats"></div>
 
       <section class="card" id="dcaBreakdownCard" style="margin-bottom:16px">
@@ -1778,6 +1795,36 @@ function testDcaCoins(){
   return {pass:ok, fail:bad};
 }
 
+/* Ví Coin (tab DCA): Danh mục ở tab Tài sản gộp mọi coin vào một dòng, chi tiết và tỷ trọng
+   chuyển hẳn về đây. coinAllocation() là hàm thuần duy nhất cần khoá lại. */
+function testDcaWallet(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+
+  console.log('%c1 — chỉ tính holding có khoá giá live, bỏ giá trị 0, sắp xếp giảm dần theo giá trị','font-weight:600');
+  { const savedH = D.holdings, savedP = D.prices;
+    D.holdings = [
+      {id:'1', name:'ETH',      priceKey:'eth',  quantity:2},
+      {id:'2', name:'Vàng',     priceKey:'gold_pd', quantity:5},
+      {id:'3', name:'USDT',     priceKey:'usdt', quantity:100},
+      {id:'4', name:'BTC rỗng', priceKey:'btc',  quantity:0},
+    ];
+    D.prices = {eth:{value:60000}, usdt:{value:26}, gold_pd:{value:14000}, btc:{value:2000000}};
+    const rows = coinAllocation();
+    chk('Chỉ 2 dòng coin có giá trị dương, bỏ vàng và BTC rỗng', rows.map(r=>r.name), ['ETH','USDT']);
+    chk('Sắp xếp giảm dần: ETH (120.000) trước USDT (2.600)', rows[0].name, 'ETH');
+    D.holdings = savedH; D.prices = savedP; }
+
+  console.log('%c2 — không có coin nào ⇒ mảng rỗng, không lỗi','font-weight:600');
+  { const savedH = D.holdings; D.holdings = [{id:'1', name:'Vietcombank', priceKey:null, quantity:1000}];
+    chk('Mảng rỗng', coinAllocation(), []);
+    D.holdings = savedH; }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
 /* Gộp/tách tab phải sửa đúng 5 chỗ (link sidebar, link thanh dưới, section, VIEWS, map render)
    và số cột của thanh tab dưới. Test này bắt lỗi lệch giữa các chỗ đó. */
 function testViews(){
@@ -2202,8 +2249,10 @@ function fillStaticSelects(){
   setOptions(thuSel, settings().incomeCats);
   if(!had && settings().incomeCats.includes('Hoa hồng')) thuSel.value='Hoa hồng';
   document.querySelectorAll('form.debt select[name=unit]').forEach(s=>setOptions(s, DEBT_UNITS, u=>u.label, u=>u.value));
-  setOptions(el('formHold').group, HOLDING_GROUPS);
-  setOptions(el('formHold').priceKey, [{key:'',label:'giá = số lượng (VND)'},...PRICE_KEYS], p=>p.label, p=>p.key);
+  /* Coin quản lý riêng ở "Ví Coin" (tab DCA) — bớt một chỗ nữa có thể sửa cùng một dữ liệu. */
+  setOptions(el('formHold').group, HOLDING_GROUPS.filter(g=>g!=='Crypto'));
+  setOptions(el('formHold').priceKey, [{key:'',label:'giá = số lượng (VND)'},...PRICE_KEYS.filter(p=>!LIVE_KEYS.includes(p.key))], p=>p.label, p=>p.key);
+  setOptions(el('formDcaHold').priceKey, PRICE_KEYS.filter(p=>LIVE_KEYS.includes(p.key)), p=>p.label, p=>p.key);
   fillXferSelects();
 }
 function fillXferSelects(){
@@ -2638,34 +2687,47 @@ function donutHtml(){
 }
 /* Dòng USD nhỏ dưới một ô số. null thì không hiện gì. */
 const usdSub = v => v==null || !isFinite(v) ? '' : `<small class="mute" style="display:block;font-weight:400">≈ ${fmtUsd(v)}</small>`;
+/* Cột Giá của một coin (khoá giá live): tổng chỗ đang giữ quy ra USDT, dưới là tỉ giá 1 đơn vị.
+   Dùng chung cho bảng "Ví Coin" (tab DCA) — Danh mục ở tab Tài sản không còn liệt kê từng coin nữa. */
+function coinPriceCell(h){
+  const cUsd = holdingUsd(h), uUsd = cUsd==null ? null : priceUsd(h.priceKey);
+  if(cUsd==null || uUsd==null) return '<span class="mute">—</span>';
+  return `<b>${fmtUsdt(cUsd)}</b>${h.priceKey==='usdt' ? '' : `<small class="mute" style="display:block;font-weight:400">1 ${esc(priceLabel(h.priceKey))} ≈ ${fmtUsdt(uUsd)}</small>`}`;
+}
 function renderHoldings(){
   const t=debtTotals(), ta=totalAssets(), nw=ta+t.net;
+  /* Coin (khoá giá live) không còn liệt kê từng dòng ở đây — gộp một dòng "Coin", chi tiết
+     và sửa từng coin chuyển hẳn sang "Ví Coin" ở tab DCA để không có hai chỗ cùng sửa một dữ liệu. */
+  const nonCoin = D.holdings.filter(h=>!LIVE_KEYS.includes(h.priceKey));
+  const coinHs  = D.holdings.filter(h=>LIVE_KEYS.includes(h.priceKey));
+  const hs = [...nonCoin].sort((a,b)=>(a.order||0)-(b.order||0));
+  const cu = cryptoUsd();
   el('assetStats').innerHTML = `
-    <div class="stat"><div class="lbl">Tổng tài sản</div><div class="val">${fmtBig(ta)}</div><div class="sub">${D.holdings.length} mục</div></div>
+    <div class="stat"><div class="lbl">Tổng tài sản</div><div class="val">${fmtBig(ta)}</div><div class="sub">${hs.length + (coinHs.length?1:0)} mục</div></div>
     <div class="stat"><div class="lbl">Công nợ ròng</div><div class="val">${fmtBig(t.net)}</div><div class="sub">gồm thu chưa nhận ${fmtK(t.pending)}</div></div>
     <div class="stat strong"><div class="lbl">Tài sản ròng</div><div class="val">${fmtBig(nw)}</div><div class="sub">tổng tài sản + công nợ ròng</div></div>`;
-  const hs=[...D.holdings].sort((a,b)=>(a.order||0)-(b.order||0));
-  const cu = cryptoUsd();
   el('holdTotal').innerHTML = fmtK(Math.round(ta)) + (cu ? ` <small class="mute">· crypto ≈ ${fmtUsd(cu)}</small>` : '');
-  el('holdTable').innerHTML = `<thead><tr><th class="first">Tên</th><th>Nhóm</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
-    (hs.map((h,i)=>{
-      /* Coin: cột Giá nói bằng USDT — tổng chỗ đang giữ quy ra USDT, dưới là tỉ giá 1 đơn vị.
-         Tài sản khác (tiền, vàng, bạc) giữ nguyên giá nghìn đồng, sửa tay được ngay tại ô. */
-      const cUsd = LIVE_KEYS.includes(h.priceKey) ? holdingUsd(h) : null;
-      const uUsd = cUsd==null ? null : priceUsd(h.priceKey);
-      const inUsdt = cUsd!=null && uUsd!=null;
-      const priceCell = inUsdt
-        ? `<b>${fmtUsdt(cUsd)}</b>${h.priceKey==='usdt' ? '' : `<small class="mute" style="display:block;font-weight:400">1 ${esc(priceLabel(h.priceKey))} ≈ ${fmtUsdt(uUsd)}</small>`}`
-        : h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey)) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`)
-        : '<span class="mute">—</span>';
-      return `<tr data-id="${h.id}">
+  const rowHtml = hs.map((h,i)=>`<tr data-id="${h.id}">
       <td class="first" style="min-width:120px"><input class="inline l" data-f="name" value="${esc(h.name)}"></td>
       <td><select class="inline" data-f="group">${options(HOLDING_GROUPS,h.group)}</select></td>
       <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:110px"></td>
-      <td class="n">${priceCell}</td>
-      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b>${inUsdt ? '' : usdSub(LIVE_KEYS.includes(h.priceKey) ? holdingUsd(h) : null)}</td>
-      <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===hs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`;
-    }).join('') || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
+      <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey)) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
+      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b></td>
+      <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===hs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`);
+  if(coinHs.length){
+    const coinOrder = Math.min(...coinHs.map(h=>Number(h.order)||0));
+    let at = hs.findIndex(h=>(Number(h.order)||0) > coinOrder);
+    if(at<0) at = hs.length;
+    rowHtml.splice(at, 0, `<tr class="mute">
+      <td class="first">Coin</td>
+      <td>Crypto</td>
+      <td class="n">—</td>
+      <td class="n">—</td>
+      <td class="n"><b>${fmtK(Math.round(sum(coinHs, holdingValue)))}</b>${usdSub(cu)}</td>
+      <td class="act last"><a class="link" href="#dca">xem ở DCA</a></td></tr>`);
+  }
+  el('holdTable').innerHTML = `<thead><tr><th class="first">Tên</th><th>Nhóm</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
+    (rowHtml.join('') || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
   el('donut').innerHTML = donutHtml();
   // bảng giá
   el('priceTable').innerHTML = `<thead><tr><th class="first key">Khoá</th><th>Tên</th><th class="n">Giá</th><th class="n">USDT</th><th class="c">Nguồn</th><th class="last">Cập nhật</th></tr></thead><tbody>`+
@@ -2816,11 +2878,132 @@ function renderDcaPlan(){
     </div>`;
 }
 
+/* ---- Ví Coin: toàn bộ tài sản crypto chuyển hẳn về đây, Danh mục chỉ còn một dòng gộp ---- */
+const coinAllocation = () => D.holdings.filter(h=>LIVE_KEYS.includes(h.priceKey)).map(h=>({name:h.name, v:holdingValue(h)})).filter(r=>r.v>0).sort((a,b)=>b.v-a.v);
+function renderDcaWallet(){
+  const coinHs = [...D.holdings].filter(h=>LIVE_KEYS.includes(h.priceKey)).sort((a,b)=>(a.order||0)-(b.order||0));
+  const total = sum(coinHs, holdingValue), cu = cryptoUsd();
+  el('dcaWalletTotal').innerHTML = coinHs.length ? `${fmtK(Math.round(total))}${cu!=null?` <small class="mute">≈ ${fmtUsd(cu)}</small>`:''}` : '';
+  el('dcaWalletTable').innerHTML = `<thead><tr><th class="first">Tên</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
+    (coinHs.map((h,i)=>`<tr data-id="${h.id}">
+      <td class="first" style="min-width:110px"><input class="inline l" data-f="name" value="${esc(h.name)}"></td>
+      <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:110px"></td>
+      <td class="n">${coinPriceCell(h)}</td>
+      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b></td>
+      <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===coinHs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`).join('')
+     || '<tr><td class="empty" colspan="5">Chưa có coin nào — thêm ở form bên dưới</td></tr>')+`</tbody>`;
+  const rows = coinAllocation();
+  el('dcaWalletAlloc').innerHTML = !rows.length ? '' :
+    `<div class="catstack">${rows.map((r,i)=>`<i style="width:${total?r.v/total*100:0}%;background:${SHADES[i%SHADES.length]}" title="${esc(r.name)} · ${fmtK(Math.round(r.v))} · ${fmtPct(r.v/total)}"></i>`).join('')}</div>
+     <div class="catlegend">${rows.map((r,i)=>`<span><i style="background:${SHADES[i%SHADES.length]}"></i>${esc(r.name)}<b>${fmtK(Math.round(r.v))}</b><span class="p">${fmtPct(r.v/total)}</span></span>`).join('')}</div>`;
+}
+
+/* ---- Mua nhanh: chuyển đổi tài sản thu gọn ngay trong tab DCA, khoá sẵn đích = coin đang chọn ---- */
+function dcaBuyRemaining(coin, src){
+  const p = dcaPlanNow(coin.key);
+  if(src==='BASE') return p.base.remaining;
+  if(src==='SMART') return p.smart.remaining;
+  if(src==='OPPORTUNITY') return p.opp.available;
+  return null;
+}
+function updateDcaBuyHint(f){
+  if(!f) return;
+  const coin = dcaCoinOf(state.dcaCoin), h = coinHolding(coin.key), from = holdingById(f.fromId.value);
+  const qo = parseNum(f.qtyOut.value), qi = parseNum(f.qtyIn.value);
+  const bits = [];
+  if(from) bits.push(`${esc(from.name)} đang có ${fmtQty(from.quantity)}${from.priceKey?'':'k'}`);
+  if(from && h && !isNaN(qo) && qo>0){
+    const v = transferValue(from, h, qo, isNaN(qi)?0:qi);
+    if(v){ const vUsd = toUsd(v); bits.push(`giá trị ≈ ${fmtK(Math.round(v))}${vUsd!=null?` (≈ ${fmtUsd(vUsd)})`:''}`); }
+  }
+  const hint = el('dcaBuyHint'); if(hint) hint.innerHTML = bits.join(' · ');
+}
+function renderDcaBuy(){
+  const coin = dcaCoinOf(state.dcaCoin);
+  el('dcaBuyCoinLabel').textContent = coin.label;
+  const h = coinHolding(coin.key);
+  if(!h){
+    el('dcaBuyBody').innerHTML = `<div class="pad mute">Chưa có tài sản ${esc(coin.label)} trong Ví Coin bên dưới — thêm trước khi mua.</div>`;
+    return;
+  }
+  const p = dcaPlanNow(coin.key);
+  el('dcaBuyBody').innerHTML = `
+    <form autocomplete="off" id="formDcaBuy" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:0 16px 16px">
+      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);flex:1;min-width:150px">Từ<select name="fromId" style="width:100%"></select></label>
+      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);width:110px">Số lượng gửi<input name="qtyOut" inputmode="text" style="width:100%"></label>
+      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);width:110px">Số ${esc(coin.label)} nhận<input name="qtyIn" inputmode="text" style="width:100%"></label>
+      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);flex:1;min-width:190px">Nguồn vốn<select name="source" style="width:100%"></select></label>
+      <input name="note" placeholder="Ghi chú" style="flex:1;min-width:110px">
+      <button type="submit" class="btn primary">Mua</button>
+      <div class="lb" id="dcaBuyHint" style="flex-basis:100%;font-size:12px;color:var(--mute)"></div>
+    </form>`;
+  const f = el('formDcaBuy');
+  const hs = [...D.holdings].filter(x=>x.id!==h.id).sort((a,b)=>(a.order||0)-(b.order||0));
+  setOptions(f.fromId, hs, x=>x.name, x=>x.id);
+  const usdtH = hs.find(x=>x.priceKey==='usdt'); if(usdtH) f.fromId.value = usdtH.id;
+  /* Mỗi lựa chọn nguồn vốn ghi kèm số còn được mua tháng này — lấy thẳng từ dcaPlanNow(),
+     không phải state riêng, giống mọi con số khác của card "Tháng này". */
+  const srcOpts = [
+    {v:'MANUAL', label:'Tay'},
+    {v:'BASE', label:`Base (còn ${fmtK(Math.round(p.base.remaining))})`},
+    {v:'SMART', label:`Smart (còn ${fmtK(Math.round(p.smart.remaining))})`},
+    {v:'OPPORTUNITY', label:`Opportunity (còn ${fmtK(Math.round(p.opp.available))})`},
+  ];
+  f.source.innerHTML = srcOpts.map(o=>`<option value="${o.v}">${esc(o.label)}</option>`).join('');
+  updateDcaBuyHint(f);
+}
+/* Đăng ký một lần trên khung chứa tĩnh #dcaBuyBody, không phải trên <form> vì form bị dựng lại mỗi lần render. */
+el('dcaBuyBody').addEventListener('change', e=>{
+  const f = e.target.closest('#formDcaBuy'); if(!f) return;
+  if(e.target.name==='source'){
+    const coin = dcaCoinOf(state.dcaCoin);
+    const remain = dcaBuyRemaining(coin, f.source.value);
+    if(remain>0.5){
+      const from = holdingById(f.fromId.value);
+      const qty = from && from.priceKey && price(from.priceKey)>0 ? remain/price(from.priceKey) : remain;
+      f.qtyOut.value = fmtInput(qty);
+      f.qtyOut.dispatchEvent(new Event('input', {bubbles:true}));
+    }
+  }
+  updateDcaBuyHint(f);
+});
+el('dcaBuyBody').addEventListener('input', e=>{
+  const f = e.target.closest('#formDcaBuy'); if(!f) return;
+  if(e.target.name==='qtyOut'){
+    const coin = dcaCoinOf(state.dcaCoin), h = coinHolding(coin.key), from = holdingById(f.fromId.value);
+    const qo = parseNum(f.qtyOut.value), curPrice = price(coin.key);
+    if(from && h && !isNaN(qo) && qo>0 && curPrice>0){
+      const v = transferValue(from, h, qo, 0);
+      if(v) f.qtyIn.value = fmtInput(v/curPrice);
+    }
+  }
+  updateDcaBuyHint(f);
+});
+el('dcaBuyBody').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.closest('#formDcaBuy') && e.target.tagName!=='BUTTON'){ e.preventDefault(); e.target.closest('form').requestSubmit(); } });
+el('dcaBuyBody').addEventListener('submit', e=>{
+  if(e.target.id!=='formDcaBuy') return;
+  e.preventDefault();
+  const f = e.target, coin = dcaCoinOf(state.dcaCoin), h = coinHolding(coin.key);
+  if(!h) return;
+  const from = holdingById(f.fromId.value);
+  if(!from){ shake(f.fromId); toast('Chọn nguồn tiền'); return; }
+  const qo = parseNum(f.qtyOut.value), qi = parseNum(f.qtyIn.value);
+  if(isNaN(qo) || qo<=0){ shake(f.qtyOut); toast('Số lượng gửi không hợp lệ'); return; }
+  if(isNaN(qi) || qi<=0){ shake(f.qtyIn); toast('Số lượng nhận không hợp lệ'); return; }
+  const date = todayStr(), u = price('usdt');
+  addTransfer({ date, month:date.slice(0,7), fromId:from.id, toId:h.id, qtyOut:rq(qo), qtyIn:rq(qi),
+    valueVnd: r6(transferValue(from,h,qo,qi)), note: f.note.value.trim(),
+    source: f.source.value || 'MANUAL', ...(u>0?{usdtRate:u}:{}) });
+  toast(`Đã mua ${fmtQty(qi)} ${h.name} từ ${from.name}`);
+});
+
 /* ---- DCA (SPEC-DCA Khối C): giá vốn, lịch sử mua, lọc theo nguồn ---- */
 function renderDca(){
   renderDcaScore();
   renderDcaBands();
   renderDcaPlan();
+  renderDcaBuy();
+  renderDcaWallet();
   const coin = dcaCoinOf(state.dcaCoin), L = coin.label;
   const usdt = price('usdt'), cur = price(coin.key);
   const basis = dcaCostBasis(coinPurchases(coin.key), usdt);
@@ -2869,16 +3052,31 @@ function commitInline(inp){
   else if(f==='name'){ const v=inp.value.trim(); if(v && v!==h.name) updateHolding(h.id,{name:v}); }
   else if(f==='group'){ if(inp.value!==h.group) updateHolding(h.id,{group:inp.value}); }
 }
-for(const id of ['holdTable','priceTable']){
+for(const id of ['holdTable','priceTable','dcaWalletTable']){
   el(id).addEventListener('change', e=>{ if(e.target.matches('.inline')) commitInline(e.target); });
   el(id).addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.matches('input.inline')){ e.preventDefault(); e.target.blur(); } });
 }
 el('holdTable').addEventListener('click', e=>{
   const b=e.target.closest('button[data-act]'); if(!b) return;
-  const tr=b.closest('tr'); const hs=[...D.holdings].sort((a,b)=>(a.order||0)-(b.order||0)); const i=hs.findIndex(h=>h.id===tr.dataset.id); if(i<0) return;
+  const tr=b.closest('tr'); const hs=[...D.holdings].filter(h=>!LIVE_KEYS.includes(h.priceKey)).sort((a,b)=>(a.order||0)-(b.order||0)); const i=hs.findIndex(h=>h.id===tr.dataset.id); if(i<0) return;
   const h=hs[i];
   if(b.dataset.act==='del'){ if(confirm(`Xoá tài sản "${h.name}"?`)) removeHolding(h.id); }
   else { const j = b.dataset.act==='up' ? i-1 : i+1; if(j<0||j>=hs.length) return; hs.splice(i,1); hs.splice(j,0,h); hs.forEach((x,k)=>{ if(x.order!==k+1) updateHolding(x.id,{order:k+1}); }); }
+});
+el('dcaWalletTable').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-act]'); if(!b) return;
+  const tr=b.closest('tr'); const hs=[...D.holdings].filter(h=>LIVE_KEYS.includes(h.priceKey)).sort((a,b)=>(a.order||0)-(b.order||0)); const i=hs.findIndex(h=>h.id===tr.dataset.id); if(i<0) return;
+  const h=hs[i];
+  if(b.dataset.act==='del'){ if(confirm(`Xoá tài sản "${h.name}"?`)) removeHolding(h.id); }
+  else { const j = b.dataset.act==='up' ? i-1 : i+1; if(j<0||j>=hs.length) return; hs.splice(i,1); hs.splice(j,0,h); hs.forEach((x,k)=>{ if(x.order!==k+1) updateHolding(x.id,{order:k+1}); }); }
+});
+el('formDcaHold').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.tagName!=='BUTTON'){ e.preventDefault(); el('formDcaHold').requestSubmit(); } });
+el('formDcaHold').addEventListener('submit', e=>{
+  e.preventDefault(); const f=e.target; const q=parseNum(f.quantity.value); const name=f.name.value.trim();
+  if(!name){ shake(f.name); return; } if(isNaN(q)){ shake(f.quantity); return; }
+  if(!f.priceKey.value){ shake(f.priceKey); return; }
+  addHolding({name, group:'Crypto', quantity:q, priceKey:f.priceKey.value});
+  f.name.value=''; f.quantity.value=''; f.name.focus();
 });
 el('formHold').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.tagName!=='BUTTON'){ e.preventDefault(); el('formHold').requestSubmit(); } });
 el('formHold').addEventListener('submit', e=>{
@@ -3411,6 +3609,7 @@ window.testDca = testDca;
 window.testBuyScore = testBuyScore;
 window.testDcaPlan = testDcaPlan;
 window.testDcaCoins = testDcaCoins;
+window.testDcaWallet = testDcaWallet;
 window.testUsd = testUsd;
 window.testViews = testViews;
 window.testRecovery = testRecovery;
@@ -3423,7 +3622,7 @@ window.FinTrace = { state, data:D,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, scoreBands, priceForScore, BUY_SCORE_V1,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
-        toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS},
+        toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation},
   render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews,
   refreshDca, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
