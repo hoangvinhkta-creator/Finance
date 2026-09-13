@@ -97,20 +97,45 @@ select.inline:hover{border-color:var(--line)}
 .ledger4 .tbl td,.ledger4 .tbl th{padding:6px 6px}
 .ledger4 .tbl td.first,.ledger4 .tbl th.first{padding-left:12px}
 .ledger4 .tbl td.last,.ledger4 .tbl th.last{padding-right:12px}
-/* Mỗi dòng Chi/Thu/Nợ giờ chỉ có một ô "rowcell": tên — icon — số tiền trên đúng một hàng.
-   Tên bị cắt gọn (ellipsis) để chiều cao hàng luôn cố định, không phụ thuộc tên dài hay ngắn. */
-.rline{display:flex;align-items:center;gap:5px;min-height:20px}
-.rline .rn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rline .ric{display:inline-flex;gap:1px;flex:none}
-.rline .ramt{flex:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* Icon sửa/xoá/đã nhận trên mỗi dòng Chi/Thu/Nợ: dùng CỘT BẢNG THẬT (không phải flexbox tự do) để icon
+   tự thẳng hàng theo chiều dọc — trình duyệt tính độ rộng cột bằng nội dung rộng nhất trong cả bảng,
+   nên icon và số tiền luôn bắt đầu ở cùng một vị trí bất kể tên khoản dài ngắn khác nhau.
+   table-layout:fixed + độ rộng cố định cho 3 cột ngày/icon/tiền, để cột "name" luôn nhận đúng phần
+   còn lại của card và .rn bên trong cắt gọn bằng ellipsis — thay vì để trình duyệt ngắt chữ giữa từ
+   khi card bị bóp hẹp (auto layout + max-width:0 từng thử nhưng bóp cả cột về gần 0, sai). */
+.ledger4 .tbl{table-layout:fixed}
+.ledger4 .tbl td.d{width:42px}
+.ledger4 .tbl td.act{width:66px}
+.ledger4 .tbl td.n{width:70px}
+.ledger4 .tbl td.name{min-width:0;overflow:hidden}
+.ledger4 .tbl td.name .rn{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rnote{display:block;color:var(--mute);font-size:11px;margin-top:2px;overflow-wrap:anywhere}
-.rowbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;color:var(--mute);flex:none}
+.ledger4 .tbl td.act{white-space:nowrap;text-align:left}
+.rowbtn,.rowbtn-sp{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;flex:none}
+.rowbtn{color:var(--mute)}
 .rowbtn:hover{background:var(--soft);color:var(--ink)}
 .rowbtn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .rowbtn.tag{border:1px solid var(--ink);color:var(--ink)}
 .rowbtn.tag:hover{background:var(--ink);color:#fff}
 .nomonth{font-weight:400;font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:3px;padding:0 5px;white-space:nowrap}
 .stats.five{grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,1.4fr)}
+/* Card "Thống kê" gộp 5 ô Thu/Chi/Chênh lệch/Công nợ ròng/Mục tiêu — vẫn dùng chung markup .stat với
+   Tổng quan (monthStatsHtml/debtTileHtml), chỉ đổi cách trình bày trong phạm vi card này. Card này giờ hẹp
+   hơn cả trang (nằm cạnh "Chi theo nhóm") nên co giãn theo bề rộng CÓ THẬT của card bằng flex-wrap,
+   không dùng media query theo bề rộng màn hình như .stats.five gốc — tránh vỡ khi card bị bóp hẹp. */
+.statcard{padding:14px 18px}
+.statcard .stats.five{display:flex;flex-wrap:wrap;gap:14px 22px;margin-bottom:0}
+.statcard .stat{flex:1 1 128px;min-width:128px;background:transparent;border:0;border-radius:0;padding:0;margin:0}
+.statcard .stat.wide{flex-basis:180px}
+/* "Chi theo nhóm" giờ là MỘT thanh ngang gộp theo tỉ trọng (không phải mỗi nhóm một thanh riêng),
+   để card này tự nhiên ngắn gọn, cao gần bằng card "Thống kê" bên cạnh — không tạo khoảng trắng
+   khi grid kéo hai card về cùng một chiều cao (mặc định của .grid2 là stretch). */
+.catstack{display:flex;height:20px;border-radius:5px;overflow:hidden;background:var(--line2)}
+.catstack i{display:block;height:100%}
+.catlegend{display:flex;flex-wrap:wrap;gap:7px 18px;font-size:12px;color:var(--ink2);margin-top:12px}
+.catlegend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px;flex:none}
+.catlegend b{font-weight:600;color:var(--ink);margin:0 5px}
+.catlegend .p{color:var(--mute)}
 .col{min-width:0}
 .colhead{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px 10px}
 .colhead span{font-weight:600}
@@ -152,8 +177,6 @@ select.inline:hover{border-color:var(--line)}
 .scroll{overflow-x:auto}
 .neg{color:var(--ink2)}
 .mute{color:var(--mute)}
-.bar{height:3px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:4px}
-.bar i{display:block;height:100%;background:var(--ink)}
 .acts-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 /* ---------- chart ---------- */
@@ -379,7 +402,17 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <div class="right"><label class="chk"><input type="checkbox" id="showSettled"> Hiện nợ đã tất toán</label><span id="closedInfo" class="mute" style="font-size:12px"></span><button class="btn" id="btnClose">Chốt tháng</button></div>
       </header>
       <div id="importNotice" class="notice" hidden>Tháng đã import từ sheet — xem chi tiết theo nhóm ở Lịch sử. Số dưới đây là số đã chốt, không có từng dòng giao dịch.</div>
-      <div class="stats five" id="soStats"></div>
+
+      <div class="grid2 cashtop">
+        <section class="card pad statcard">
+          <div class="stats five" id="soStats"></div>
+        </section>
+        <section class="card pad">
+          <div class="colhead" style="padding:0 0 12px"><h2>Chi theo nhóm</h2><span id="byCatTotal"></span></div>
+          <div id="byCat"></div>
+          <div class="hint" id="byCatHint"></div>
+        </section>
+      </div>
 
       <div class="ledger4">
         <section class="col card">
@@ -432,12 +465,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="scroll"><table class="tbl"><tbody id="rowsPay"></tbody></table></div>
         </section>
       </div>
-
-      <section class="card" style="max-width:520px">
-        <div class="colhead"><h2>Chi theo nhóm</h2><span id="byCatTotal"></span></div>
-        <table class="tbl"><tbody id="byCat"></tbody></table>
-        <div class="hint" id="byCatHint"></div>
-      </section>
     </section>
 
     <!-- ===== Tài sản ===== -->
@@ -746,6 +773,7 @@ const IC_CHECK = '<svg viewBox="0 0 18 18"><path d="M3.6 9.6l3.2 3.2L14.4 5"/></
 const IC_UNDO  = '<svg viewBox="0 0 18 18"><path d="M4 7.6a5.5 5.5 0 1 1 1.6 4.3"/><path d="M4 4v3.6h3.6"/></svg>';
 /* Một nút hành động dạng icon. cls='tag' để tô viền nổi bật (dùng cho hành động chính: đã nhận/tất toán). */
 const rowBtn = (act, icon, title, cls) => `<button class="rowbtn${cls?' '+cls:''}" data-act="${act}" title="${title}" aria-label="${title}">${icon}</button>`;
+const ROW_SP = '<span class="rowbtn-sp" aria-hidden="true"></span>';   // giữ chỗ = độ rộng 1 icon, không bấm được
 
 /* ---------------- định dạng ---------------- */
 const NF = {};
@@ -2296,20 +2324,24 @@ function renderLedger(){
   const rows = type => txOfMonth(m).filter(x=>x.type===type).sort((a,b)=> b.date<a.date?-1: b.date>a.date?1 : (b.createdAt||0)-(a.createdAt||0));
   const row = x => `<tr class="${x.pending?'pending':''}" data-id="${x.id}">
       <td class="d first">${fmtDate(x.date)}</td>
-      <td class="rowcell last">
-        <div class="rline">
-          <span class="rn" title="${esc(x.name)}">${esc(x.name)}</span>${x.unusual?'<em class="tagx">bất thường</em>':''}
-          <span class="ric">${x.pending?rowBtn('received',IC_CHECK,'Đã nhận','tag'):''}${rowBtn('edit',IC_EDIT,'Sửa')}${rowBtn('del',IC_DEL,'Xoá')}</span>
-          <span class="ramt">${fmtK(x.amount)}</span>
-        </div>
-        ${x.parts||x.note?`<small class="rnote">${esc(partsStr(x.parts))}${x.parts&&x.note?' · ':''}${esc(x.note||'')}</small>`:''}
-      </td></tr>`;
-  const empty = '<tr><td class="empty" colspan="2">Chưa có khoản nào</td></tr>';
+      <td class="name">
+        <div class="rn" title="${esc(x.name)}">${esc(x.name)}${x.unusual?'<em class="tagx">bất thường</em>':''}</div>
+        ${x.parts||x.note?`<small>${esc(partsStr(x.parts))}${x.parts&&x.note?' · ':''}${esc(x.note||'')}</small>`:''}
+      </td>
+      <td class="act">${x.pending?rowBtn('received',IC_CHECK,'Đã nhận','tag'):ROW_SP}${rowBtn('edit',IC_EDIT,'Sửa')}${rowBtn('del',IC_DEL,'Xoá')}</td>
+      <td class="n last">${fmtK(x.amount)}</td></tr>`;
+  const empty = '<tr><td class="empty" colspan="4">Chưa có khoản nào</td></tr>';
   el('rowsChi').innerHTML = rows('chi').map(row).join('') || empty;
   el('rowsThu').innerHTML = rows('thu').map(row).join('') || empty;
+  /* Chi theo nhóm: một thanh ngang gộp theo tỉ trọng (không phải mỗi nhóm một thanh riêng) + chú giải,
+     giống cách "Cơ cấu và thanh khoản" ở Tổng quan dùng donut + .dl — chỉ đổi donut thành một thanh thẳng.
+     Bỏ nhóm chưa chi gì (0đ) khỏi thanh và chú giải, cùng quy ước với donutHtml(). */
   const cats = [...settings().expenseCats, ...Object.keys(t.byCategory).filter(c=>!settings().expenseCats.includes(c))];
-  el('byCat').innerHTML = cats.map(c=>{ const v=t.byCategory[c]||0; return `<tr><td class="first">${esc(c)}<div class="bar"><i style="width:${t.expense?Math.round(v/t.expense*100):0}%"></i></div></td><td class="n">${fmtK(v)}</td><td class="n last mute" style="width:1%">${t.expense?fmtPct(v/t.expense):'—'}</td></tr>`; }).join('');
+  const catRows = cats.map(c=>({c, v:t.byCategory[c]||0})).filter(r=>r.v>0).sort((a,b)=>b.v-a.v);
   el('byCatTotal').textContent = fmtK(t.expense);
+  el('byCat').innerHTML = !catRows.length ? '<div class="mute">Chưa có khoản chi nào</div>' :
+    `<div class="catstack">${catRows.map((r,i)=>`<i style="width:${t.expense?r.v/t.expense*100:0}%;background:${SHADES[i%SHADES.length]}" title="${esc(r.c)} · ${fmtK(r.v)} · ${fmtPct(r.v/t.expense)}"></i>`).join('')}</div>
+     <div class="catlegend">${catRows.map((r,i)=>`<span><i style="background:${SHADES[i%SHADES.length]}"></i>${esc(r.c)}<b>${fmtK(r.v)}</b><span class="p">${fmtPct(r.v/t.expense)}</span></span>`).join('')}</div>`;
   el('byCatHint').innerHTML = (t.byCategory['Trả nợ']||0) > 0
     ? 'Nhóm <b>Trả nợ</b> chỉ là ghi chú cho dễ nhớ. Việc trả nợ thật đã ghi qua nút <b>Tất toán</b> ở cột công nợ (tài sản giảm, nợ giảm, tài sản ròng không đổi) — khoản chi ở đây không trừ thêm lần nữa vào tài sản.'
     : '';
@@ -2392,26 +2424,24 @@ function renderDebts(){
   el('showSettled').checked = state.showSettled;
   const list = dir => D.debts.filter(d=>d.direction===dir && (state.showSettled || !d.settled)).sort((a,b)=>(a.settled?1:0)-(b.settled?1:0) || (a.createdAt||0)-(b.createdAt||0));
   const row = d => `<tr class="${d.settled?'settled':''}" data-id="${d.id}">
-      <td class="rowcell first last">
-        <div class="rline">
-          <span class="rn" title="${esc(d.party)}">${esc(d.party)}</span>
-          <span class="ric">${d.settled?rowBtn('reopen',IC_UNDO,'Mở lại'):rowBtn('settle',IC_CHECK,'Tất toán','tag')}${rowBtn('edit',IC_EDIT,'Sửa')}${rowBtn('del',IC_DEL,'Xoá')}</span>
-          <span class="ramt">${fmtK(Math.round(debtValue(d)))}</span>
-        </div>
-        ${d.note?`<small class="rnote">${esc(d.note)}</small>`:''}
-      </td></tr>`;
+      <td class="name first">
+        <div class="rn" title="${esc(d.party)}">${esc(d.party)}</div>
+        ${d.note?`<small>${esc(d.note)}</small>`:''}
+      </td>
+      <td class="act">${d.settled?rowBtn('reopen',IC_UNDO,'Mở lại'):rowBtn('settle',IC_CHECK,'Tất toán','tag')}${rowBtn('edit',IC_EDIT,'Sửa')}${rowBtn('del',IC_DEL,'Xoá')}</td>
+      <td class="n last">${fmtK(Math.round(debtValue(d)))}</td></tr>`;
   /* Thu chưa nhận cũng là tiền người ta nợ mình nên phải nằm trong công nợ ròng.
      Khoản của tháng đang xem đã hiện đầy đủ ở cột Thu ngay bên cạnh ⇒ gộp một dòng cho khỏi lặp.
      Khoản của tháng khác không nhìn thấy ở đâu khác ⇒ liệt kê từng khoản. */
   const pend = D.transactions.filter(x=>x.type==='thu'&&x.pending).sort((a,b)=>a.date<b.date?-1:1);
   const pendHere = pend.filter(x=>x.month===state.month), pendOther = pend.filter(x=>x.month!==state.month);
-  const head = txt => `<tr><td colspan="1" class="first" style="padding-top:12px"><small>${txt}</small></td></tr>`;
+  const head = txt => `<tr><td colspan="3" class="first" style="padding-top:12px"><small>${txt}</small></td></tr>`;
   const pendRows = !pend.length ? '' :
     (pendHere.length ? head('Thu chưa nhận')+
-       `<tr class="pending"><td class="rowcell first last"><div class="rline"><span class="rn">${pendHere.length} khoản của ${esc(fmtMonthLong(state.month).toLowerCase())}</span><span class="ramt">${fmtK(sum(pendHere,x=>x.amount))}</span></div><small class="rnote">đang hiện đầy đủ ở cột Thu</small></td></tr>` : '')+
+       `<tr class="pending"><td class="name first">${pendHere.length} khoản của ${esc(fmtMonthLong(state.month).toLowerCase())}<small>đang hiện đầy đủ ở cột Thu</small></td><td class="act"></td><td class="n last">${fmtK(sum(pendHere,x=>x.amount))}</td></tr>` : '')+
     (pendOther.length ? head(pendHere.length?'Thu chưa nhận từ tháng khác':'Thu chưa nhận từ tháng khác')+
-       pendOther.map(x=>`<tr class="pending" data-tx="${x.id}"><td class="rowcell first last"><div class="rline"><span class="rn" title="${esc(x.name)}">${esc(x.name)}</span><span class="ric">${rowBtn('received',IC_CHECK,'Đã nhận','tag')}</span><span class="ramt">${fmtK(x.amount)}</span></div><small class="rnote">${fmtMonthLong(x.month)}${x.parts?' · '+esc(partsStr(x.parts)):''}</small></td></tr>`).join('') : '');
-  const empty = '<tr><td class="empty" colspan="1">Không có khoản nào</td></tr>';
+       pendOther.map(x=>`<tr class="pending" data-tx="${x.id}"><td class="name first"><div class="rn" title="${esc(x.name)}">${esc(x.name)}</div><small>${fmtMonthLong(x.month)}${x.parts?' · '+esc(partsStr(x.parts)):''}</small></td><td class="act">${rowBtn('received',IC_CHECK,'Đã nhận','tag')}</td><td class="n last">${fmtK(x.amount)}</td></tr>`).join('') : '');
+  const empty = '<tr><td class="empty" colspan="3">Không có khoản nào</td></tr>';
   el('rowsRecv').innerHTML = (list('receivable').map(row).join('') || (pend.length?'':empty)) + pendRows;
   el('rowsPay').innerHTML = list('payable').map(row).join('') || empty;
   el('recvTotal').textContent = fmtK(Math.round(t.recv+t.pending)); el('payTotal').textContent = fmtK(Math.round(t.pay));
