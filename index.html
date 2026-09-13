@@ -253,7 +253,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .split.one span{display:inline;margin-right:14px}
 .suggest.one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Popup rộng cho bảng lịch sử; min-width:0 để bảng bên trong cuộn ngang thay vì đẩy popup tràn màn hình. */
-.dialog{min-width:0;max-width:100%}
+.dialog{min-width:0;max-width:100%;max-height:calc(100vh - 40px);overflow:auto}   /* popup dài hơn màn (kịch bản ở màn thấp) thì cuộn trong popup, nút Lưu không rơi ra ngoài */
 #mdBody{min-width:0}
 .dialog.wide{width:min(980px,100%)}
 .hero{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 22px}
@@ -281,7 +281,23 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .quick.xfer{grid-template-columns:minmax(0,1.1fr) minmax(0,.85fr) 14px minmax(0,1.1fr) minmax(0,.85fr) minmax(0,1fr) auto}
 .quick.xfer .arrow{text-align:center;color:var(--mute)}
 .quick.xfer .lb{grid-column:1/-1;font-size:12px;color:var(--mute);margin-top:-4px}
-.scn td.n input{width:118px}
+.scn td.n input{width:104px}
+/* Danh mục thả xuống theo nhóm: dòng nhóm là tổng, bấm để mở từng tài sản bên trong. Coin gộp một dòng "Binance". */
+.tbl tr.grp td{background:var(--soft);font-weight:600;cursor:pointer;user-select:none}
+.tbl tr.grp .chev{display:inline-block;width:12px;color:var(--mute);font-weight:400}
+.tbl tr.grp.coin td{cursor:default}
+.tbl tr.grp td .cnt{font-weight:400;color:var(--mute);font-size:11px;margin-left:6px}
+/* Kịch bản: thanh trượt + biểu đồ chiếu 24 tháng ở đầu popup */
+.scntop{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:0 0 10px}
+.scnslide{display:flex;align-items:center;gap:10px;flex:1 1 260px;min-width:0}
+.scnslide input[type=range]{flex:1;min-width:0;accent-color:var(--ink);margin:0}
+.scnslide span{min-width:44px;text-align:right;font-weight:600;color:var(--ink)}
+.scnval{display:flex;gap:8px;align-items:center;font-size:12px}
+.scnval input{width:120px}
+.scnpre{display:flex;flex-wrap:wrap;gap:6px}
+.scnpre button{border:1px solid var(--line);border-radius:5px;padding:2px 8px;font-size:12px;color:var(--ink2);background:var(--card)}
+.scnpre button:hover{border-color:var(--ink);color:var(--ink)}
+.scnpre button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .scn .cur{color:var(--mute)}
 .scnbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:0 16px 12px}
 .scnbar input{width:auto;flex:0 1 180px}
@@ -530,34 +546,12 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
     <!-- ===== Tài sản ===== -->
     <section id="view-taisan" class="view">
-      <header class="vhead"><h1>Tài sản</h1></header>
-      <div class="stats three" id="assetStats"></div>
-      <section class="card" style="margin-bottom:14px">
-        <div class="colhead"><h2>Chuyển đổi tài sản</h2><small>không vào sổ tháng · không tính là chi · không đổi tài sản ròng</small></div>
-        <form class="quick xfer" id="formXfer" autocomplete="off">
-          <select name="fromId"></select>
-          <input name="qtyOut" placeholder="số tiền" inputmode="text">
-          <span class="arrow">→</span>
-          <select name="toId"></select>
-          <input name="qtyIn" placeholder="số lượng nhận" inputmode="text">
-          <div id="xferSourceRow" hidden style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute)">
-            <span>Nguồn vốn ETH:</span>
-            <select name="source" style="width:auto;min-width:132px">
-              <option value="MANUAL">Tay (mặc định)</option>
-              <option value="BASE">Base</option>
-              <option value="SMART">Smart</option>
-              <option value="OPPORTUNITY">Opportunity</option>
-            </select>
-          </div>
-          <input name="note" placeholder="Ghi chú">
-          <span class="acts-row"><button type="submit" class="btn primary">Chuyển</button></span>
-          <div class="lb" id="xferHint"></div>
-        </form>
-      </section>
-      <div class="grid2">
-        <section class="card">
-          <div class="colhead"><h2>Danh mục</h2><span id="holdTotal"></span></div>
-          <div class="scroll"><table class="tbl" id="holdTable"></table></div>
+      <header class="vhead"><h1>Tài sản</h1><div class="right"><button class="btn" id="xferHistOpen">Lịch sử chuyển đổi</button><button class="btn" id="scnOpen">Kịch bản</button><button class="btn primary" id="xferOpen">Chuyển đổi</button></div></header>
+      <div class="stats three tight" id="assetStats" style="margin-bottom:14px"></div>
+      <div class="grid2" style="margin-bottom:0">
+        <section class="card" id="holdCard">
+          <div class="colhead"><h2>Danh mục <small>bấm vào nhóm để mở chi tiết</small></h2><span id="holdTotal"></span></div>
+          <div class="scroll"><table class="tbl compact" id="holdTable"></table></div>
           <form class="quick debt" id="formHold" autocomplete="off" style="border-top:1px solid var(--line);border-bottom:0;padding-top:12px">
             <input name="name" placeholder="Tên tài sản" required>
             <input name="quantity" placeholder="Số lượng" inputmode="decimal" required>
@@ -566,31 +560,61 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button></span>
           </form>
         </section>
-        <section class="card pad">
-          <h2>Cơ cấu</h2>
-          <div id="donut"></div>
+        <section class="card" id="priceCard">
+          <div class="colhead"><h2>Bảng giá <small>nhập tay · nghìn đồng / 1 đơn vị</small></h2><a class="link" href="#dca">giá coin cập nhật ở DCA</a></div>
+          <div class="scroll"><table class="tbl compact" id="priceTable"></table></div>
         </section>
       </div>
-      <section class="card" style="margin-bottom:14px">
-        <div class="colhead"><h2>Chuyển đổi gần đây</h2><span id="xferCount" class="mute" style="font-size:12px"></span></div>
-        <div class="scroll"><table class="tbl" id="xferTable"></table></div>
-      </section>
-      <section class="card" style="margin-bottom:14px">
-        <div class="colhead"><h2>Bảng giá <small>nghìn đồng / 1 đơn vị</small></h2><button class="btn" id="priceLive" title="Lấy giá ETH, BTC, ADA từ Binance và chấm lại Buy Score">Cập nhật giá live</button></div>
-        <div class="scroll"><table class="tbl" id="priceTable"></table></div>
-      </section>
-      <section class="card">
-        <div class="colhead"><h2>Kịch bản <small>giá giả định · giữ nguyên số lượng</small></h2><button class="link" id="scnReset">xoá giả định</button></div>
-        <div class="scroll"><table class="tbl scn" id="scnTable"></table></div>
-        <div id="scnOut"></div>
-        <div class="scnbar">
-          <select id="scnPick"></select>
-          <input id="scnName" placeholder="Tên kịch bản">
-          <button class="btn" id="scnSave">Lưu kịch bản</button>
-          <button class="btn" id="scnDel">Xoá kịch bản</button>
-          <span class="mute" style="font-size:12px" id="scnInfo"></span>
+
+      <!-- Ba khối chỉ mở bằng popup (openHolder): form Chuyển đổi, lịch sử chuyển đổi, kịch bản. -->
+      <div class="holders" id="taisanHolders">
+        <div id="xferHolder">
+          <form class="quick xfer" id="formXfer" autocomplete="off" style="border:0;padding:0">
+            <select name="fromId"></select>
+            <input name="qtyOut" placeholder="số tiền" inputmode="text">
+            <span class="arrow">→</span>
+            <select name="toId"></select>
+            <input name="qtyIn" placeholder="số lượng nhận" inputmode="text">
+            <div id="xferSourceRow" hidden style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute)">
+              <span>Nguồn vốn ETH:</span>
+              <select name="source" style="width:auto;min-width:132px">
+                <option value="MANUAL">Tay (mặc định)</option>
+                <option value="BASE">Base</option>
+                <option value="SMART">Smart</option>
+                <option value="OPPORTUNITY">Opportunity</option>
+              </select>
+            </div>
+            <input name="note" placeholder="Ghi chú">
+            <span class="acts-row"><button type="submit" class="btn primary">Chuyển</button></span>
+            <div class="lb" id="xferHint"></div>
+          </form>
+          <div class="hint" style="padding:10px 0 0">Không vào sổ tháng · không tính là chi · không đổi tài sản ròng. Mua coin theo Base/Smart/Opportunity thì dùng Mua nhanh ở tab DCA.</div>
         </div>
-      </section>
+        <div id="xferHistHolder">
+          <div class="colhead" style="padding:0 0 8px"><h2>Chuyển đổi gần đây</h2><span id="xferCount" class="mute" style="font-size:12px"></span></div>
+          <div class="scroll"><table class="tbl compact" id="xferTable"></table></div>
+        </div>
+        <div id="scnHolder">
+          <div class="scntop">
+            <div class="seg" id="scnAsset"></div>
+            <div class="scnslide"><input type="range" id="scnSlider" min="-80" max="300" step="1" value="0"><span id="scnPct"></span></div>
+            <div class="scnval"><input id="scnVal" inputmode="decimal" placeholder="giá giả định"><span id="scnUnit" class="mute"></span><span id="scnCur" class="mute"></span></div>
+            <div class="scnpre" id="scnPresets"></div>
+          </div>
+          <div id="scnChart"></div>
+          <div id="scnChartNote" class="hint" style="padding:6px 0 12px"></div>
+          <div class="scroll"><table class="tbl compact scn" id="scnTable"></table></div>
+          <div id="scnOut"></div>
+          <div class="scnbar" style="padding:10px 0 0">
+            <select id="scnPick"></select>
+            <input id="scnName" placeholder="Tên kịch bản">
+            <button class="btn" id="scnSave">Lưu kịch bản</button>
+            <button class="btn" id="scnDel">Xoá kịch bản</button>
+            <button class="link" id="scnReset">xoá giả định</button>
+            <span class="mute" style="font-size:12px" id="scnInfo"></span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ===== DCA ===== -->
@@ -953,7 +977,7 @@ const state = {
   data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, settings:{}},
   month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth',
   edit:{chi:null, thu:null, receivable:null, payable:null},
-  period:'m0', exUnusual:false, scn:{prices:{}, name:''},
+  period:'m0', exUnusual:false, scn:{prices:{}, name:'', key:null, cryptoPct:0}, holdOpen:{},
 };
 const D = state.data;
 const settings = () => D.settings;
@@ -2182,6 +2206,30 @@ function testDcaHistoryImport(){
 
 /* Gộp/tách tab phải sửa đúng 5 chỗ (link sidebar, link thanh dưới, section, VIEWS, map render)
    và số cột của thanh tab dưới. Test này bắt lỗi lệch giữa các chỗ đó. */
+/* Kịch bản: hàm chiếu và thanh trượt — testScenario(). Dùng D giả rồi trả lại. */
+function testScenario(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.01)=>{ const p = typeof want==='number' && typeof got==='number' ? Math.abs(got-want)<=tol : JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+  console.log('%c1 — scnProjection: chạm mốc sau đúng số tháng, tích lũy 0 thì không bao giờ tới','font-weight:600');
+  { const r = scnProjection(100, 10, 24, [{label:'150',amount:150},{label:'400',amount:400},{label:'90',amount:90}]);
+    chk('25 điểm (t=0..24)', r.pts.length, 25); chk('điểm cuối = 100 + 10×24', r.pts[24], 340);
+    chk('mốc 150 sau 5 tháng', r.hit[0].month, 5); chk('mốc 400 ngoài 24 tháng ⇒ null, cần 30', [r.hit[1].month, r.hit[1].monthsNeeded], [null,30]);
+    chk('mốc 90 đã đạt ⇒ 0', r.hit[2].month, 0);
+    chk('tích lũy 0 ⇒ null', scnProjection(100, 0, 24, [{amount:150}]).hit[0].month, null); }
+  console.log('%c2 — scnApplyPct / scnPctOf: đặt % cho một coin, cho cả Crypto, và 0% xoá giả định','font-weight:600');
+  { const sH=D.holdings, sP=D.prices, sS=state.scn;
+    D.holdings=[{id:'a',name:'ETH',priceKey:'eth',quantity:1,group:'Crypto'},{id:'b',name:'BTC',priceKey:'btc',quantity:1,group:'Crypto'},{id:'c',name:'Vàng',priceKey:'gold_pd',quantity:1,group:'Vàng'}];
+    D.prices={usdt:{value:25},eth:{value:50000},btc:{value:2000000},gold_pd:{value:14000}}; state.scn={prices:{},name:'',key:'eth',cryptoPct:0};
+    scnApplyPct('eth', 50); chk('ETH +50% ⇒ 3.000 USD', state.scn.prices.eth, 3000); chk('scnPctOf(eth) = 50', scnPctOf('eth'), 50);
+    scnApplyPct('eth', 0); chk('0% ⇒ xoá giả định', state.scn.prices.eth===undefined, true);
+    scnApplyPct('crypto', -20); chk('Crypto −20% ⇒ ETH 1.600, BTC 64.000, vàng không đổi', [state.scn.prices.eth, state.scn.prices.btc, state.scn.prices.gold_pd], [1600, 64000, undefined]);
+    chk('cryptoPct ghi nhớ', state.scn.cryptoPct, -20);
+    scnApplyPct('gold_pd', 10); chk('vàng +10% ⇒ 15.400k', state.scn.prices.gold_pd, 15400);
+    D.holdings=sH; D.prices=sP; state.scn=sS; }
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
 function testViews(){
   let ok=0, bad=0;
   const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
@@ -3050,53 +3098,45 @@ function donutHtml(){
 const usdSub = v => v==null || !isFinite(v) ? '' : `<small class="mute" style="display:block;font-weight:400">≈ ${fmtUsd(v)}</small>`;
 function renderHoldings(){
   const t=debtTotals(), ta=totalAssets(), nw=ta+t.net;
-  /* Coin (khoá giá live) không còn liệt kê từng dòng ở đây — gộp một dòng "Coin", chi tiết
-     và sửa từng coin chuyển hẳn sang "Ví Coin" ở tab DCA để không có hai chỗ cùng sửa một dữ liệu. */
+  /* Coin (khoá giá live) gộp thành MỘT dòng "Binance" quy ra USDT (owner chốt 2026-09-13); chi tiết và sửa từng coin ở "Ví Coin" tab DCA.
+     Các nhóm còn lại (Tiền, Vàng, Bạc, Chứng khoán, Khác) là dòng thả xuống: mặc định gập, bấm vào mới hiện từng tài sản. */
+  const byOrder = (a,b)=>(a.order||0)-(b.order||0);
   const nonCoin = D.holdings.filter(h=>!LIVE_KEYS.includes(h.priceKey));
   const coinHs  = D.holdings.filter(h=>LIVE_KEYS.includes(h.priceKey));
-  const hs = [...nonCoin].sort((a,b)=>(a.order||0)-(b.order||0));
   const cu = cryptoUsd();
   el('assetStats').innerHTML = `
-    <div class="stat"><div class="lbl">Tổng tài sản</div><div class="val">${fmtBig(ta)}</div><div class="sub">${hs.length + (coinHs.length?1:0)} mục</div></div>
-    <div class="stat"><div class="lbl">Công nợ ròng</div><div class="val">${fmtBig(t.net)}</div><div class="sub">gồm thu chưa nhận ${fmtK(t.pending)}</div></div>
+    <div class="stat"><div class="lbl">Tổng tài sản</div><div class="val">${fmtBig(ta)}</div><div class="sub">${nonCoin.length} mục${coinHs.length?` + ${coinHs.length} coin`:''}</div></div>
+    <div class="stat"><div class="lbl">Công nợ ròng <span class="nomonth">hôm nay</span></div><div class="val">${fmtBig(t.net)}</div><div class="sub">gồm thu chưa nhận ${fmtK(t.pending)}</div></div>
     <div class="stat strong"><div class="lbl">Tài sản ròng</div><div class="val">${fmtBig(nw)}</div><div class="sub">tổng tài sản + công nợ ròng</div></div>`;
-  el('holdTotal').innerHTML = fmtK(Math.round(ta)) + (cu ? ` <small class="mute">· crypto ≈ ${fmtUsd(cu)}</small>` : '');
-  const rowHtml = hs.map((h,i)=>`<tr data-id="${h.id}">
-      <td class="first" style="min-width:120px"><input class="inline l" data-f="name" value="${esc(h.name)}"></td>
-      <td><select class="inline" data-f="group">${options(HOLDING_GROUPS,h.group)}</select></td>
-      <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:110px"></td>
-      <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey)) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
-      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b></td>
-      <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===hs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`);
-  if(coinHs.length){
-    const coinOrder = Math.min(...coinHs.map(h=>Number(h.order)||0));
-    let at = hs.findIndex(h=>(Number(h.order)||0) > coinOrder);
-    if(at<0) at = hs.length;
-    rowHtml.splice(at, 0, `<tr class="mute">
-      <td class="first">Coin</td>
-      <td>Crypto</td>
-      <td class="n">—</td>
-      <td class="n">—</td>
-      <td class="n"><b>${fmtK(Math.round(sum(coinHs, holdingValue)))}</b>${usdSub(cu)}</td>
-      <td class="act last"><a class="link" href="#dca">xem ở DCA</a></td></tr>`);
+  el('holdTotal').innerHTML = fmtK(Math.round(ta)) + (cu ? ` <small class="mute">· Binance ≈ ${fmtUsd(cu)}</small>` : '');
+  const groupOf = h => HOLDING_GROUPS.includes(h.group) ? h.group : 'Khác';
+  const itemRow = h => `<tr data-id="${h.id}">
+      <td class="first" style="padding-left:22px"><input class="inline l" data-f="name" value="${esc(h.name)}" style="width:100%;min-width:0"></td>
+      <td><select class="inline" data-f="group">${options(HOLDING_GROUPS.filter(g=>g!=='Crypto'),h.group)}</select></td>
+      <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:96px"></td>
+      <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey)) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:96px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
+      <td class="n">${fmtK(Math.round(holdingValue(h)))}</td>
+      <td class="act last"><button data-act="up">↑</button><button data-act="down">↓</button><button data-act="del">xoá</button></td></tr>`;
+  const grpRow = (g, hs) => { const open = !!state.holdOpen[g];
+    return `<tr class="grp${open?' open':''}" data-g="${esc(g)}"><td class="first" colspan="4"><span class="chev">${open?'▾':'▸'}</span>${esc(g)}<span class="cnt">${hs.length} mục</span></td><td class="n">${fmtK(Math.round(sum(hs,holdingValue)))}</td><td class="act last"></td></tr>`
+         + (open ? hs.map(itemRow).join('') : ''); };
+  const coinRow = () => `<tr class="grp coin"><td class="first" colspan="3"><span class="chev"></span>Binance<span class="cnt">${coinHs.length} coin · tổng quy USDT</span></td><td class="n">${cu!=null?fmtUsdt(cu):'<span class="mute">—</span>'}</td><td class="n">${fmtK(Math.round(sum(coinHs,holdingValue)))}</td><td class="act last"><a class="link" href="#dca">DCA</a></td></tr>`;
+  let body = '';
+  for(const g of HOLDING_GROUPS){
+    if(g==='Crypto'){ if(coinHs.length) body += coinRow(); continue; }
+    const hs = nonCoin.filter(h=>groupOf(h)===g).sort(byOrder);
+    if(hs.length) body += grpRow(g, hs);
   }
-  el('holdTable').innerHTML = `<thead><tr><th class="first">Tên</th><th>Nhóm</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
-    (rowHtml.join('') || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
-  el('donut').innerHTML = donutHtml();
-  // bảng giá
-  el('priceTable').innerHTML = `<thead><tr><th class="first key">Khoá</th><th>Tên</th><th class="n">Giá</th><th class="n">USDT</th><th class="c">Nguồn</th><th class="last">Cập nhật</th></tr></thead><tbody>`+
-    (()=>{ const uRate = price('usdt'); return PRICE_KEYS.map(p=>{ const cur=D.prices[p.key];
-      /* Dòng nhỏ dưới USDT: luôn ghi rõ tỉ giá 1 USDT ≈ … k đã dùng để quy đổi, cho mọi coin. */
-      const usdt = p.key==='usdt' ? null : priceUsd(p.key);
-      const rateLine = usdt!=null && uRate>0 ? `<br><small class="mute">1 USDT ≈ ${fmtK(uRate,4)}</small>` : '';
-      /* WBETH (và coin nào suy giá qua một cặp khác) có thêm dòng tỉ suất neo riêng, ví dụ 1 WBETH ≈ 1,0538 ETH. */
-      const pegLine = cur && cur.rate>0 ? `<br><small class="mute">1 ${esc(p.label)} ≈ ${fmtNum(cur.rate,4)} ${esc(priceLabel(cur.rateOf))}</small>` : '';
-      return `<tr><td class="first key"><code>${p.key}</code></td><td>${esc(p.label)} <small>/ ${p.unit}</small></td>
-      <td class="n"><input class="inline" data-p="${p.key}" value="${cur?esc(fmtInput(cur.value)):''}" inputmode="decimal" placeholder="nhập giá" style="width:130px"></td>
-      <td class="n mute">${p.key==='usdt' ? '<span class="mute">—</span>' : (usdt!=null ? fmtUsdt(usdt) : '—')}${rateLine}${pegLine}</td>
-      <td class="c">${cur ? (cur.source==='live'?'live':'nhập tay') : '<span class="mute">—</span>'}${cur&&cur.source==='live'?'':p.key==='usdt'?' <small>(chỉ nhập tay)</small>':p.live?' <small>(bấm Cập nhật giá live)</small>':''}</td><td class="last mute" style="white-space:nowrap">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join(''); })()+`</tbody>`;
-  el('priceLive').disabled = dcaBusy;
-  el('priceLive').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật giá live';
+  el('holdTable').innerHTML = `<thead><tr><th class="first">Nhóm / tài sản</th><th>Nhóm</th><th class="n">Số lượng</th><th class="n">Giá · USDT</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
+    (body || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
+  /* Bảng giá chỉ còn khoá NHẬP TAY (usdt, vàng, bạc…). Giá coin live nằm ở Ví Coin bên DCA, không lặp lại ở đây. */
+  const uRate = price('usdt');
+  el('priceTable').innerHTML = `<thead><tr><th class="first">Tên</th><th class="n">Giá</th><th class="n">USDT</th><th class="n last">Cập nhật</th></tr></thead><tbody>`+
+    PRICE_KEYS.filter(p=>!p.live || p.key==='usdt').map(p=>{ const cur=D.prices[p.key], usdt = p.key==='usdt' ? null : priceUsd(p.key);
+      return `<tr><td class="first">${esc(p.label)} <small class="mute">/ ${p.unit}</small></td>
+      <td class="n"><input class="inline" data-p="${p.key}" value="${cur?esc(fmtInput(cur.value)):''}" inputmode="decimal" placeholder="nhập giá" style="width:110px"></td>
+      <td class="n mute">${p.key==='usdt' ? (uRate?`tỷ giá quy đổi`:'—') : (usdt!=null ? fmtUsdt(usdt) : '—')}</td>
+      <td class="n last mute">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join('')+`</tbody>`;
   renderTransfers();
   renderScenario();
 }
@@ -3431,7 +3471,6 @@ function openDcaHistory(){
 }
 el('dcaHistOpen').onclick = openDcaHistory;
 el('dcaRefresh').onclick = ()=> refreshDca();
-el('priceLive').onclick = ()=> refreshDca();
 
 function commitInline(inp){
   const f=inp.dataset.f, pk=inp.dataset.p;
@@ -3446,11 +3485,18 @@ for(const id of ['holdTable','priceTable','dcaWalletTable']){
   el(id).addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.matches('input.inline')){ e.preventDefault(); e.target.blur(); } });
 }
 el('holdTable').addEventListener('click', e=>{
+  const g = e.target.closest('tr.grp[data-g]');
+  if(g && !e.target.closest('a,button,input,select')){ state.holdOpen[g.dataset.g] = !state.holdOpen[g.dataset.g]; renderHoldings(); return; }
   const b=e.target.closest('button[data-act]'); if(!b) return;
-  const tr=b.closest('tr'); const hs=[...D.holdings].filter(h=>!LIVE_KEYS.includes(h.priceKey)).sort((a,b)=>(a.order||0)-(b.order||0)); const i=hs.findIndex(h=>h.id===tr.dataset.id); if(i<0) return;
-  const h=hs[i];
-  if(b.dataset.act==='del'){ if(confirm(`Xoá tài sản "${h.name}"?`)) removeHolding(h.id); }
-  else { const j = b.dataset.act==='up' ? i-1 : i+1; if(j<0||j>=hs.length) return; hs.splice(i,1); hs.splice(j,0,h); hs.forEach((x,k)=>{ if(x.order!==k+1) updateHolding(x.id,{order:k+1}); }); }
+  const tr=b.closest('tr'); const h0=D.holdings.find(x=>x.id===tr.dataset.id); if(!h0) return;
+  /* ↑↓ chỉ đổi chỗ trong cùng nhóm (bảng hiện theo nhóm nên đổi chỗ xuyên nhóm là vô nghĩa). Đánh số lại toàn bộ rồi hoán đổi hai dòng kề nhau. */
+  const all=[...D.holdings].filter(h=>!LIVE_KEYS.includes(h.priceKey)).sort((a,b)=>(a.order||0)-(b.order||0));
+  const grpOf = h => HOLDING_GROUPS.includes(h.group) ? h.group : 'Khác';
+  const hs = all.filter(h=>grpOf(h)===grpOf(h0)); const i=hs.findIndex(h=>h.id===h0.id);
+  if(b.dataset.act==='del'){ if(confirm(`Xoá tài sản "${h0.name}"?`)) removeHolding(h0.id); }
+  else { const j = b.dataset.act==='up' ? i-1 : i+1; if(j<0||j>=hs.length) return;
+    const ord = new Map(all.map((x,k)=>[x.id,k+1])); const tmp=ord.get(hs[i].id); ord.set(hs[i].id, ord.get(hs[j].id)); ord.set(hs[j].id, tmp);
+    all.forEach(x=>{ const o=ord.get(x.id); if(x.order!==o) updateHolding(x.id,{order:o}); }); }
 });
 el('dcaWalletTable').addEventListener('click', e=>{
   const b=e.target.closest('button[data-act]'); if(!b) return;
@@ -3508,8 +3554,9 @@ function updateXferLabels(){
   el('xferHint').innerHTML = bits.join(' · ');
 }
 function renderTransfers(){
-  const all = xfersSorted(), rows = all.slice(0,20);
-  el('xferCount').textContent = all.length ? `${all.length} dòng · hiện ${rows.length} gần nhất` : '';
+  const all = xfersSorted(), rows = all;
+  el('xferCount').textContent = all.length ? `${all.length} dòng` : '';
+  el('xferHistOpen').textContent = `Lịch sử chuyển đổi${all.length?' ('+all.length+')':''}`;
   const side = (id, qty, kind) => {
     const h = holdingById(id);
     if(!h) return id ? '<span class="mute">đã xoá</span>' : `<span class="mute">${kind==='out'?'ngoài':'ngoài'}</span>`;
@@ -3595,12 +3642,81 @@ const scnInUnit = (k, pk) => LIVE_KEYS.includes(k) && k!=='usdt' ? pk/scnUsdt() 
 const scnDec = (k,v) => k==='usdt' ? (Math.abs(v)>=1000?0:4) : Math.abs(v)>=1000 ? 0 : Math.abs(v)>=10 ? 2 : Math.abs(v)>=1 ? 3 : 4;
 const unitOf = k => k==='usdt' ? 'k/USDT' : LIVE_KEYS.includes(k) ? 'USD' : 'k/' + (PRICE_KEYS.find(p=>p.key===k)||{unit:'đv'}).unit;
 
+/* ---- Kịch bản thông minh (owner yêu cầu 2026-09-13): một thanh trượt cho tài sản đang chọn (hoặc "Crypto" = mọi coin
+   cùng một %), biểu đồ chiếu tài sản ròng 24 tháng tới đổi ngay khi kéo; preset lấy từ Vùng giá mua của DCA. ---- */
+const SCN_HORIZON = 24;
+const scnKeys = () => PRICE_KEYS.filter(p=>D.holdings.some(h=>h.priceKey===p.key) || D.debts.some(d=>!d.settled&&d.priceKey===p.key) || p.key==='usdt');
+const scnCurUnit = k => k==='usdt' ? price('usdt') : LIVE_KEYS.includes(k) ? curUsd(k) : price(k);   // giá hiện tại theo đơn vị ô nhập
+const scnCryptoKeys = () => LIVE_KEYS.filter(k=>k!=='usdt' && scnKeys().some(p=>p.key===k));
+/* % lệch của giá giả định so với giá hiện tại (theo đơn vị ô nhập). Không có giá hiện tại ⇒ 0. */
+function scnPctOf(k){ const c = scnCurUnit(k); if(!c) return 0; return (scnInUnit(k, scnPrice(k))/c - 1)*100; }
+/* Đặt giá giả định = giá hiện tại × (1 + pct%). k = 'crypto' ⇒ áp cho mọi coin đang giữ. pct = 0 ⇒ xoá giả định (về giá hiện tại). */
+function scnApplyPct(k, pct){
+  const ks = k==='crypto' ? scnCryptoKeys() : [k];
+  for(const x of ks){ const c = scnCurUnit(x); if(!c) continue;
+    if(Math.abs(pct)<1e-9){ delete state.scn.prices[x]; continue; }
+    const v = c*(1+pct/100); state.scn.prices[x] = Number(v.toFixed(scnDec(x,v))); }
+  if(k==='crypto') state.scn.cryptoPct = pct;
+}
+/* Chiếu tài sản ròng theo tháng: NW0 + tích lũy TB × t (giả định giá đứng yên sau kịch bản). Hàm thuần — testScenario(). */
+function scnProjection(nw0, avg, horizon, targets){
+  const pts = []; for(let t=0;t<=horizon;t++) pts.push(nw0 + (avg||0)*t);
+  const hit = targets.map(tg=>{
+    if(nw0>=tg.amount) return {...tg, month:0};
+    if(!avg || avg<=0) return {...tg, month:null};
+    const m = Math.ceil((tg.amount-nw0)/avg); return {...tg, month: m<=horizon ? m : null, monthsNeeded:m}; });
+  return {pts, hit};
+}
+function scnChartSvg(w, ptsScn, ptsNow, targets){
+  const H=210, L=58, R=14, T=14, B=24, pw=w-L-R, ph=H-T-B, n=ptsScn.length;
+  const all=[...ptsScn,...ptsNow]; let lo=Math.min(...all), hi=Math.max(...all);
+  const tg = targets.filter(t=>t.amount<=hi*1.6 && t.amount>=lo*0.6); for(const t of tg){ hi=Math.max(hi,t.amount); lo=Math.min(lo,t.amount); }
+  const span=(hi-lo)||Math.abs(hi)||1; lo-=span*0.08; hi+=span*0.1;
+  const x=i=>L+pw*i/(n-1), y=v=>T+ph*(hi-v)/(hi-lo);
+  let s=`<svg class="chart" viewBox="0 0 ${w} ${H}" width="${w}" height="${H}">`;
+  for(let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4; s+=`<line x1="${L}" x2="${w-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line2)"/><text x="${L-6}" y="${(y(v)+4).toFixed(1)}" text-anchor="end">${fmtBig(v)}</text>`; }
+  for(const t of tg) s+=`<line x1="${L}" x2="${w-R}" y1="${y(t.amount).toFixed(1)}" y2="${y(t.amount).toFixed(1)}" stroke="var(--mute)" stroke-dasharray="4 3"/><text x="${w-R}" y="${(y(t.amount)-4).toFixed(1)}" text-anchor="end" style="fill:var(--ink2)">${esc(t.label)}</text>`;
+  const path = pts => pts.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  s+=`<polyline points="${path(ptsNow)}" fill="none" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+  s+=`<polyline points="${path(ptsScn)}" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
+  s+=`<circle cx="${x(0).toFixed(1)}" cy="${y(ptsScn[0]).toFixed(1)}" r="3.5" fill="var(--ink)"/><text x="${(x(0)+7).toFixed(1)}" y="${(y(ptsScn[0])-7).toFixed(1)}" style="fill:var(--ink);font-weight:600">${fmtBig(ptsScn[0])}</text>`;
+  const m0 = thisMonth(); for(let i=0;i<n;i+=6) s+=`<text x="${x(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${fmtMonth(shiftMonth(m0,i))}</text>`;
+  return s+'</svg>';
+}
 function renderScenario(){
-  const keysUsed = PRICE_KEYS.filter(p=>D.holdings.some(h=>h.priceKey===p.key) || D.debts.some(d=>!d.settled&&d.priceKey===p.key) || p.key==='usdt');
+  const keysUsed = scnKeys();
   const nwNow = netWorth(), nwScn = scnNetWorth();
   const mi = milestoneInfo(state.exUnusual);
   const targets = [ mi.next!=null ? {label:'mốc '+fmtBig(mi.next), amount:mi.next} : null,
                     {label:fmtBig(mi.lt.amount), amount:mi.lt.amount} ].filter(Boolean);
+
+  /* 1. thanh trượt: tài sản đang chọn */
+  const cryptoKs = scnCryptoKeys();
+  if(!state.scn.key || !(state.scn.key==='crypto' ? cryptoKs.length : keysUsed.some(p=>p.key===state.scn.key)))
+    state.scn.key = cryptoKs.length ? 'crypto' : (keysUsed[0] ? keysUsed[0].key : null);
+  const k = state.scn.key;
+  el('scnAsset').innerHTML = [ ...(cryptoKs.length ? [{key:'crypto',label:'Crypto'}] : []), ...keysUsed ]
+    .map(p=>`<button data-k="${p.key}" class="${p.key===k?'on':''}">${esc(p.label)}</button>`).join('');
+  const pct = !k ? 0 : k==='crypto' ? (state.scn.cryptoPct||0) : scnPctOf(k);
+  el('scnSlider').value = Math.max(-80, Math.min(300, Math.round(pct)));
+  el('scnPct').textContent = (pct>=0?'+':'')+fmtNum(pct,0)+'%';
+  if(k && k!=='crypto'){ const c = scnCurUnit(k), v = scnInUnit(k, scnPrice(k));
+    el('scnVal').value = fmtNum(v, scnDec(k,v)); el('scnVal').disabled=false; el('scnUnit').textContent = unitOf(k);
+    el('scnCur').textContent = c ? `hiện ${fmtNum(c, scnDec(k,c))}` : 'chưa có giá hiện tại'; }
+  else { el('scnVal').value=''; el('scnVal').disabled=true; el('scnUnit').textContent=''; el('scnCur').textContent = cryptoKs.length ? `cùng một % cho ${cryptoKs.map(x=>priceLabel(x)).join(', ')}` : ''; }
+  /* preset: % nhanh + vùng giá mua của DCA (nếu coin đó có cache Vùng giá) */
+  const bands = k && D.prices.dca && D.prices.dca.coins && D.prices.dca.coins[k] && D.prices.dca.coins[k].bands || [];
+  el('scnPresets').innerHTML = [-50,-30,-20,0,20,50,100].map(x=>`<button data-pct="${x}" class="${Math.round(pct)===x?'on':''}">${x>0?'+':''}${x}%</button>`).join('')
+    + bands.filter(b=>b.price!=null).map(b=>`<button data-price="${b.price}" title="Buy Score ≥ ${b.min}">${esc(b.label)} $${fmtNum(b.price, b.price>=1000?0:2)}</button>`).join('');
+
+  /* 2. biểu đồ chiếu 24 tháng */
+  const a6 = accumAvg(6, state.exUnusual), avg = a6 ? a6.avg : 0;
+  const pr = scnProjection(nwScn, avg, SCN_HORIZON, targets), pr0 = scnProjection(nwNow, avg, SCN_HORIZON, targets);
+  const box = el('scnChart'), w = Math.max(320, box.clientWidth || 900);
+  box.innerHTML = scnChartSvg(w, pr.pts, pr0.pts, targets);
+  const when = h => h.month==null ? (h.monthsNeeded ? `sau ${h.monthsNeeded} tháng (ngoài ${SCN_HORIZON} tháng)` : 'không tới được') : h.month===0 ? 'đã đạt' : `sau ${h.month} tháng (${fmtMonth(shiftMonth(thisMonth(),h.month))})`;
+  el('scnChartNote').innerHTML = `Đường đậm: theo kịch bản · đường mờ: giá hiện tại. Tích lũy TB ${a6?`<b>${fmtBig(avg)}</b>/tháng (${a6.months} tháng đã chốt)`:'<b>—</b> (chưa chốt tháng nào, chỉ có phần giá)'}. `
+    + pr.hit.map((h,i)=>`${esc(h.label)}: <b>${when(h)}</b>${pr0.hit[i].month!==h.month?` <span class="mute">(hiện tại: ${when(pr0.hit[i])})</span>`:''}`).join(' · ');
   el('scnTable').innerHTML = `<thead><tr><th class="first">Tài sản</th><th class="n">Giá hiện tại</th><th class="n">Giá giả định</th><th class="n">Giá trị danh mục</th><th class="n">Chênh lệch</th>${targets.map(t=>`<th class="n${t===targets[targets.length-1]?' last':''}">Giá cần để đạt ${esc(t.label)}</th>`).join('')}</tr></thead><tbody>`+
     keysUsed.map(p=>{
       const k=p.key, pk=scnPrice(k), qty=netQty(k);
@@ -3644,10 +3760,23 @@ el('scnTable').addEventListener('change', e=>{
   state.scn.prices[k] = v; renderScenario();
 });
 el('scnTable').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.dataset.scn){ e.preventDefault(); e.target.blur(); } });
-el('scnReset').onclick = ()=>{ state.scn={prices:{},name:''}; renderScenario(); };
+el('scnReset').onclick = ()=>{ state.scn={prices:{},name:'',key:state.scn.key,cryptoPct:0}; renderScenario(); };
+el('scnAsset').addEventListener('click', e=>{ const b=e.target.closest('button[data-k]'); if(!b) return; state.scn.key=b.dataset.k; renderScenario(); });
+el('scnSlider').addEventListener('input', e=>{ if(!state.scn.key) return; scnApplyPct(state.scn.key, Number(e.target.value)); renderScenario(); });
+el('scnPresets').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b||!state.scn.key) return;
+  if(b.dataset.pct!=null) scnApplyPct(state.scn.key, Number(b.dataset.pct));
+  else if(b.dataset.price!=null && state.scn.key!=='crypto'){ const c=scnCurUnit(state.scn.key); if(c) scnApplyPct(state.scn.key, (Number(b.dataset.price)/c-1)*100); }
+  renderScenario(); });
+el('scnVal').addEventListener('change', e=>{ const k=state.scn.key; if(!k||k==='crypto') return; const v=parseNum(e.target.value), c=scnCurUnit(k);
+  if(isNaN(v)||v<0||!c){ shake(e.target); return; } scnApplyPct(k, (v/c-1)*100); renderScenario(); });
+el('scnVal').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.target.blur(); } });
+/* Ba popup của tab Tài sản. Kịch bản vẽ lại sau khi vào modal để biểu đồ lấy đúng bề rộng. */
+el('xferOpen').onclick = ()=>{ openHolder('xferHolder', 'Chuyển đổi tài sản'); el('formXfer').qtyOut.focus(); };
+el('xferHistOpen').onclick = ()=>openHolder('xferHistHolder', 'Lịch sử chuyển đổi');
+el('scnOpen').onclick = ()=>{ openHolder('scnHolder', 'Kịch bản giá giả định · giữ nguyên số lượng'); renderScenario(); };
 el('scnPick').onchange = e=>{
   const sc=(settings().scenarios||[]).find(x=>x.name===e.target.value);
-  state.scn = sc ? {prices:{...sc.prices}, name:sc.name} : {prices:{}, name:''};
+  state.scn = sc ? {prices:{...sc.prices}, name:sc.name, key:state.scn.key, cryptoPct:0} : {prices:{}, name:'', key:state.scn.key, cryptoPct:0};
   renderScenario();
 };
 el('scnSave').onclick = ()=>{
@@ -3664,7 +3793,7 @@ el('scnDel').onclick = ()=>{
   const name = el('scnPick').value; if(!name) return;
   if(!confirm(`Xoá kịch bản "${name}"?`)) return;
   saveSettings({scenarios:(settings().scenarios||[]).filter(x=>x.name!==name)});
-  state.scn={prices:{},name:''}; renderScenario();
+  state.scn={prices:{},name:'',key:state.scn.key,cryptoPct:0}; renderScenario();
 };
 
 /* =====================================================================
@@ -4032,12 +4161,13 @@ window.testDcaHistoryImport = testDcaHistoryImport;
 window.importDcaHistory = importDcaHistory;
 window.testUsd = testUsd;
 window.testViews = testViews;
+window.testScenario = testScenario;
 window.testRecovery = testRecovery;
 window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
-        transferValue, scnPrice, scnNetWorth, netQty,
+        transferValue, scnPrice, scnNetWorth, netQty, scnProjection, scnApplyPct, scnPctOf,
         coinHolding, coinPurchases, coinSales, coinLedger, coinQtyHeld, coinValueHeld, familyHoldings, COIN_FAMILY,
         ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
@@ -4045,7 +4175,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS},
-  render, importInitialData, importDcaHistory, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews,
+  render, importInitialData, importDcaHistory, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario,
   refreshDca, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
