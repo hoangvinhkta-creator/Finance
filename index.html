@@ -431,7 +431,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       </section>
       <div class="grid2">
         <section class="card">
-          <div class="colhead"><h2>Danh mục</h2><span id="holdTotal"></span></div>
+          <div class="colhead"><h2>Danh mục</h2><div class="acts-row"><button class="btn" id="btnBinanceSync" title="Đối chiếu số dư ETH, USDT, BTC, ADA với tài khoản Binance">Đồng bộ Binance</button><span id="holdTotal"></span></div></div>
           <div class="scroll"><table class="tbl" id="holdTable"></table></div>
           <form class="quick debt" id="formHold" autocomplete="off" style="border-top:1px solid var(--line);border-bottom:0;padding-top:12px">
             <input name="name" placeholder="Tên tài sản" required>
@@ -558,6 +558,14 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="hint" style="padding:8px 0 0">Ngân sách 0 thì card "Tháng này" ở tab DCA tắt. Số ngày và số tỷ lệ của lịch Base phải bằng nhau; lệch thì tự chia đều. Opportunity Fund không có sổ riêng: số dư = số tháng đã góp × phần góp mỗi tháng − các lần chuyển đổi gắn nhãn Opportunity, chặn trên ở cap.</div>
         </section>
         <section class="card pad">
+          <h2>Binance — đồng bộ số dư</h2>
+          <div class="row"><span class="mute" style="min-width:120px">API key</span><input id="setBnKey" autocomplete="off" spellcheck="false" placeholder="chưa có"></div>
+          <div class="row"><span class="mute" style="min-width:120px">API secret</span><input id="setBnSecret" type="password" autocomplete="new-password" placeholder="chưa có"></div>
+          <div class="row"><button class="btn" id="saveBinance">Lưu khoá</button><button class="btn" id="clearBinance">Xoá khoá</button><span class="mute" id="bnInfo"></span></div>
+          <div class="warnline" style="margin-top:12px">Chỉ dùng khoá <b>chỉ đọc</b>: khi tạo trên Binance, bật <b>Enable Reading</b> và tắt <b>Enable Spot Trading</b>, <b>Enable Withdrawals</b>, <b>Enable Margin</b>, <b>Enable Futures</b>. Nên giới hạn IP nếu Binance cho phép.</div>
+          <div class="hint" style="padding:8px 0 0">Khoá lưu trong <code>settings/main</code> trên Firestore — chỉ tài khoản của bạn đọc được (rules đã chặn mọi uid khác), và không bao giờ nằm trong repo. Chữ ký HMAC-SHA256 ký ngay trong trình duyệt, secret không gửi đi đâu ngoài Binance. Cần chạy trên HTTPS (GitHub Pages) thì trình duyệt mới cho ký. Đồng bộ là nút bấm ở tab Tài sản, không tự chạy, và luôn hiện bảng đối chiếu trước khi ghi đè.</div>
+        </section>
+        <section class="card pad">
           <h2>Nhóm chi</h2>
           <div class="taglist" id="expCats"></div>
           <div class="row"><input id="newExpCat" placeholder="Thêm nhóm chi"><button class="btn" id="addExpCat">Thêm</button></div>
@@ -576,7 +584,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <details>
             <summary>Nâng cao</summary>
             <div class="row"><button class="btn" id="btnBackup">Tải bản sao lưu</button><button class="btn" id="btnRestore">Khôi phục từ file</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
-            <div class="hint" style="padding:8px 0 14px">Sao lưu ra một file JSON chứa toàn bộ dữ liệu. Dùng để chuyển dữ liệu từ chế độ thử cục bộ lên Firebase, đổi sang project Firebase khác, hoặc giữ một bản phòng thân trước khi làm gì đó lớn. Khôi phục sẽ xoá sạch dữ liệu hiện có rồi ghi lại từ file.</div>
+            <div class="hint" style="padding:8px 0 14px">Sao lưu ra một file JSON chứa toàn bộ dữ liệu. Dùng để chuyển dữ liệu từ chế độ thử cục bộ lên Firebase, đổi sang project Firebase khác, hoặc giữ một bản phòng thân trước khi làm gì đó lớn. Khôi phục sẽ xoá sạch dữ liệu hiện có rồi ghi lại từ file. File sao lưu chứa cả khoá API Binance nếu đã lưu — giữ file cẩn thận.</div>
             <div class="row"><button class="btn" id="btnImport">Import dữ liệu ban đầu</button><label class="chk"><input type="checkbox" id="importForce"> xoá dữ liệu hiện có trước khi import</label></div>
             <div class="hint" style="padding:8px 0 0">Chạy một lần. Cũng gọi được từ console: <code>importInitialData()</code> hoặc <code>importInitialData({force:true})</code>.</div>
           </details>
@@ -686,6 +694,8 @@ const DCA_PLAN_V1 = {
   smartUnlock: [[75,100],[60,75],[45,50],[30,25],[0,0]],   // mục 10 — Smart bám theo Buy Score
   oppUnlock:   [[85,100],[75,50],[65,25],[0,0]],           // mục 11 — Opportunity dè dặt hơn, chỉ mở khi thật rẻ
 };
+/* Khối D: khoá priceKey của holding ↔ mã tài sản trên Binance. */
+const BINANCE_ASSETS = { usdt:'USDT', btc:'BTC', eth:'ETH', ada:'ADA' };
 const DEFAULT_DCA = { budget:0, split:{base:50, smart:30, opp:20}, baseDays:[3,13,23], baseWeights:[40,30,30],
                       startMonth:'', oppCapMonths:6 };   // startMonth rỗng ⇒ normalizeSettings điền tháng hiện tại
 const priceLabel = k => (PRICE_KEYS.find(p=>p.key===k)||{label:k}).label;
@@ -866,6 +876,11 @@ function normalizeSettings(){
     startMonth: /^\d{4}-\d{2}$/.test(d.startMonth||'') ? d.startMonth : thisMonth(),
     oppCapMonths: Number(d.oppCapMonths)>0 ? Number(d.oppCapMonths) : DEFAULT_DCA.oppCapMonths,
   };
+
+  /* Khoá Binance chỉ đọc (Khối D). Không có thì để chuỗi rỗng, nút Đồng bộ sẽ chỉ đường sang Cài đặt. */
+  const bn = st.binance && typeof st.binance==='object' ? st.binance : {};
+  st.binance = { apiKey: String(bn.apiKey||'').trim(), apiSecret: String(bn.apiSecret||'').trim(),
+                 updatedAt: Number(bn.updatedAt)||0 };
 }
 const r6 = x => Math.round((Number(x)||0)*1e6)/1e6;          // tiền: 6 chữ số là thừa đủ
 const rq = x => Math.round((Number(x)||0)*1e10)/1e10;        // số lượng: đủ mịn để cộng/trừ rồi đảo lại không lệch
@@ -1544,6 +1559,63 @@ function testDcaPlan(){
   return {pass:ok, fail:bad};
 }
 
+function testBinance(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=1e-9)=>{
+    const p = want===null ? got===null
+      : (typeof want==='number' && typeof got==='number') ? Math.abs(got-want)<=tol
+      : got===want;
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${got==null?'null':got}${p?'':`   (mong đợi ${want===null?'null':want})`}`); p?ok++:bad++; };
+
+  const holdings = [
+    {id:'h1', name:'USDT', priceKey:'usdt', quantity:565.49},
+    {id:'h2', name:'ETH',  priceKey:'eth',  quantity:1.932126},
+    {id:'h3', name:'BTC',  priceKey:'btc',  quantity:0.004712},
+    {id:'h4', name:'ADA',  priceKey:'ada',  quantity:1079.26},
+    {id:'h5', name:'Vietcombank', priceKey:null, quantity:531},
+  ];
+
+  console.log('%c1 — số dư = free + locked, ghép đúng holding theo khoá giá','font-weight:600');
+  { const rows = binanceDiff([
+      {asset:'USDT', free:'500.00000000', locked:'65.49000000'},
+      {asset:'ETH',  free:'2.00000000',   locked:'0'},
+      {asset:'BTC',  free:'0.00471200',   locked:'0'},
+      {asset:'ADA',  free:'1000',         locked:'79.26'},
+      {asset:'DOGE', free:'12345',        locked:'0'},
+    ], holdings);
+    const at = a => rows.find(r=>r.asset===a);
+    chk('Số dòng (bỏ DOGE và tài sản không phải crypto)', rows.length, 4);
+    chk('USDT free + locked', at('USDT').remote, 565.49);
+    chk('USDT khớp sổ', at('USDT').same, true);
+    chk('ETH trên Binance', at('ETH').remote, 2);
+    chk('ETH lệch', at('ETH').diff, rq(2-1.932126));
+    chk('ETH không khớp', at('ETH').same, false);
+    chk('BTC khớp', at('BTC').same, true);
+    chk('ADA khớp', at('ADA').same, true); }
+
+  console.log('%c2 — tài sản không có trên Binance ⇒ "không có", không ghi đè thành 0','font-weight:600');
+  { const rows = binanceDiff([{asset:'ETH', free:'2', locked:'0'}], holdings);
+    const ada = rows.find(r=>r.asset==='ADA');
+    chk('ADA số dư từ Binance', ada.remote, null);
+    chk('ADA lệch', ada.diff, null);
+    chk('ADA không bị coi là khớp', ada.same, false); }
+
+  console.log('%c3 — danh mục không có holding tương ứng thì bỏ qua, không tự tạo tài sản mới','font-weight:600');
+  { const rows = binanceDiff([{asset:'ETH', free:'2', locked:'0'}, {asset:'BTC', free:'1', locked:'0'}],
+                             [{id:'x', name:'ETH', priceKey:'eth', quantity:0}]);
+    chk('Chỉ còn dòng ETH', rows.length, 1); chk('Đúng holding', rows[0].id, 'x'); }
+
+  console.log('%c4 — số dư rỗng hoặc thiếu ⇒ không lỗi, mọi dòng là "không có"','font-weight:600');
+  { const rows = binanceDiff([], holdings);
+    chk('Vẫn đủ 4 dòng', rows.length, 4);
+    chk('Không dòng nào có số từ Binance', rows.every(r=>r.remote===null), true);
+    chk('Không dòng nào bị đánh dấu khớp', rows.every(r=>r.same===false), true);
+    chk('Đối chiếu với danh sách rỗng', binanceDiff(null, []).length, 0); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
 /* =====================================================================
    BOOT / AUTH
    ===================================================================== */
@@ -1626,8 +1698,107 @@ async function fetchTickers(symbols){
   return Object.fromEntries((rows||[]).map(r=>[r.symbol, Number(r.price)]));
 }
 
+/* ---- Khối D: đồng bộ số dư từ tài khoản Binance -------------------------
+   Chỉ endpoint đọc /api/v3/account, ký HMAC-SHA256 bằng Web Crypto ngay trong trình duyệt.
+   Secret không rời máy trừ khi gửi thẳng cho Binance dưới dạng chữ ký. Không tự chạy, không proxy. */
+const hex = buf => [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+async function binanceSign(query, secret){
+  if(!(self.crypto && self.crypto.subtle)) throw new Error('trình duyệt chỉ cho ký trên HTTPS — mở app qua GitHub Pages, đừng mở file trực tiếp');
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
+  return hex(await crypto.subtle.sign('HMAC', key, enc.encode(query)));
+}
+async function binanceAccount(cfg){
+  const q = `recvWindow=10000&timestamp=${Date.now()}`;
+  const sig = await binanceSign(q, cfg.apiSecret);
+  const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), 15000);
+  let r;
+  try{ r = await fetch(`${BINANCE_BASE}/api/v3/account?${q}&signature=${sig}`,
+        {headers:{'X-MBX-APIKEY':cfg.apiKey}, signal:ctl.signal, cache:'no-store'}); }
+  catch(e){
+    if(e.name==='AbortError') throw new Error('quá hạn chờ');
+    throw new Error('trình duyệt chặn (CORS hoặc mất mạng) — nếu Binance chặn endpoint đã ký thì dừng ở đây, báo lại đừng tự dựng proxy');
+  }finally{ clearTimeout(t); }
+  if(!r.ok){
+    let msg = 'HTTP '+r.status;
+    try{ const j = await r.json(); if(j && j.msg) msg += ' — '+j.msg; }catch(e){}
+    if(r.status===401) msg += ' (khoá sai hoặc đã bị thu hồi)';
+    if(r.status===418 || r.status===429) msg += ' (bị giới hạn tần suất)';
+    throw new Error(msg);
+  }
+  return r.json();
+}
+/* Hàm thuần: ghép số dư Binance với holdings để ra bảng đối chiếu. */
+function binanceDiff(balances, holdings){
+  const bal = {};
+  for(const b of (balances||[])) bal[String(b.asset).toUpperCase()] = (Number(b.free)||0) + (Number(b.locked)||0);
+  const rows = [];
+  for(const [pk, asset] of Object.entries(BINANCE_ASSETS)){
+    const h = holdings.find(x=>x.priceKey===pk);
+    if(!h) continue;
+    const remote = bal[asset]==null ? null : rq(bal[asset]);
+    const local = rq(Number(h.quantity)||0);
+    rows.push({ id:h.id, name:h.name, asset, priceKey:pk, remote, local,
+                diff: remote==null ? null : rq(remote-local),
+                same: remote!=null && Math.abs(remote-local) < 1e-8 });
+  }
+  return rows;
+}
+
 const dcaCache = () => (D.prices && D.prices.dca) || null;
 const dcaStale = c => !c || !c.dataTime || (Date.now()-c.dataTime) > BUY_SCORE_V1.staleHours*3600e3;
+
+let binanceBusy = false;
+async function syncBinance(){
+  if(binanceBusy) return;
+  const cfg = settings().binance;
+  if(!cfg.apiKey || !cfg.apiSecret){
+    showModal('Chưa có khoá Binance',
+      '<div class="mute">Vào <b>Cài đặt → Binance — đồng bộ số dư</b> để dán API key và secret. Nhớ tạo khoá <b>chỉ đọc</b>: bật Enable Reading, tắt trading và withdrawals.</div>',
+      'Sang Cài đặt', ()=>{ location.hash='#caidat'; });
+    return;
+  }
+  binanceBusy = true; renderHoldings();
+  try{
+    const acc = await binanceAccount(cfg);
+    const rows = binanceDiff(acc.balances, D.holdings);
+    if(!rows.length){ toast('Không có tài sản nào trong danh mục gắn khoá giá ETH, USDT, BTC hoặc ADA'); return; }
+    showBinanceDiff(rows);
+  }catch(e){
+    console.error(e);
+    toast('Không đồng bộ được Binance: '+(e.message||e));
+  }finally{
+    binanceBusy = false; renderHoldings();
+  }
+}
+/* Bảng đối chiếu Binance / FinTrace / lệch — không ghi gì cho tới khi bấm nút ghi đè. */
+const fmtQty8 = x => x==null ? '—' : fmtNum(x, 8);
+const signedQty8 = x => x==null ? '—' : (x>0?'+':'')+fmtQty8(x);
+function showBinanceDiff(rows){
+  const diffs = rows.filter(r=>r.remote!=null && !r.same);
+  const body = `<div class="scroll"><table class="tbl"><thead><tr>
+      <th class="first">Ghi đè</th><th>Tài sản</th><th class="n">Binance</th><th class="n">FinTrace</th><th class="n last">Lệch</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr>
+      <td class="first"><label class="chk"><input type="checkbox" data-bnid="${esc(r.id)}" ${r.remote!=null && !r.same?'checked':''} ${r.remote==null?'disabled':''}></label></td>
+      <td>${esc(r.name)} <small class="mute">${esc(r.asset)}</small></td>
+      <td class="n">${r.remote==null?'<span class="mute">không có</span>':fmtQty8(r.remote)}</td>
+      <td class="n">${fmtQty8(r.local)}</td>
+      <td class="n last">${r.remote==null?'—':r.same?'<span class="mute">khớp</span>':signedQty8(r.diff)}</td></tr>`).join('')+
+    `</tbody></table></div>
+    <div class="hint" style="padding:10px 0 0">${diffs.length
+      ? 'Chỉ ghi đè <b>số lượng</b> của các dòng được tích. Giá và mọi thứ khác giữ nguyên.'
+      : 'Mọi số dư đã khớp — không có gì để ghi đè.'}</div>`;
+  showModal('Đối chiếu số dư Binance', body, diffs.length?'Ghi đè số lượng đã chọn':'Đóng', ()=>{
+    if(!diffs.length) return;
+    const picked = [...document.querySelectorAll('#mdBody input[data-bnid]:checked')].map(i=>i.dataset.bnid);
+    const apply = rows.filter(r=>picked.includes(r.id) && r.remote!=null && !r.same);
+    if(!apply.length){ toast('Không dòng nào được chọn'); return; }
+    for(const r of apply){ const h = D.holdings.find(x=>x.id===r.id); if(h) h.quantity = r.remote; }
+    render();
+    bg(Promise.all(apply.map(r=>store.update('holdings', r.id, {quantity:r.remote}))),
+       `Đã ghi đè số lượng ${apply.length} tài sản từ Binance`);
+  });
+}
 
 let dcaBusy = false;
 async function refreshDca(){
@@ -2161,6 +2332,8 @@ function renderHoldings(){
       <td class="c">${cur ? (cur.source==='live'?'live':'nhập tay') : '<span class="mute">—</span>'}${cur&&cur.source==='live'?'':p.key==='usdt'?' <small>(chỉ nhập tay)</small>':p.live?' <small>(bấm Cập nhật giá live)</small>':''}</td><td class="last mute" style="white-space:nowrap">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join('')+`</tbody>`;
   el('priceLive').disabled = dcaBusy;
   el('priceLive').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật giá live';
+  el('btnBinanceSync').disabled = binanceBusy;
+  el('btnBinanceSync').textContent = binanceBusy ? 'Đang đối chiếu…' : 'Đồng bộ Binance';
   renderTransfers();
   renderScenario();
 }
@@ -2299,6 +2472,7 @@ function renderDca(){
 el('dcaFilterSource').onchange = e=>{ state.dcaFilter = e.target.value; renderDca(); };
 el('dcaRefresh').onclick = ()=> refreshDca();
 el('priceLive').onclick = ()=> refreshDca();
+el('btnBinanceSync').onclick = ()=> syncBinance();
 
 function commitInline(inp){
   const f=inp.dataset.f, pk=inp.dataset.p;
@@ -2562,12 +2736,28 @@ function renderSettings(){
   el('setDcaBase').value = String(dc.split.base); el('setDcaSmart').value = String(dc.split.smart); el('setDcaOpp').value = String(dc.split.opp);
   el('setDcaDays').value = dc.baseDays.join(', '); el('setDcaWeights').value = dc.baseWeights.map(x=>Math.round(x*100)/100).join(', ');
   el('setDcaStart').value = dc.startMonth; el('setDcaCap').value = String(dc.oppCapMonths);
+  const bn = settings().binance;
+  el('setBnKey').value = bn.apiKey; el('setBnSecret').value = bn.apiSecret;
+  el('bnInfo').textContent = bn.apiKey && bn.apiSecret
+    ? 'Đã có khoá, lưu lúc '+fmtTime(bn.updatedAt)
+    : 'Chưa có khoá — nút Đồng bộ Binance ở tab Tài sản sẽ chỉ về đây.';
   const used = new Set(D.transactions.map(t=>t.category));
   const tags = (list, kind) => list.map(c=>`<span>${esc(c)}<button data-kind="${kind}" data-cat="${esc(c)}" ${used.has(c)?'disabled title="Đã có giao dịch dùng nhóm này"':''} aria-label="xoá">×</button></span>`).join('');
   el('expCats').innerHTML = tags(settings().expenseCats,'exp'); el('incCats').innerHTML = tags(settings().incomeCats,'inc');
   el('acctInfo').textContent = state.mode==='local' ? 'Chế độ thử cục bộ (chưa điền CONFIG Firebase)' : 'Đăng nhập: '+state.email;
   el('btnLogout').hidden = state.mode==='local';
 }
+el('saveBinance').onclick = ()=>{
+  const apiKey = el('setBnKey').value.trim(), apiSecret = el('setBnSecret').value.trim();
+  if(!apiKey || !apiSecret){ [el('setBnKey'),el('setBnSecret')].forEach(shake); toast('Cần cả API key và secret'); return; }
+  saveSettings({binance:{apiKey, apiSecret, updatedAt:Date.now()}});
+  toast('Đã lưu khoá Binance — sang tab Tài sản bấm Đồng bộ Binance');
+};
+el('clearBinance').onclick = ()=>{
+  if(!confirm('Xoá khoá Binance khỏi FinTrace? Nhớ thu hồi luôn khoá đó trên Binance nếu không dùng nữa.')) return;
+  saveSettings({binance:{apiKey:'', apiSecret:'', updatedAt:0}});
+  toast('Đã xoá khoá Binance');
+};
 el('saveDca').onclick = ()=>{
   const numList = v => String(v||'').split(',').map(x=>parseNum(x.trim())).filter(x=>!isNaN(x));
   const budget = el('setDcaBudget').value.trim()==='' ? 0 : parseNum(el('setDcaBudget').value);
@@ -2773,14 +2963,16 @@ window.testAttribution = testAttribution;
 window.testDca = testDca;
 window.testBuyScore = testBuyScore;
 window.testDcaPlan = testDcaPlan;
+window.testBinance = testBinance;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
         transferValue, scnPrice, scnNetWorth, netQty,
         ethHolding, ethPurchases, purchaseUsdPrice, dcaCostBasis, dcaSummary, dcaState,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, BUY_SCORE_V1,
-        unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1},
-  render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, refreshDca, makeCandles,
+        unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1, binanceDiff},
+  render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testBinance,
+  refreshDca, syncBinance, makeCandles,
   downloadBackup, restoreBackup, backupPayload };
 
 boot();
