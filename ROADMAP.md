@@ -57,7 +57,7 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 
 **Nghiệm thu:** giá vốn trung bình khớp với con số owner tự tính tay từ 2 đến 3 lần mua gần nhất. Owner kiểm tra tab DCA trên app thật sau khi có vài lần chuyển đổi USDT → ETH.
 
-### P1.A — Buy Score và chỉ báo
+### P1.A — Buy Score và chỉ báo ✅ xong — PR #11
 
 - Nút Cập nhật gọi Binance lấy 400 ngày nến ETH và BTC, tính 7 thành phần điểm.
 - Hiện điểm tổng 0–100, Market State, Confidence, bảng phân rã 7 dòng.
@@ -67,6 +67,8 @@ Chỉ dùng dữ liệu đã có, không gọi mạng. Làm trước vì có íc
 **Nghiệm thu:** bấm Cập nhật ra điểm trong 3 giây; tự tính tay MA200 và RSI14 từ dữ liệu khác cho ra cùng kết quả; tắt mạng vẫn mở được tab và thấy nhãn dữ liệu cũ.
 
 **Rủi ro:** Binance có thể chặn gọi thẳng từ trình duyệt (CORS hoặc chặn vùng). Nếu vậy chuyển sang CoinGecko, hàm tính điểm giữ nguyên. Không đội thêm việc.
+
+**Còn chờ owner:** sandbox của session Claude chặn mọi kết nối ra ngoài nên chưa gọi được Binance thật; hàm tính đã kiểm bằng nến tự tạo (`testBuyScore()` — 34 ca). Owner bấm Cập nhật trên app thật để xác nhận Binance gọi được từ GitHub Pages.
 
 ### P1.B — Kế hoạch vốn tháng
 
@@ -117,3 +119,4 @@ Tự động đặt lệnh mua bán, đòn bẩy, dự đoán giá, nhiều coin
 | 2026-09-12 | Bỏ roadmap CoinDCA và repo `coin`. Thêm `CLAUDE.md`. Xong P0.1 sao lưu và khôi phục. Mở P0. |
 | 2026-09-13 | Nối project Firebase `fintrace-353f4` (PR #7). Owner nghiệm thu đầy đủ P0. Mở P1, bắt đầu Khối C. |
 | 2026-09-13 | Xong Khối C: tab DCA, nguồn vốn trên transfers, giá vốn ETH (PR #9). Tiếp theo: Khối A — Buy Score. |
+| 2026-09-13 | Xong Khối A: Buy Score 7 thành phần, nút Cập nhật gọi Binance, giá ETH/BTC/ADA thành live (PR #11). Tiếp theo: Khối B — kế hoạch vốn tháng. |
