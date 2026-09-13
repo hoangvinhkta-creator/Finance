@@ -3251,8 +3251,9 @@ function renderDcaWallet(){
   const coinHs = [...D.holdings].filter(h=>LIVE_KEYS.includes(h.priceKey)).sort((a,b)=>(a.order||0)-(b.order||0));
   const total = sum(coinHs, holdingValue), cu = cryptoUsd();
   el('dcaWalletTotal').innerHTML = coinHs.length ? `${fmtK(Math.round(total))}${cu!=null?` <small class="mute">≈ ${fmtUsd(cu)}</small>`:''}` : '';
-  /* Bề rộng cột cố định (đo: khung 402px, nội dung tự do phình tới 502px). Tổng 100%, tên cắt gọn. */
-  el('dcaWalletTable').innerHTML = `<colgroup><col style="width:23%"><col style="width:19%"><col style="width:33%"><col style="width:15%"><col style="width:10%"></colgroup>
+  /* Bề rộng cột cố định (đo: khung 402px, nội dung tự do phình tới 502px). Tổng 100%, tên cắt gọn;
+     Số lượng 22% vì 19% làm ô nhập cắt mất số cuối của "0,004712". */
+  el('dcaWalletTable').innerHTML = `<colgroup><col style="width:20%"><col style="width:22%"><col style="width:33%"><col style="width:15%"><col style="width:10%"></colgroup>
     <thead><tr><th class="first">Tên</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
     (coinHs.map((h,i)=>`<tr data-id="${h.id}">
       <td class="first"><input class="inline l" data-f="name" value="${esc(h.name)}" title="${esc(h.name)}" style="width:100%;min-width:0;text-overflow:ellipsis"></td>
