@@ -216,6 +216,12 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
 /* ---------- Pha 3: tổng quan, chuyển đổi, kịch bản ---------- */
 .grid2.eq{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.grid2.one{grid-template-columns:minmax(0,1fr)}
+/* Hero thấp hơn card giá vốn bên cạnh — giãn đều để hai card cao bằng nhau mà không hụt đáy. */
+#dcaScoreCard{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.planc{display:grid;gap:13px}
+.planc .prow .pn{margin-top:2px}
+.planc .psub{margin-top:5px}
 .hero{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 22px}
 .hero .big{font-size:34px;font-weight:600;letter-spacing:-.03em;line-height:1}
 .hero .vs{font-size:13px;color:var(--ink2);padding-bottom:3px}
@@ -534,32 +540,36 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
     <!-- ===== DCA ===== -->
     <section id="view-dca" class="view">
-      <header class="vhead"><h1>DCA</h1><div class="right"><div class="seg" id="dcaCoinPick"></div><small id="dcaUpdated" class="mute"></small><button class="btn primary" id="dcaRefresh">Cập nhật</button></div></header>
+      <header class="vhead"><h1>DCA</h1><div class="right"><small id="dcaUpdated" class="mute"></small><button class="btn" id="dcaBuyOpen">Mua nhanh</button><button class="btn primary" id="dcaRefresh">Cập nhật</button></div></header>
 
-      <section class="card pad" id="dcaScoreCard" style="margin-bottom:16px">
-        <div class="hero">
-          <div><div class="lbl mute" id="dcaHeroLbl" style="font-size:12px;margin-bottom:6px">Giá ETH</div><div class="big" id="dcaHeroPrice">—</div></div>
-          <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Buy Score</div><div class="big" id="dcaHeroScore">—</div></div>
-          <div class="vs" id="dcaHeroState"></div>
-        </div>
-        <div class="split" id="dcaHeroMeta"></div>
-        <div class="warnline" id="dcaWarn" hidden></div>
-      </section>
+      <div class="grid2 eq" id="dcaTopRow" style="margin-bottom:16px">
+        <section class="card pad" id="dcaScoreCard">
+          <div class="hero">
+            <div><div class="lbl mute" id="dcaHeroLbl" style="font-size:12px;margin-bottom:6px">Giá ETH</div><div class="big" id="dcaHeroPrice">—</div></div>
+            <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Buy Score</div><div class="big" id="dcaHeroScore">—</div></div>
+            <div class="vs" id="dcaHeroState"></div>
+          </div>
+          <div class="split" id="dcaHeroMeta"></div>
+          <div class="warnline" id="dcaWarn" hidden></div>
+        </section>
 
-      <section class="card" id="dcaBandCard" style="margin-bottom:16px">
-        <div class="colhead"><h2>Vùng giá mua <small id="dcaBandSub">giá phải về mức nào thì Buy Score vào vùng đó</small></h2><small class="mute" id="dcaBandNow"></small></div>
-        <div class="scroll"><table class="tbl" id="dcaBandTable"></table></div>
-      </section>
+        <section class="card pad" id="dcaBasisCard">
+          <div class="colhead" style="padding:0 0 12px"><h2>Giá vốn <small id="dcaBasisNow"></small></h2><div class="seg" id="dcaCoinPick"></div></div>
+          <div class="stats three" id="dcaStats"></div>
+        </section>
+      </div>
 
-      <section class="card pad" id="dcaPlanCard" style="margin-bottom:16px">
-        <div class="colhead" style="padding:0 0 12px"><h2>Tháng này <small id="dcaPlanMonth"></small></h2><small class="mute" id="dcaPlanBudget"></small></div>
-        <div id="dcaPlanBody"></div>
-      </section>
+      <div class="grid2 eq" id="dcaPlanRow" style="margin-bottom:16px">
+        <section class="card pad" id="dcaBandCard">
+          <div class="colhead" style="padding:0 0 12px"><h2>Vùng giá mua <small id="dcaBandSub">giá về mức nào thì vào vùng đó</small></h2><small class="mute" id="dcaBandNow"></small></div>
+          <div class="scroll"><table class="tbl" id="dcaBandTable"></table></div>
+        </section>
 
-      <section class="card" id="dcaBuyCard" style="margin-bottom:16px">
-        <div class="colhead"><h2>Mua nhanh <small>chuyển sang <span id="dcaBuyCoinLabel">ETH</span>, không cần rời tab này</small></h2></div>
-        <div id="dcaBuyBody"></div>
-      </section>
+        <section class="card pad" id="dcaPlanCard">
+          <div class="colhead" style="padding:0 0 12px"><h2>Tháng này <small id="dcaPlanMonth"></small></h2><small class="mute" id="dcaPlanBudget"></small></div>
+          <div id="dcaPlanBody"></div>
+        </section>
+      </div>
 
       <section class="card pad" id="dcaWalletCard" style="margin-bottom:16px">
         <div class="colhead" style="padding:0 0 12px"><h2>Ví Coin <small>toàn bộ tài sản crypto — Danh mục ở tab Tài sản chỉ ghi gộp một dòng "Coin"</small></h2><span id="dcaWalletTotal" class="mute"></span></div>
@@ -572,8 +582,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <span class="acts-row"><button type="submit" class="btn primary">Thêm coin</button></span>
         </form>
       </section>
-
-      <div class="stats" id="dcaStats"></div>
 
       <section class="card" id="dcaBreakdownCard" style="margin-bottom:16px">
         <div class="colhead"><h2>Phân rã điểm <small>7 thành phần, tổng 100</small></h2><small class="mute" id="dcaAlgo"></small></div>
@@ -669,7 +677,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <div class="row"><button class="btn" id="btnImport">Import dữ liệu ban đầu</button><label class="chk"><input type="checkbox" id="importForce"> xoá dữ liệu hiện có trước khi import</label></div>
             <div class="hint" style="padding:8px 0 14px">Chạy một lần. Cũng gọi được từ console: <code>importInitialData()</code> hoặc <code>importInitialData({force:true})</code>.</div>
             <div class="row"><button class="btn" id="btnImportDcaHistory">Nạp lịch sử mua coin (file cũ)</button><span class="mute" id="dcaHistoryInfo"></span></div>
-            <div class="hint" style="padding:8px 0 0">29 lần mua BTC/ETH/ADA từ file Excel theo dõi cũ, quy đổi VNĐ theo tỷ giá USDT gần ngày mua nhất. Chỉ ghi vào lịch sử Chuyển đổi để tính giá vốn — <b>không đụng số lượng coin đang có</b>. Chạy một lần, bấm lại sẽ báo đã nạp rồi.</div>
+            <div class="hint" style="padding:8px 0 0">29 lần mua BTC/ETH/ADA và 39 lần nạp/rút USDT từ file Excel theo dõi cũ. Mua coin quy đổi VNĐ theo tỷ giá của lần nạp USDT gần ngày đó nhất. Chỉ ghi vào lịch sử Chuyển đổi để tính giá vốn — <b>không đụng số lượng đang có</b>. Hai mẻ tách riêng, mỗi mẻ chỉ nạp một lần.</div>
           </details>
         </section>
       </div>
@@ -733,11 +741,19 @@ const DEBT_UNITS = [
 ];
 /* Các coin tab DCA theo dõi. `ref` là coin dùng làm mốc so sánh cho thành phần điểm thứ 7:
    ETH rẻ tương đối khi thua BTC, BTC rẻ tương đối khi thua ETH — đối xứng nhau. */
+/* basisOnly: chỉ theo dõi giá vốn, không chấm Buy Score và không có kế hoạch vốn tháng.
+   fiatOnly:  chỉ tính những lần đổi với tiền mặt/tài khoản — USDT đem đi mua coin khác là
+              luân chuyển trong ví chứ không phải bán, nên không đụng vào tỷ giá vốn đã nạp.
+   vndFirst:  ô giá vốn lấy nghìn đồng làm số chính (USDT quy ra USD thì luôn bằng 1, vô nghĩa).
+   pnlRate:   lãi/lỗ tính theo chênh tỷ giá trên số đang giữ, không so với cả cục vốn đã nạp. */
 const DCA_COINS = [
-  {key:'eth', label:'ETH', symbol:'ETHUSDT', ref:'btc', ratioLabel:'ETH/BTC 30 ngày'},
-  {key:'btc', label:'BTC', symbol:'BTCUSDT', ref:'eth', ratioLabel:'BTC/ETH 30 ngày'},
+  {key:'eth',  label:'ETH', symbol:'ETHUSDT', ref:'btc', ratioLabel:'ETH/BTC 30 ngày'},
+  {key:'btc',  label:'BTC', symbol:'BTCUSDT', ref:'eth', ratioLabel:'BTC/ETH 30 ngày'},
+  {key:'ada',  label:'ADA',  basisOnly:true},
+  {key:'usdt', label:'USDT', basisOnly:true, fiatOnly:true, vndFirst:true, pnlRate:true},
 ];
-const DCA_COIN_KEYS = DCA_COINS.map(c=>c.key);
+const DCA_SCORED = DCA_COINS.filter(c=>!c.basisOnly);          // coin có Buy Score + kế hoạch vốn
+const DCA_COIN_KEYS = DCA_SCORED.map(c=>c.key);
 const dcaCoinOf = k => DCA_COINS.find(c=>c.key===k) || DCA_COINS[0];
 const DCA_SOURCES = ['BASE','SMART','OPPORTUNITY','MANUAL'];
 const DCA_SOURCE_LABEL = {BASE:'Base', SMART:'Smart', OPPORTUNITY:'Opportunity', MANUAL:'Tay'};
@@ -984,7 +1000,7 @@ function migrateDcaSettings(raw){
   const r = raw && typeof raw==='object' ? raw : {};
   const flat = r.budget!=null || r.split!=null || r.baseDays!=null;
   const out = {};
-  for(const c of DCA_COINS) out[c.key] = normalizeDcaPlanCfg(flat ? (c.key==='eth' ? r : null) : r[c.key]);
+  for(const c of DCA_SCORED) out[c.key] = normalizeDcaPlanCfg(flat ? (c.key==='eth' ? r : null) : r[c.key]);
   return out;
 }
 
@@ -1053,6 +1069,7 @@ const coinValueHeld = key => sum(familyHoldings(key), holdingValue);
 function coinLedger(key){
   const ids = new Set(familyHoldings(key).map(h=>h.id));
   if(!ids.size) return { buys:[], sells:[] };
+  const cfg = DCA_COINS.find(c=>c.key===key) || {};
   const base = price(key);
   const toBase = (hid, qty) => { const h = holdingById(hid), p = h && h.priceKey ? price(h.priceKey) : 0;
     return base>0 && p>0 ? Number(qty||0)*(p/base) : Number(qty||0); };
@@ -1061,6 +1078,13 @@ function coinLedger(key){
   for(const t of D.transfers){
     const into = ids.has(t.toId), outOf = ids.has(t.fromId);
     if(into && outOf) continue;                                     // chuyển nội bộ trong họ
+    if(!into && !outOf) continue;
+    /* fiatOnly (USDT): chỉ tính chiều đối ứng là tiền — đem USDT đi mua ETH là luân chuyển
+       trong ví, không phải bán USDT, nên không được kéo tỷ giá vốn đã nạp đi. */
+    if(cfg.fiatOnly){
+      const other = holdingById(into ? t.fromId : t.toId);
+      if(!other || other.priceKey) continue;
+    }
     if(into && Number(t.qtyIn)>0) buys.push({...t, qtyBase: toBase(t.toId, t.qtyIn)});
     else if(outOf && Number(t.qtyOut)>0) sells.push({...t, qtyBase: toBase(t.fromId, t.qtyOut)});
   }
@@ -1105,14 +1129,18 @@ function dcaCostBasis(buys, usdtNow, sells){
     totalEth:rq(qty), totalCostVnd:r6(vnd), totalCostUsd:r6(usd),
     avgCostVnd: qty>0?vnd/qty:0, avgCostUsd: qty>0?usd/qty:null };
 }
-/* held (tuỳ chọn): số dư thật đang giữ, đã gộp cả họ coin. Không truyền thì suy từ sổ mua như cũ. */
-function dcaSummary(basis, currentPriceVnd, usdtNow, held){
+/* held (tuỳ chọn): số dư thật đang giữ, đã gộp cả họ coin. Không truyền thì suy từ sổ mua như cũ.
+   opts.pnlRate: lãi/lỗ = số đang giữ × chênh lệch giá so với giá vốn, thay vì so cả cục vốn đã bỏ.
+   Dùng cho USDT: đã nạp 6.194 nhưng còn giữ 565 (phần kia đã đổi sang coin), so cả cục thì vô nghĩa. */
+function dcaSummary(basis, currentPriceVnd, usdtNow, held, opts){
   const { totalEth, totalCostVnd, avgCostVnd } = basis;
   const cpv = Number(currentPriceVnd)||0, u = Number(usdtNow)||0;
   const qtyHeld = held && held.qty!=null ? Number(held.qty) : totalEth;
   const currentValue = held && held.valueVnd!=null ? Number(held.valueVnd) : qtyHeld*cpv;
-  const pnl = totalCostVnd>0 || qtyHeld>0 ? currentValue-totalCostVnd : 0;
-  const pnlPct = totalCostVnd>0 ? pnl/totalCostVnd : null;
+  const byRate = !!(opts && opts.pnlRate) && avgCostVnd>0;
+  const pnl = byRate ? qtyHeld*(cpv-avgCostVnd)
+            : (totalCostVnd>0 || qtyHeld>0 ? currentValue-totalCostVnd : 0);
+  const pnlPct = byRate ? (cpv/avgCostVnd-1) : (totalCostVnd>0 ? pnl/totalCostVnd : null);
   return { totalEth, qtyHeld, totalCostVnd, totalCostUsd: basis.totalCostUsd, avgCostVnd,
     /* Giá vốn USD cộng dồn theo tỷ giá TỪNG LẦN MUA. Không lấy avgCostVnd chia tỷ giá hôm nay:
        USDT/VNĐ trôi vài phần trăm mỗi mùa nên chia kiểu đó thổi lệch hẳn giá vốn. */
@@ -1123,8 +1151,9 @@ function dcaSummary(basis, currentPriceVnd, usdtNow, held){
 /* Điểm vào cho UI: đọc thẳng từ state D. */
 function dcaState(coin){
   const k = coin || state.dcaCoin, u = price('usdt'), led = coinLedger(k);
+  const cfg = DCA_COINS.find(c=>c.key===k) || {};
   return dcaSummary(dcaCostBasis(led.buys, u, led.sells), price(k), u,
-                    { qty: coinQtyHeld(k), valueVnd: coinValueHeld(k) });
+                    { qty: coinQtyHeld(k), valueVnd: coinValueHeld(k) }, { pnlRate: cfg.pnlRate });
 }
 
 /* ---- Nạp lịch sử mua coin từ file Excel theo dõi cũ (owner cung cấp 2026-09-13) -------
@@ -1170,6 +1199,23 @@ const DCA_HISTORY_IMPORT = {
     ['2025-11-03', 122.4, 71.94672, 27832],
   ],
 };
+/* Nạp/rút USDT trong cùng file đó — cột ngoài cùng bên phải. [ngày, số USDT (âm = rút về tài
+   khoản), số tiền nghìn đồng]. Đây chính là chỗ tra ra tỷ giá cho từng lần mua coin ở trên. */
+const USDT_HISTORY_IMPORT = [
+  ['2025-10-08', 5.95, 158.4723],       ['2025-10-08', 18.72, 498.56976],   ['2025-10-08', 18.72, 498.56976],
+  ['2025-10-08', 18.72, 498.56976],     ['2025-10-08', 375.26, 9998.42744], ['2025-10-08', 500.51, 13338.5915],
+  ['2025-10-15', -186.95, -5053.44545], ['2025-11-02', 359.24, 9998.36768], ['2025-11-05', 178.31, 4998.38592],
+  ['2025-11-18', 359.1, 9998.4213],     ['2025-12-01', 179.95, 4998.47115], ['2025-12-06', -71.42, -1999.76],
+  ['2025-12-15', 178.04, 4997.93888],   ['2025-12-19', 185.08, 4998.0854],  ['2026-01-01', 185.41, 4998.09737],
+  ['2026-01-11', 186.08, 4998.1088],    ['2026-01-13', -184.1, -4901.8466], ['2026-01-13', 187.01, 4998.02926],
+  ['2026-01-21', 187.39, 4998.06608],   ['2026-02-01', 187.13, 4998.05517], ['2026-02-02', 187.89, 4997.874],
+  ['2026-02-02', 187.26, 4997.9694],    ['2026-02-05', 186.23, 4997.85451], ['2026-02-05', 181.35, 4998.006],
+  ['2026-02-13', 284.5, 7497.9975],     ['2026-02-22', 280.32, 7497.99936], ['2026-03-02', 279.29, 7498.09863],
+  ['2026-03-21', -540.57, -15001.89864],['2026-03-22', 178.69, 4997.9593],  ['2026-03-28', 356.11, 9997.78825],
+  ['2026-04-02', 182.24, 4997.932],     ['2026-04-23', -37.57, -1001.80405],['2026-05-07', 188.65, 4998.0931],
+  ['2026-05-28', 188.93, 4998.14315],   ['2026-06-02', 189.76, 4998.08864], ['2026-06-06', 283.25, 7497.91075],
+  ['2026-06-22', 187.15, 4998.0279],    ['2026-06-30', 281.16, 7497.97488], ['2026-06-30', 282.02, 7498.06574],
+];
 /* Hàm thuần: dựng danh sách document transfer sẽ ghi, từ dữ liệu thô + id holding liên quan.
    Không đọc D, không gọi store — test được độc lập. Thiếu id coin (holding) thì bỏ qua coin đó,
    không lỗi. `usd` âm ⇒ một lần bán, đổi chiều from/to so với mua, và không gắn `source`
@@ -1189,25 +1235,45 @@ function dcaHistoryOps(data, ids, batch){
   }
   return ops;
 }
+/* Hàm thuần: nạp/rút USDT thành transfer giữa tài khoản tiền và ví USDT.
+   Số âm là rút về tài khoản ⇒ đổi chiều. Không gắn `source` vì đây không phải một lần mua coin. */
+function usdtHistoryOps(rows, cashId, usdtId, batch){
+  if(!cashId || !usdtId) return [];
+  return (rows||[]).map(([date, qty, vnd])=>{
+    const q = Math.abs(Number(qty)||0), v = r6(Math.abs(Number(vnd)||0)), out = Number(qty)<0;
+    return out
+      ? { date, month:date.slice(0,7), fromId:usdtId, toId:cashId, qtyOut:r6(q), qtyIn:v,
+          valueVnd:v, usdtRate: q>0 ? r6(v/q) : 0, note:'', historyBatch:batch }
+      : { date, month:date.slice(0,7), fromId:cashId, toId:usdtId, qtyOut:v, qtyIn:r6(q),
+          valueVnd:v, usdtRate: q>0 ? r6(v/q) : 0, note:'', historyBatch:batch };
+  });
+}
 /* Ghi thẳng transfers qua store.batch(), KHÔNG gọi addTransfer()/applyXfer(): số lượng coin
    đang có trong Danh mục đã đúng theo số dư thật (nhập tay riêng), sổ mua cũ này chỉ để tính
-   giá vốn — cộng dồn lại vào holdings sẽ nhân đôi số lượng đang có. */
+   giá vốn — cộng dồn lại vào holdings sẽ nhân đôi số lượng đang có.
+   Hai mẻ tách riêng: ai đã nạp mẻ coin từ trước vẫn nạp được mẻ USDT thêm sau. */
+const HISTORY_BATCHES = { coin:'xlsx-2026-09', usdt:'xlsx-2026-09-usdt' };
+const historyImported = b => D.transfers.some(t=>t.historyBatch===b);
 async function importDcaHistory(){
   if(!store) throw new Error('Chưa đăng nhập');
-  const BATCH = 'xlsx-2026-09';
-  if(D.transfers.some(t=>t.historyBatch===BATCH)) throw new Error('Đã nạp lịch sử này rồi — mỗi file chỉ nạp một lần.');
   const ids = { usdt: coinHolding('usdt')?.id, btc: coinHolding('btc')?.id, eth: coinHolding('eth')?.id, ada: coinHolding('ada')?.id };
   if(!ids.usdt) throw new Error('Chưa có tài sản USDT trong Danh mục — không quy đổi được ra VNĐ.');
+  const cash = D.holdings.find(h=>!h.priceKey && /vietcombank/i.test(h.name)) || D.holdings.find(h=>!h.priceKey);
   const missing = ['btc','eth','ada'].filter(k=>DCA_HISTORY_IMPORT[k].length && !ids[k]);
-  const docs = dcaHistoryOps(DCA_HISTORY_IMPORT, ids, BATCH);
-  if(!docs.length) throw new Error('Không có dòng nào để nạp.');
+  const docs = [];
+  if(!historyImported(HISTORY_BATCHES.coin)) docs.push(...dcaHistoryOps(DCA_HISTORY_IMPORT, ids, HISTORY_BATCHES.coin));
+  const usdtDocs = historyImported(HISTORY_BATCHES.usdt) ? []
+    : usdtHistoryOps(USDT_HISTORY_IMPORT, cash && cash.id, ids.usdt, HISTORY_BATCHES.usdt);
+  docs.push(...usdtDocs);
+  if(!docs.length) throw new Error('Đã nạp cả hai mẻ rồi — mỗi mẻ chỉ nạp một lần.');
+  if(!cash && !historyImported(HISTORY_BATCHES.usdt)) throw new Error('Chưa có tài khoản tiền nào trong Danh mục để ghi các lần nạp USDT.');
   const now = Date.now();
   const ops = docs.map((d,i)=>({op:'set', col:'transfers', id:store.newId(), data:{...d, createdAt:now+i}}));
   await store.batch(ops);
   applyLoaded(await store.loadAll());
   render();
-  return { total: docs.length,
-    counts: Object.fromEntries(['btc','eth','ada'].map(k=>[k, DCA_HISTORY_IMPORT[k].length])),
+  return { total: docs.length, usdt: usdtDocs.length, cashName: cash ? cash.name : null,
+    counts: Object.fromEntries(['btc','eth','ada'].map(k=>[k, historyImported(HISTORY_BATCHES.coin) ? DCA_HISTORY_IMPORT[k].length : 0])),
     missing };
 }
 
@@ -1674,6 +1740,37 @@ function testDca(){
     chk('Lần bán là đúng transfer ra USDT', led.sells[0].id==='t3', true);
     D.holdings = savedH; D.prices = savedP; D.transfers = savedT; }
 
+  console.log('%c9 — USDT (fiatOnly): chỉ tính lần đổi với tiền, đem USDT mua coin không phải là bán','font-weight:600');
+  { const savedH = D.holdings, savedP = D.prices, savedT = D.transfers;
+    D.holdings = [
+      {id:'V', name:'Vietcombank', priceKey:null, quantity:1000},
+      {id:'U', name:'USDT', priceKey:'usdt', quantity:100},
+      {id:'E', name:'ETH',  priceKey:'eth',  quantity:1},
+    ];
+    D.prices = { usdt:{value:26}, eth:{value:65000} };
+    D.transfers = [
+      {id:'a', date:'2026-01-01', fromId:'V', toId:'U', qtyOut:2700, qtyIn:100, valueVnd:2700},   // nạp
+      {id:'b', date:'2026-02-01', fromId:'U', toId:'E', qtyOut:50, qtyIn:0.02, valueVnd:1300},    // mua ETH
+      {id:'c', date:'2026-03-01', fromId:'U', toId:'V', qtyOut:10, qtyIn:265, valueVnd:265},      // rút
+    ];
+    const led = coinLedger('usdt');
+    chk('Chỉ 1 lần nạp được tính là mua', led.buys.length, 1);
+    chk('Chỉ 1 lần rút được tính là bán', led.sells.length, 1);
+    chk('Đem USDT mua ETH không lọt vào sổ USDT', led.buys.concat(led.sells).some(t=>t.id==='b'), 0);
+    const basis = dcaCostBasis(led.buys, 26, led.sells);
+    chk('Số USDT nạp ròng', basis.totalEth, 90);
+    chk('Tỷ giá vốn = (2.700 − 265) / 90', basis.avgCostVnd, 2435/90);
+    /* Lãi/lỗ theo chênh tỷ giá trên số đang giữ, không so với cả cục đã nạp. */
+    const sm = dcaSummary(basis, 26, 26, {qty:100, valueVnd:2600}, {pnlRate:true});
+    chk('Lãi/lỗ = 100 × (26 − 27,055…)', sm.pnl, 100*(26-2435/90));
+    chk('Phần trăm theo chênh tỷ giá', sm.pnlPct, 26/(2435/90)-1); }
+
+  console.log('%c10 — ADA/USDT chỉ theo dõi giá vốn, không nằm trong nhóm chấm điểm','font-weight:600');
+  { chk('ADA có trong bộ chọn coin', DCA_COINS.some(c=>c.key==='ada'), 1);
+    chk('ADA không được chấm điểm', DCA_SCORED.some(c=>c.key==='ada'), 0);
+    chk('USDT không được chấm điểm', DCA_SCORED.some(c=>c.key==='usdt'), 0);
+    chk('Chỉ ETH và BTC có kế hoạch vốn', DCA_COIN_KEYS.length, 2); }
+
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
 }
@@ -1962,7 +2059,7 @@ function testDcaCoins(){
   console.log('%c3 — rỗng hoặc rác ⇒ cả hai coin về mặc định, không lỗi','font-weight:600');
   { for(const raw of [null, undefined, 'rác', {eth:'rác'}]){
       const m = migrateDcaSettings(raw);
-      chk('Đủ '+DCA_COINS.length+' coin', Object.keys(m).length, DCA_COINS.length);
+      chk('Đủ '+DCA_SCORED.length+' coin có kế hoạch vốn', Object.keys(m).length, DCA_SCORED.length);
       chk('Ngân sách 0', m.eth.budget+m.btc.budget, 0); } }
 
   console.log('%c4 — chấm điểm đối xứng: coin thua coin đối chiếu thì được điểm, coin thắng thì không','font-weight:600');
@@ -2051,6 +2148,17 @@ function testDcaHistoryImport(){
   { const ops = dcaHistoryOps({eth:[['2025-11-03',0.0276,104.6592,27832]], btc:[['2025-11-03',0.001,100,27832]]}, {usdt:'U', eth:'E'}, 'test');
     chk('Chỉ ETH được ghi, BTC bỏ qua vì thiếu id', ops.length, 1);
     chk('Thiếu cả USDT thì không ghi gì', dcaHistoryOps({eth:[['2025-11-03',0.0276,104.6592,27832]]}, {eth:'E'}, 'test').length, 0); }
+
+  console.log('%c4 — nạp USDT: từ tài khoản tiền sang ví USDT, rút thì đổi chiều','font-weight:600');
+  { const ops = usdtHistoryOps([['2025-10-08', 5.95, 158.4723], ['2025-10-15', -186.95, -5053.44545]], 'V', 'U', 'test');
+    chk('Hai dòng', ops.length, 2);
+    chk('Nạp: tiền → USDT', [ops[0].fromId, ops[0].toId], ['V','U']);
+    chk('Nạp: số tiền gửi là nghìn đồng', ops[0].qtyOut, 158.4723);
+    chk('Nạp: tỷ giá suy từ chính dòng đó', ops[0].usdtRate, 158.4723/5.95);
+    chk('Rút: USDT → tiền', [ops[1].fromId, ops[1].toId], ['U','V']);
+    chk('Rút: số USDT ra là dương', ops[1].qtyOut, 186.95);
+    chk('Không gắn source (không phải mua coin)', 'source' in ops[0], false);
+    chk('Thiếu tài khoản tiền thì bỏ qua, không lỗi', usdtHistoryOps([['2025-10-08',5.95,158]], null, 'U', 'test').length, 0); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -2385,7 +2493,7 @@ async function refreshDca(){
     const ageHours = (Date.now()-dataTime)/3600e3;
     const kl = {eth:ethK, btc:btcK};
     const now = Date.now(), coins = {};
-    for(const c of DCA_COINS){
+    for(const c of DCA_SCORED){
       const o = {price:usd[c.key], ageHours, ratioLabel:c.ratioLabel};
       const r = buyScore(kl[c.key], kl[c.ref], o);
       if(r.score==null) throw new Error(`${c.label}: ${r.reason||'không đủ dữ liệu để tính điểm'}`);
@@ -2409,7 +2517,7 @@ async function refreshDca(){
     const missing = LIVE_SYMBOLS.filter(x=>!(usd[x.key]>0)).map(x=>priceLabel(x.key));
     render();
     bg(store.set('prices','current', D.prices),
-       DCA_COINS.map(c=>`${c.label} ${coins[c.key].score}`).join(' · ') +
+       DCA_SCORED.map(c=>`${c.label} ${coins[c.key].score}`).join(' · ') +
        (u>0 ? ' · đã cập nhật giá '+done.join(', ') : ' · chưa có giá USDT nên chưa quy ra nghìn đồng') +
        (missing.length ? ' · Binance không có giá '+missing.join(', ') : ''));
   }catch(e){
@@ -2447,7 +2555,8 @@ function isDesktop(){ return matchMedia('(pointer:fine)').matches && innerWidth>
 function showModal(title, bodyHtml, okLabel, onOk){
   el('mdTitle').textContent=title; el('mdBody').innerHTML=bodyHtml; el('mdOk').textContent=okLabel; el('modal').hidden=false;
   const done=()=>{ el('modal').hidden=true; el('mdOk').onclick=null; el('mdCancel').onclick=null; };
-  el('mdOk').onclick=()=>{ onOk(); done(); }; el('mdCancel').onclick=done;
+  /* onOk trả về false ⇒ giữ popup mở (dùng khi số nhập chưa hợp lệ). */
+  el('mdOk').onclick=()=>{ if(onOk()===false) return; done(); }; el('mdCancel').onclick=done;
   el('modal').onclick=e=>{ if(e.target===el('modal')) done(); };
   const first=el('mdBody').querySelector('input,textarea'); if(first){ first.focus(); first.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); el('mdOk').click(); } }; }
 }
@@ -2984,10 +3093,14 @@ const fmtCompVal = c => c.value==null ? '—'
   : c.fmt==='pct' ? (c.key==='drawdown365'||c.key==='drawdownMonth' ? '−'+fmtPct(c.value) : fmtPctS(c.value))
   : fmtNum(c.value, 1);
 /* Bộ chọn coin dùng chung cho tab DCA và mục Cài đặt — cùng một state.dcaCoin. */
-function renderCoinPick(id){
-  el(id).innerHTML = DCA_COINS.map(c=>
-    `<button data-coin="${c.key}" class="${c.key===state.dcaCoin?'on':''}">${esc(c.label)}</button>`).join('');
+function renderCoinPick(id, list, activeKey){
+  const on = activeKey || state.dcaCoin;
+  el(id).innerHTML = (list||DCA_COINS).map(c=>
+    `<button data-coin="${c.key}" class="${c.key===on?'on':''}">${esc(c.label)}</button>`).join('');
 }
+/* Cài đặt chỉ có ngân sách cho coin được chấm điểm — chọn ADA/USDT ở tab DCA thì mục Cài đặt
+   vẫn bám vào coin gần nhất có kế hoạch vốn thay vì đọc vào một khối không tồn tại. */
+const settingsCoin = () => DCA_SCORED.some(c=>c.key===state.dcaCoin) ? state.dcaCoin : DCA_SCORED[0].key;
 for(const id of ['dcaCoinPick','setDcaCoinPick'])
   el(id).addEventListener('click', e=>{
     const b = e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.dcaCoin) return;
@@ -3001,6 +3114,12 @@ function renderDcaScore(){
   renderCoinPick('dcaCoinPick');
   el('dcaRefresh').disabled = dcaBusy;
   el('dcaRefresh').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật';
+  /* ADA/USDT chỉ theo dõi giá vốn: giấu hẳn hero, vùng giá và kế hoạch vốn thay vì hiện ô rỗng. */
+  el('dcaScoreCard').hidden = !!coin.basisOnly;
+  el('dcaTopRow').classList.toggle('one', !!coin.basisOnly);
+  el('dcaPlanRow').hidden = !!coin.basisOnly;
+  el('dcaBreakdownCard').hidden = !!coin.basisOnly;
+  if(coin.basisOnly) return;
 
   const priceUsd = (c && (c.priceUsd || c.ethUsd)) || dcaCacheUsd(coin.key);
   el('dcaHeroLbl').textContent = 'Giá '+coin.label;
@@ -3017,7 +3136,7 @@ function renderDcaScore(){
     c.candles ? `<span>dữ liệu <b>${c.candles}</b><span class="u"> nến ngày</span></span>` : '',
     `<span>nến cuối <b>${fmtTime(c.dataTime)}</b></span>`,
     `<span>cập nhật <b>${fmtTime(c.updatedAt)}</b></span>`,
-  ].filter(Boolean).join('') : `<span class="u">Bấm "Cập nhật" để lấy 400 ngày nến ${DCA_COINS.map(x=>x.label).join(' và ')} từ Binance rồi chấm điểm cả hai.</span>`;
+  ].filter(Boolean).join('') : `<span class="u">Bấm "Cập nhật" để lấy 400 ngày nến ${DCA_SCORED.map(x=>x.label).join(' và ')} từ Binance rồi chấm điểm cả hai.</span>`;
 
   const warns = [];
   if(c && stale) warns.push(`Dữ liệu quá ${BUY_SCORE_V1.staleHours} giờ — điểm bên trên là của lần cập nhật trước, bấm "Cập nhật" để chấm lại.`);
@@ -3041,28 +3160,29 @@ function renderDcaScore(){
 /* ---- Vùng giá mua: đọc bands đã tính sẵn lúc bấm Cập nhật ---- */
 function renderDcaBands(){
   const coin = dcaCoinOf(state.dcaCoin), c = dcaCache(coin.key);
+  if(coin.basisOnly) return;
   const bands = (c && c.bands) || [], now = c && c.priceUsd, usdt = price('usdt');
-  el('dcaBandSub').textContent = `giá ${coin.label} phải về mức nào thì Buy Score vào vùng đó`;
+  el('dcaBandSub').textContent = `giá ${coin.label} về mức nào thì vào vùng đó`;
   el('dcaBandNow').textContent = c && c.score!=null && now ? `hiện ${fmtUsd(now)} · Score ${c.score}` : '';
   const cur = c && c.marketState ? c.marketState.key : null;
   el('dcaBandTable').innerHTML =
-    `<thead><tr><th class="first">Vùng</th><th class="n">Điểm</th><th class="n">Giá ${esc(coin.label)}</th><th class="n">So với hiện tại</th><th class="n">Smart mở</th><th class="last n">Opportunity mở</th></tr></thead><tbody>`+
+    `<thead><tr><th class="first">Vùng</th><th class="n">Điểm</th><th class="n">Giá ${esc(coin.label)}</th><th class="last n">So với hiện tại</th></tr></thead><tbody>`+
     (bands.length ? [...bands].sort((a,b)=>a.min-b.min).map(b=>`<tr${b.key===cur?' class="total"':''}>
       <td class="first">${esc(b.label)}${b.key===cur?' <span class="badge on">đang ở đây</span>':''}</td>
       <td class="n mute">≥ ${b.min}</td>
       <td class="n">${b.price==null ? '<span class="mute">không tới được</span>'
         : `<b>${fmtUsd(b.price)}</b>${usdt>0?`<small class="mute" style="display:block;font-weight:400">≈ ${fmtK(Math.round(b.price*usdt))}</small>`:''}`}</td>
-      <td class="n ${b.gap!=null&&b.gap<0?'':'mute'}">${b.gap==null?'—':fmtPctS(b.gap)}</td>
-      <td class="n mute">${b.smartPct}%</td>
-      <td class="last n mute">${b.oppPct?b.oppPct+'%':'—'}</td></tr>`).join('')
-     : `<tr><td class="empty" colspan="6">Chưa tính — bấm "Cập nhật" để chấm điểm và dò vùng giá</td></tr>`)+
+      <td class="last n ${b.gap!=null&&b.gap<0?'':'mute'}">${b.gap==null?'—':fmtPctS(b.gap)}</td></tr>`).join('')
+     : `<tr><td class="empty" colspan="4">Chưa tính — bấm "Cập nhật" để chấm điểm và dò vùng giá</td></tr>`)+
     `</tbody>`;
 }
 
 /* ---- DCA Khối B: card "Tháng này" ---- */
 const LEG_TEXT = { done:'đã mua đủ', due:'tới hạn, chưa mua đủ', waiting:'chưa tới hạn' };
 function renderDcaPlan(){
-  const coin = dcaCoinOf(state.dcaCoin), cfg = settings().dca[coin.key];
+  const coin = dcaCoinOf(state.dcaCoin);
+  if(coin.basisOnly) return;
+  const cfg = settings().dca[coin.key];
   const p = dcaPlanNow(coin.key);
   el('dcaPlanMonth').textContent = coin.label+' · '+fmtMonthLong(p.month).toLowerCase();
   el('dcaPlanBudget').textContent = p.budget ? 'ngân sách '+fmtK(Math.round(p.budget))+' · '+
@@ -3075,36 +3195,32 @@ function renderDcaPlan(){
   const bar = (a,b) => `<div class="prog"><i style="width:${b>0?Math.min(100,Math.round(100*a/b)):0}%"></i></div>`;
   const k = x => fmtK(Math.round(x));
 
+  /* Card giờ chỉ rộng nửa trang: gộp lịch Base thành một dòng ngắn thay vì mỗi kỳ một dòng. */
+  const LEG_SHORT = { done:'đủ', due:'chưa đủ', waiting:'chờ' };
   const baseLegs = p.base.legs.map(l=>
-    `<div class="${l.status==='waiting'?'off':''}">Ngày ${l.day} · ${k(l.amount)} · ${LEG_TEXT[l.status]}${l.status==='due'?` (còn ${k(l.remaining)})`:''}</div>`).join('');
+    `<span class="${l.status==='waiting'?'off':''}">ngày ${l.day} ${LEG_SHORT[l.status]}</span>`).join(' · ');
 
   el('dcaPlanBody').innerHTML =
     (dcaSuggestion(p) ? `<div class="suggest">${esc(dcaSuggestion(p))}</div>` : '')+
-    `<div class="plan3">
-      <div class="pblock">
+    `<div class="planc">
+      <div class="prow">
         <div class="lbl">Base <span class="badge">${k(p.base.total)}/tháng</span></div>
         <div class="pn">${k(p.base.paid)} <span class="u">/ ${k(p.base.dueAmount)} đã tới hạn</span></div>
         ${bar(p.base.paid, p.base.dueAmount)}
         <div class="psub">${baseLegs}</div>
       </div>
-      <div class="pblock">
+      <div class="prow">
         <div class="lbl">Smart <span class="badge">${k(p.smart.total)}/tháng</span></div>
         <div class="pn">${k(p.smart.paid)} <span class="u">/ ${k(p.smart.unlocked)} đang mở</span></div>
         ${bar(p.smart.paid, p.smart.unlocked)}
-        <div class="psub">
-          <div>Mở <b>${p.smart.pct}%</b> theo Buy Score ${p.score==null?'<span class="off">(chưa có điểm ⇒ chưa mở)</span>':'<b>'+p.score+'</b>'}</div>
-          <div class="${p.smart.remaining>0.5?'':'off'}">${p.smart.remaining>0.5 ? 'Còn được mua '+k(p.smart.remaining)
-            : p.smart.unlocked<=0.5 ? 'Chưa mở đồng nào' : 'Đã mua hết phần đang mở'}</div>
-        </div>
+        <div class="psub">mở <b>${p.smart.pct}%</b> theo Score ${p.score==null?'<span class="off">(chưa có điểm)</span>':'<b>'+p.score+'</b>'} · <span class="${p.smart.remaining>0.5?'':'off'}">${p.smart.remaining>0.5 ? 'còn mua được '+k(p.smart.remaining)
+          : p.smart.unlocked<=0.5 ? 'chưa mở đồng nào' : 'đã mua hết phần mở'}</span></div>
       </div>
-      <div class="pblock">
-        <div class="lbl">Opportunity Fund <span class="badge">góp ${k(p.opp.monthly)}/tháng</span></div>
+      <div class="prow">
+        <div class="lbl">Opportunity <span class="badge">góp ${k(p.opp.monthly)}/tháng</span></div>
         <div class="pn">${k(p.opp.balance)} <span class="u">/ cap ${k(p.opp.cap)}</span></div>
         ${bar(p.opp.balance, p.opp.cap)}
-        <div class="psub">
-          <div>Đã góp ${p.opp.months} tháng ${k(p.opp.contributed)} · đã tiêu ${k(p.opp.spent)}</div>
-          <div class="${p.opp.available>0.5?'':'off'}">Mở <b>${p.opp.pct}%</b> theo Buy Score${p.opp.available>0.5?' ⇒ được mua '+k(p.opp.available):' ⇒ chưa mở'}</div>
-        </div>
+        <div class="psub">góp ${p.opp.months} tháng ${k(p.opp.contributed)} · tiêu ${k(p.opp.spent)} · <span class="${p.opp.available>0.5?'':'off'}">mở <b>${p.opp.pct}%</b>${p.opp.available>0.5?' ⇒ '+k(p.opp.available):' ⇒ chưa mở'}</span></div>
       </div>
     </div>`;
 }
@@ -3129,8 +3245,9 @@ function renderDcaWallet(){
      <div class="catlegend">${rows.map((r,i)=>`<span><i style="background:${SHADES[i%SHADES.length]}"></i>${esc(r.name)}<b>${fmtK(Math.round(r.v))}</b><span class="p">${fmtPct(r.v/total)}</span></span>`).join('')}</div>`;
 }
 
-/* ---- Mua nhanh: chuyển đổi tài sản thu gọn ngay trong tab DCA, khoá sẵn đích = coin đang chọn ---- */
+/* ---- Mua nhanh: popup mở từ nút cạnh "Cập nhật", đích khoá sẵn = coin đang chọn ---- */
 function dcaBuyRemaining(coin, src){
+  if(coin.basisOnly) return null;                       // ADA/USDT không có kế hoạch vốn tháng
   const p = dcaPlanNow(coin.key);
   if(src==='BASE') return p.base.remaining;
   if(src==='SMART') return p.smart.remaining;
@@ -3149,101 +3266,97 @@ function updateDcaBuyHint(f){
   }
   const hint = el('dcaBuyHint'); if(hint) hint.innerHTML = bits.join(' · ');
 }
-function renderDcaBuy(){
-  const coin = dcaCoinOf(state.dcaCoin);
-  el('dcaBuyCoinLabel').textContent = coin.label;
-  const h = coinHolding(coin.key);
-  if(!h){
-    el('dcaBuyBody').innerHTML = `<div class="pad mute">Chưa có tài sản ${esc(coin.label)} trong Ví Coin bên dưới — thêm trước khi mua.</div>`;
-    return;
-  }
-  const p = dcaPlanNow(coin.key);
-  el('dcaBuyBody').innerHTML = `
-    <form autocomplete="off" id="formDcaBuy" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:0 16px 16px">
-      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);flex:1;min-width:150px">Từ<select name="fromId" style="width:100%"></select></label>
-      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);width:110px">Số lượng gửi<input name="qtyOut" inputmode="text" style="width:100%"></label>
-      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);width:110px">Số ${esc(coin.label)} nhận<input name="qtyIn" inputmode="text" style="width:100%"></label>
-      <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute);flex:1;min-width:190px">Nguồn vốn<select name="source" style="width:100%"></select></label>
-      <input name="note" placeholder="Ghi chú" style="flex:1;min-width:110px">
-      <button type="submit" class="btn primary">Mua</button>
-      <div class="lb" id="dcaBuyHint" style="flex-basis:100%;font-size:12px;color:var(--mute)"></div>
-    </form>`;
+function openDcaBuy(){
+  const coin = dcaCoinOf(state.dcaCoin), h = coinHolding(coin.key);
+  if(!h){ toast(`Chưa có tài sản ${coin.label} trong Ví Coin — thêm trước khi mua.`); return; }
+  const lb = 'display:block;font-size:11px;color:var(--mute);margin:10px 0 3px';
+  showModal(`Mua nhanh · ${coin.label}`, `
+    <form autocomplete="off" id="formDcaBuy">
+      <label style="${lb};margin-top:0">Từ</label><select name="fromId" style="width:100%"></select>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1"><label style="${lb}">Số lượng gửi</label><input name="qtyOut" inputmode="text" style="width:100%"></div>
+        <div style="flex:1"><label style="${lb}">Số ${esc(coin.label)} nhận</label><input name="qtyIn" inputmode="text" style="width:100%"></div>
+      </div>
+      <label style="${lb}">Nguồn vốn</label><select name="source" style="width:100%"></select>
+      <label style="${lb}">Ghi chú</label><input name="note" style="width:100%">
+      <div id="dcaBuyHint" style="font-size:12px;color:var(--mute);margin-top:10px"></div>
+    </form>`, 'Mua', ()=>submitDcaBuy());
   const f = el('formDcaBuy');
   const hs = [...D.holdings].filter(x=>x.id!==h.id).sort((a,b)=>(a.order||0)-(b.order||0));
   setOptions(f.fromId, hs, x=>x.name, x=>x.id);
-  const usdtH = hs.find(x=>x.priceKey==='usdt'); if(usdtH) f.fromId.value = usdtH.id;
-  /* Mỗi lựa chọn nguồn vốn ghi kèm số còn được mua tháng này — lấy thẳng từ dcaPlanNow(),
-     không phải state riêng, giống mọi con số khác của card "Tháng này". */
-  const srcOpts = [
+  /* Mua coin thì mặc định trả bằng USDT; nạp USDT thì mặc định rút từ tài khoản ngân hàng. */
+  const pref = coin.fiatOnly ? hs.find(x=>!x.priceKey && /vietcombank/i.test(x.name)) || hs.find(x=>!x.priceKey)
+                             : hs.find(x=>x.priceKey==='usdt');
+  if(pref) f.fromId.value = pref.id;
+  /* Mỗi lựa chọn nguồn vốn ghi kèm số còn được mua tháng này — lấy thẳng từ dcaPlanNow(). */
+  const p = coin.basisOnly ? null : dcaPlanNow(coin.key);
+  const srcOpts = p ? [
     {v:'MANUAL', label:'Tay'},
     {v:'BASE', label:`Base (còn ${fmtK(Math.round(p.base.remaining))})`},
     {v:'SMART', label:`Smart (còn ${fmtK(Math.round(p.smart.remaining))})`},
     {v:'OPPORTUNITY', label:`Opportunity (còn ${fmtK(Math.round(p.opp.available))})`},
-  ];
+  ] : [{v:'MANUAL', label:'Tay'}];
   f.source.innerHTML = srcOpts.map(o=>`<option value="${o.v}">${esc(o.label)}</option>`).join('');
+  f.addEventListener('change', e=>{
+    if(e.target.name==='source'){
+      const remain = dcaBuyRemaining(coin, f.source.value);
+      if(remain>0.5){
+        const from = holdingById(f.fromId.value);
+        const qty = from && from.priceKey && price(from.priceKey)>0 ? remain/price(from.priceKey) : remain;
+        f.qtyOut.value = fmtInput(qty);
+        f.qtyOut.dispatchEvent(new Event('input', {bubbles:true}));
+      }
+    }
+    updateDcaBuyHint(f);
+  });
+  /* Gõ số tiền gửi thì tự tính số nhận theo đúng giá đang có trong bảng giá FinTrace —
+     nạp USDT cũng đi qua đây nên ăn theo tỷ giá app đang giữ. */
+  f.addEventListener('input', e=>{
+    if(e.target.name==='qtyOut'){
+      const from = holdingById(f.fromId.value), qo = parseNum(f.qtyOut.value), cur = price(coin.key);
+      if(from && !isNaN(qo) && qo>0 && cur>0){
+        const v = transferValue(from, h, qo, 0);
+        if(v) f.qtyIn.value = fmtInput(v/cur);
+      }
+    }
+    updateDcaBuyHint(f);
+  });
   updateDcaBuyHint(f);
 }
-/* Đăng ký một lần trên khung chứa tĩnh #dcaBuyBody, không phải trên <form> vì form bị dựng lại mỗi lần render. */
-el('dcaBuyBody').addEventListener('change', e=>{
-  const f = e.target.closest('#formDcaBuy'); if(!f) return;
-  if(e.target.name==='source'){
-    const coin = dcaCoinOf(state.dcaCoin);
-    const remain = dcaBuyRemaining(coin, f.source.value);
-    if(remain>0.5){
-      const from = holdingById(f.fromId.value);
-      const qty = from && from.priceKey && price(from.priceKey)>0 ? remain/price(from.priceKey) : remain;
-      f.qtyOut.value = fmtInput(qty);
-      f.qtyOut.dispatchEvent(new Event('input', {bubbles:true}));
-    }
-  }
-  updateDcaBuyHint(f);
-});
-el('dcaBuyBody').addEventListener('input', e=>{
-  const f = e.target.closest('#formDcaBuy'); if(!f) return;
-  if(e.target.name==='qtyOut'){
-    const coin = dcaCoinOf(state.dcaCoin), h = coinHolding(coin.key), from = holdingById(f.fromId.value);
-    const qo = parseNum(f.qtyOut.value), curPrice = price(coin.key);
-    if(from && h && !isNaN(qo) && qo>0 && curPrice>0){
-      const v = transferValue(from, h, qo, 0);
-      if(v) f.qtyIn.value = fmtInput(v/curPrice);
-    }
-  }
-  updateDcaBuyHint(f);
-});
-el('dcaBuyBody').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.closest('#formDcaBuy') && e.target.tagName!=='BUTTON'){ e.preventDefault(); e.target.closest('form').requestSubmit(); } });
-el('dcaBuyBody').addEventListener('submit', e=>{
-  if(e.target.id!=='formDcaBuy') return;
-  e.preventDefault();
-  const f = e.target, coin = dcaCoinOf(state.dcaCoin), h = coinHolding(coin.key);
+/* Trả về false để popup không đóng khi số nhập chưa hợp lệ. */
+function submitDcaBuy(){
+  const f = el('formDcaBuy'); if(!f) return;
+  const coin = dcaCoinOf(state.dcaCoin), h = coinHolding(coin.key);
   if(!h) return;
   const from = holdingById(f.fromId.value);
-  if(!from){ shake(f.fromId); toast('Chọn nguồn tiền'); return; }
+  if(!from){ shake(f.fromId); toast('Chọn nguồn tiền'); return false; }
   const qo = parseNum(f.qtyOut.value), qi = parseNum(f.qtyIn.value);
-  if(isNaN(qo) || qo<=0){ shake(f.qtyOut); toast('Số lượng gửi không hợp lệ'); return; }
-  if(isNaN(qi) || qi<=0){ shake(f.qtyIn); toast('Số lượng nhận không hợp lệ'); return; }
+  if(isNaN(qo) || qo<=0){ shake(f.qtyOut); toast('Số lượng gửi không hợp lệ'); return false; }
+  if(isNaN(qi) || qi<=0){ shake(f.qtyIn); toast('Số lượng nhận không hợp lệ'); return false; }
   const date = todayStr(), u = price('usdt');
   addTransfer({ date, month:date.slice(0,7), fromId:from.id, toId:h.id, qtyOut:rq(qo), qtyIn:rq(qi),
     valueVnd: r6(transferValue(from,h,qo,qi)), note: f.note.value.trim(),
     source: f.source.value || 'MANUAL', ...(u>0?{usdtRate:u}:{}) });
   toast(`Đã mua ${fmtQty(qi)} ${h.name} từ ${from.name}`);
-});
+}
+el('dcaBuyOpen').onclick = openDcaBuy;
 
 /* ---- DCA (SPEC-DCA Khối C): giá vốn, lịch sử mua, lọc theo nguồn ---- */
 function renderDca(){
   renderDcaScore();
   renderDcaBands();
   renderDcaPlan();
-  renderDcaBuy();
   renderDcaWallet();
   const coin = dcaCoinOf(state.dcaCoin), L = coin.label;
   const usdt = price('usdt'), cur = price(coin.key);
   const led = coinLedger(coin.key);
   const basis = dcaCostBasis(led.buys, usdt, led.sells);
-  const s = dcaSummary(basis, cur, usdt, { qty: coinQtyHeld(coin.key), valueVnd: coinValueHeld(coin.key) });
+  const s = dcaSummary(basis, cur, usdt, { qty: coinQtyHeld(coin.key), valueVnd: coinValueHeld(coin.key) },
+                       { pnlRate: coin.pnlRate });
   const hasAny = basis.rows.length>0;
 
   el('dcaEmpty').hidden = hasAny;
-  el('dcaEmpty').innerHTML = `<div class="pad mute">Chưa có lần mua ${esc(L)} nào qua tab Tài sản → Chuyển đổi. Đổi USDT (hoặc tài sản khác) sang ${esc(L)} để bắt đầu theo dõi giá vốn ở đây.</div>`;
+  el('dcaEmpty').innerHTML = `<div class="pad mute">Chưa có lần mua ${esc(L)} nào. Bấm <b>Mua nhanh</b> ở góc trên bên phải để ghi lần đầu — giá vốn sẽ tự hiện ở đây.</div>`;
   el('dcaHistoryCard').hidden = !hasAny;
 
   el('dcaUpdated').textContent = D.prices[coin.key] ? '' : (hasAny ? `Chưa có giá ${L} — bấm Cập nhật, hoặc nhập tay ở tab Tài sản` : '');
@@ -3253,25 +3366,36 @@ function renderDca(){
   const famSub = fam.length>1 ? fam.map(h=>`${fmtQty(h.quantity)} ${esc(priceLabel(h.priceKey))}`).join(' + ')+' · ' : '';
   const soldSub = basis.soldQty>0 ? ` · đã trừ ${fmtQty(basis.soldQty)} bán ra` : '';
 
+  /* Giá hiện tại đã nằm ở hero nên bỏ khỏi đây; coin không có hero thì ghi vào tiêu đề card. */
+  el('dcaBasisNow').textContent = coin.basisOnly && cur
+    ? `${L} đang ${coin.vndFirst ? fmtK(cur,4) : fmtUsd(s.currentPriceUsd)}` : '';
+  /* USDT quy ra USD thì luôn bằng 1 nên lấy nghìn đồng làm số chính. */
+  const avgMain = coin.vndFirst ? (s.avgCostVnd ? fmtK(s.avgCostVnd, 4) : '—') : fmtUsd(s.avgCostUsd);
+  const avgSub  = coin.vndFirst ? (s.currentPriceVnd ? 'nay '+fmtK(s.currentPriceVnd,4) : '—')
+                                : (s.avgCostVnd ? fmtK(Math.round(s.avgCostVnd),2)+'/'+esc(L) : '—');
   el('dcaStats').innerHTML = `
-    <div class="stat"><div class="lbl">Đang giữ (${esc(L)})</div><div class="val">${fmtQty(s.qtyHeld)}</div><div class="sub">${famSub}vốn ròng ${fmtK(Math.round(s.totalCostVnd))}</div></div>
-    <div class="stat"><div class="lbl">Giá vốn trung bình</div><div class="val">${fmtUsd(s.avgCostUsd)}</div><div class="sub">${s.avgCostVnd?fmtK(Math.round(s.avgCostVnd),2)+'/'+esc(L):'—'}${soldSub}</div></div>
-    <div class="stat"><div class="lbl">Giá hiện tại</div><div class="val">${fmtUsd(s.currentPriceUsd)}</div><div class="sub">${s.currentPriceVnd?fmtK(Math.round(s.currentPriceVnd))+'/'+esc(L):'chưa có giá '+esc(L)}</div></div>
-    <div class="stat strong"><div class="lbl">Lãi / lỗ</div><div class="val">${signed(s.pnl)}</div><div class="sub">${fmtPct(s.pnlPct)} so với vốn đã bỏ</div></div>`;
+    <div class="stat"><div class="lbl">Đang giữ (${esc(L)})</div><div class="val">${fmtQty(s.qtyHeld)}</div><div class="sub">${famSub}${coin.fiatOnly?'đã nạp ròng '+fmtQty(basis.totalEth):'vốn ròng '+fmtK(Math.round(s.totalCostVnd))}</div></div>
+    <div class="stat"><div class="lbl">${coin.fiatOnly?'Tỷ giá vốn TB':'Giá vốn trung bình'}</div><div class="val">${avgMain}</div><div class="sub">${avgSub}${soldSub}</div></div>
+    <div class="stat strong"><div class="lbl">Lãi / lỗ</div><div class="val">${signed(s.pnl)}</div><div class="sub">${fmtPct(s.pnlPct)} ${coin.pnlRate?'chênh tỷ giá':'so với vốn đã bỏ'}</div></div>`;
 
+  /* USDT quy ra USD thì lần nào cũng $1 — cột giá đổi thành tỷ giá VNĐ của chính lần nạp đó.
+     Coin không có kế hoạch vốn thì cột Nguồn và bộ lọc nguồn cũng không còn nghĩa gì. */
+  const rateCol = !!coin.vndFirst, hasPlan = !coin.basisOnly;
+  el('dcaFilterSource').hidden = !hasPlan;
+  if(!hasPlan) state.dcaFilter = '';
   el('dcaFilterSource').value = state.dcaFilter;
   const filtered = state.dcaFilter ? basis.rows.filter(t=>(t.source||'MANUAL')===state.dcaFilter) : basis.rows;
   const sorted = [...filtered].reverse();  // mới nhất trước, cùng quy ước với các bảng khác
-  el('dcaTable').innerHTML = `<thead><tr><th class="first">Ngày</th><th class="n">Giá ${esc(L)} (USD)</th><th class="n">Số tiền</th><th class="n">${esc(L)} nhận</th><th>Nguồn</th><th class="n">Buy Score</th><th class="n">Giá vốn TB sau</th></tr></thead><tbody>`+
+  el('dcaTable').innerHTML = `<thead><tr><th class="first">Ngày</th><th class="n">${rateCol?'Tỷ giá':'Giá '+esc(L)+' (USD)'}</th><th class="n">Số tiền</th><th class="n">${esc(L)} nhận</th>${hasPlan?'<th>Nguồn</th><th class="n">Buy Score</th>':''}<th class="n">${rateCol?'Tỷ giá vốn TB sau':'Giá vốn TB sau'}</th></tr></thead><tbody>`+
     (sorted.length ? sorted.map(t=>`<tr>
       <td class="d first">${fmtDate(t.date)}</td>
-      <td class="n">${t.usdPrice!=null?fmtUsd(t.usdPrice):'—'}${t.usdEstimated?' <small class="mute">ước tính</small>':''}</td>
+      <td class="n">${rateCol ? (t.usdtRate>0?fmtK(t.usdtRate,4):'—')
+                              : (t.usdPrice!=null?fmtUsd(t.usdPrice):'—')+(t.usdEstimated?' <small class="mute">ước tính</small>':'')}</td>
       <td class="n">${fmtK(Math.round(t.valueVnd))}</td>
       <td class="n">${fmtQty(t.qtyIn)}</td>
-      <td>${esc(DCA_SOURCE_LABEL[t.source]||'Tay')}</td>
-      <td class="n mute">${t.buyScore!=null?t.buyScore:'—'}</td>
-      <td class="n">${fmtK(Math.round(t.avgAfter))}</td></tr>`).join('')
-     : `<tr><td class="empty" colspan="7">${hasAny?'Không có lần mua nào theo nguồn đã lọc':'Chưa có lần mua '+esc(L)+' nào'}</td></tr>`)+`</tbody>`;
+      ${hasPlan?`<td>${esc(DCA_SOURCE_LABEL[t.source]||'Tay')}</td><td class="n mute">${t.buyScore!=null?t.buyScore:'—'}</td>`:''}
+      <td class="n">${rateCol?fmtK(t.avgAfter,4):fmtK(Math.round(t.avgAfter))}</td></tr>`).join('')
+     : `<tr><td class="empty" colspan="${hasPlan?7:5}">${hasAny?'Không có lần mua nào theo nguồn đã lọc':'Chưa có lần mua '+esc(L)+' nào'}</td></tr>`)+`</tbody>`;
 
   el('dcaHint').innerHTML = basis.rows.some(r=>r.usdEstimated)
     ? 'Giá USD ngầm định của các lần mua chưa lưu tỷ giá lúc đó dùng tạm tỷ giá USDT hiện tại — đánh dấu "ước tính".'
@@ -3553,8 +3677,8 @@ function renderSettings(){
   el('setMilestones').value = (settings().milestones||[]).join(', ');
   el('setLongAmt').value = String(settings().longTarget.amount);
   el('setLongMonth').value = settings().longTarget.month;
-  renderCoinPick('setDcaCoinPick');
-  const dc = settings().dca[state.dcaCoin];
+  renderCoinPick('setDcaCoinPick', DCA_SCORED, settingsCoin());
+  const dc = settings().dca[settingsCoin()];
   el('setDcaBudget').value = dc.budget ? String(dc.budget) : '';
   el('setDcaBase').value = String(dc.split.base); el('setDcaSmart').value = String(dc.split.smart); el('setDcaOpp').value = String(dc.split.opp);
   el('setDcaDays').value = dc.baseDays.join(', '); el('setDcaWeights').value = dc.baseWeights.map(x=>Math.round(x*100)/100).join(', ');
@@ -3564,9 +3688,10 @@ function renderSettings(){
   el('expCats').innerHTML = tags(settings().expenseCats,'exp'); el('incCats').innerHTML = tags(settings().incomeCats,'inc');
   el('acctInfo').textContent = state.mode==='local' ? 'Chế độ thử cục bộ (chưa điền CONFIG Firebase)' : 'Đăng nhập: '+state.email;
   el('btnLogout').hidden = state.mode==='local';
-  const imported = D.transfers.some(t=>t.historyBatch==='xlsx-2026-09');
-  el('dcaHistoryInfo').textContent = imported ? 'Đã nạp rồi' : '';
-  el('btnImportDcaHistory').disabled = imported;
+  const doneCoin = historyImported(HISTORY_BATCHES.coin), doneUsdt = historyImported(HISTORY_BATCHES.usdt);
+  el('dcaHistoryInfo').textContent = doneCoin && doneUsdt ? 'Đã nạp cả hai mẻ'
+    : doneCoin ? 'Đã nạp mua coin — còn mẻ nạp USDT' : doneUsdt ? 'Đã nạp USDT — còn mẻ mua coin' : '';
+  el('btnImportDcaHistory').disabled = doneCoin && doneUsdt;
 }
 el('saveDca').onclick = ()=>{
   const numList = v => String(v||'').split(',').map(x=>parseNum(x.trim())).filter(x=>!isNaN(x));
@@ -3581,7 +3706,7 @@ el('saveDca').onclick = ()=>{
   const cap = parseNum(el('setDcaCap').value);
   if(isNaN(cap) || cap<=0){ shake(el('setDcaCap')); return; }
   const start = /^\d{4}-\d{2}$/.test(el('setDcaStart').value) ? el('setDcaStart').value : thisMonth();
-  const coin = dcaCoinOf(state.dcaCoin);
+  const coin = dcaCoinOf(settingsCoin());
   saveSettings({dca:{...settings().dca, [coin.key]:{budget, split:{base:b, smart:sm, opp:op},
     baseDays:days.sort((x,y)=>x-y), baseWeights:weights, startMonth:start, oppCapMonths:cap}}});
   toast(budget>0 ? `Đã lưu kế hoạch vốn ${coin.label} ${fmtK(budget)}/tháng` : `Đã lưu — ngân sách ${coin.label} bằng 0, card "Tháng này" tắt`);
@@ -3609,10 +3734,11 @@ document.querySelectorAll('#expCats,#incCats').forEach(box=>box.addEventListener
 el('btnLogout').onclick = logout;
 el('btnImport').onclick = async ()=>{ const force=el('importForce').checked; if(!confirm(force?'Xoá TOÀN BỘ dữ liệu hiện có rồi import dữ liệu ban đầu?':'Import dữ liệu ban đầu từ sheet?')) return; try{ const r=await importInitialData({force}); alert(`Import xong.\nTổng tài sản: ${fmtK(Math.round(r.totalAssets))}\nCông nợ ròng: ${fmtK(Math.round(r.netDebt))}\nTài sản ròng: ${fmtK(Math.round(r.netWorth))}`); }catch(e){ alert(e.message); } };
 el('btnImportDcaHistory').onclick = async ()=>{
-  if(!confirm('Nạp lịch sử mua BTC/ETH/ADA từ file Excel cũ vào lịch sử Chuyển đổi? Không đụng số lượng coin đang có, chỉ để tính giá vốn.')) return;
+  if(!confirm('Nạp lịch sử mua coin và nạp/rút USDT từ file Excel cũ vào lịch sử Chuyển đổi? Không đụng số lượng đang có, chỉ để tính giá vốn.')) return;
   try{
     const r = await importDcaHistory();
-    alert(`Đã nạp ${r.total} dòng.\nBTC ${r.counts.btc} · ETH ${r.counts.eth} · ADA ${r.counts.ada}`+
+    alert(`Đã nạp ${r.total} dòng.\nMua coin: BTC ${r.counts.btc} · ETH ${r.counts.eth} · ADA ${r.counts.ada}`+
+      (r.usdt ? `\nNạp/rút USDT: ${r.usdt} dòng qua ${r.cashName}` : '')+
       (r.missing.length ? `\nBỏ qua (chưa có tài sản tương ứng trong Danh mục): ${r.missing.join(', ').toUpperCase()}` : ''));
   }catch(e){ alert(e.message); }
 };
@@ -3874,7 +4000,7 @@ window.FinTrace = { state, data:D,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, scoreBands, priceForScore, BUY_SCORE_V1,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
-        dcaHistoryOps, DCA_HISTORY_IMPORT},
+        dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS},
   render, importInitialData, importDcaHistory, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews,
   refreshDca, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
