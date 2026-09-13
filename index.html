@@ -214,7 +214,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   .ledger{grid-template-columns:minmax(0,1fr)}
   .stats{gap:8px}
   .stat{padding:12px 14px}.stat .val{font-size:20px}
-  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
+  .tabbar{display:grid;grid-template-columns:repeat(7,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
   .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--mute);padding:4px 0}
   .tabbar a.active{color:var(--ink);font-weight:600}
   .quick{grid-template-columns:1fr 1fr;padding:0 10px 10px}
@@ -260,6 +260,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       <a href="#so" data-view="so"><svg class="ic" viewBox="0 0 18 18"><rect x="2.5" y="3" width="5" height="12" rx="1"/><rect x="10.5" y="3" width="5" height="12" rx="1"/></svg>Sổ tháng</a>
       <a href="#congno" data-view="congno"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Công nợ</a>
       <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
+      <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
       <a href="#lichsu" data-view="lichsu"><svg class="ic" viewBox="0 0 18 18"><path d="M3.5 15.5V9M8.5 15.5V3.5M13.5 15.5V7M2 15.5h14"/></svg>Lịch sử</a>
     </nav>
     <div class="side-foot">
@@ -392,6 +393,15 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <span class="arrow">→</span>
           <select name="toId"></select>
           <input name="qtyIn" placeholder="số lượng nhận" inputmode="text">
+          <div id="xferSourceRow" hidden style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute)">
+            <span>Nguồn vốn ETH:</span>
+            <select name="source" style="width:auto;min-width:132px">
+              <option value="MANUAL">Tay (mặc định)</option>
+              <option value="BASE">Base</option>
+              <option value="SMART">Smart</option>
+              <option value="OPPORTUNITY">Opportunity</option>
+            </select>
+          </div>
           <input name="note" placeholder="Ghi chú">
           <span class="acts-row"><button type="submit" class="btn primary">Chuyển</button></span>
           <div class="lb" id="xferHint"></div>
@@ -433,6 +443,32 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <button class="btn" id="scnDel">Xoá kịch bản</button>
           <span class="mute" style="font-size:12px" id="scnInfo"></span>
         </div>
+      </section>
+    </section>
+
+    <!-- ===== DCA ===== -->
+    <section id="view-dca" class="view">
+      <header class="vhead"><h1>DCA</h1><div class="right"><small id="dcaUpdated" class="mute"></small></div></header>
+
+      <div class="stats" id="dcaStats"></div>
+
+      <section class="card" id="dcaEmpty" hidden>
+        <div class="pad mute">Chưa có lần mua ETH nào qua tab Tài sản → Chuyển đổi. Đổi USDT (hoặc tài sản khác) sang ETH để bắt đầu theo dõi giá vốn ở đây.</div>
+      </section>
+
+      <section class="card" id="dcaHistoryCard">
+        <div class="colhead">
+          <h2>Lịch sử mua</h2>
+          <select id="dcaFilterSource" style="width:auto;min-width:140px">
+            <option value="">Tất cả nguồn</option>
+            <option value="BASE">Base</option>
+            <option value="SMART">Smart</option>
+            <option value="OPPORTUNITY">Opportunity</option>
+            <option value="MANUAL">Tay</option>
+          </select>
+        </div>
+        <div class="scroll"><table class="tbl" id="dcaTable"></table></div>
+        <div class="hint" style="padding:10px 12px 0" id="dcaHint"></div>
       </section>
     </section>
 
@@ -498,6 +534,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   <a href="#so" data-view="so"><svg class="ic" viewBox="0 0 18 18"><rect x="2.5" y="3" width="5" height="12" rx="1"/><rect x="10.5" y="3" width="5" height="12" rx="1"/></svg>Sổ</a>
   <a href="#congno" data-view="congno"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Công nợ</a>
   <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
+  <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
   <a href="#lichsu" data-view="lichsu"><svg class="ic" viewBox="0 0 18 18"><path d="M3.5 15.5V9M8.5 15.5V3.5M13.5 15.5V7M2 15.5h14"/></svg>Lịch sử</a>
   <a href="#caidat" data-view="caidat"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 5.5h13M2.5 12.5h13"/><circle cx="7" cy="5.5" r="1.8" fill="#fff"/><circle cx="11" cy="12.5" r="1.8" fill="#fff"/></svg>Cài đặt</a>
 </nav>
@@ -546,6 +583,8 @@ const DEBT_UNITS = [
   {value:'gold_pd',  unit:'GOLD_CHI', priceKey:'gold_pd',  label:'chỉ vàng Phi Đoan'},
   {value:'gold_acr', unit:'GOLD_CHI', priceKey:'gold_acr', label:'chỉ vàng Ancarat'},
 ];
+const DCA_SOURCES = ['BASE','SMART','OPPORTUNITY','MANUAL'];
+const DCA_SOURCE_LABEL = {BASE:'Base', SMART:'Smart', OPPORTUNITY:'Opportunity', MANUAL:'Tay'};
 const priceLabel = k => (PRICE_KEYS.find(p=>p.key===k)||{label:k}).label;
 
 /* ---------------- định dạng ---------------- */
@@ -560,6 +599,7 @@ const fmtBig = n => n==null||isNaN(n) ? '—' : (Math.abs(n)>=10000 ? fmtNum(n/1
 const fmtQty = n => fmtNum(n,6);
 const fmtInput = n => String(Math.round(Number(n)*1e6)/1e6).replace('.',',');
 const fmtPct = x => x==null||!isFinite(x) ? '—' : fmtNum(x*100,1)+'%';
+const fmtUsd = n => n==null||isNaN(n) ? '—' : '$'+fmtNum(n,n>=100?0:2);
 const fmtDate = d => d ? d.slice(8,10)+'/'+d.slice(5,7) : '';
 const fmtMonth = m => m ? 'T'+parseInt(m.slice(5,7),10)+'/'+m.slice(0,4) : '';
 const fmtMonthLong = m => 'Tháng '+parseInt(m.slice(5,7),10)+'/'+m.slice(0,4);
@@ -666,7 +706,7 @@ let store = null;
 const state = {
   uid:null, email:null, mode:'local',
   data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, settings:{}},
-  month: thisMonth(), view:'tong', showSettled:false,
+  month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'',
   edit:{chi:null, thu:null, receivable:null, payable:null},
   period:'m0', exUnusual:false, scn:{prices:{}, name:''},
 };
@@ -730,6 +770,48 @@ function transferImplied(tf){
   return null;
 }
 const xfersSorted = () => [...D.transfers].sort((a,b)=> b.date<a.date?-1 : b.date>a.date?1 : (b.createdAt||0)-(a.createdAt||0));
+
+/* ---- DCA: giá vốn ETH (SPEC-DCA Khối C) ----
+   Giá vốn chỉ tính từ transfers có đích là holding priceKey='eth'.
+   USD của một lần mua = (valueVnd / qtyIn) / usdtRate lúc mua; nếu lúc tạo transfer
+   chưa lưu usdtRate (dữ liệu cũ, hoặc chưa có giá usdt) thì dùng usdt hiện tại và đánh dấu ước tính. */
+function ethHolding(){ return D.holdings.find(h=>h.priceKey==='eth') || null; }
+function ethPurchases(){
+  const eh = ethHolding(); if(!eh) return [];
+  return D.transfers.filter(t=>t.toId===eh.id && Number(t.qtyIn)>0)
+    .sort((a,b)=> a.date<b.date?-1 : a.date>b.date?1 : (a.createdAt||0)-(b.createdAt||0));
+}
+function purchaseUsdPrice(t, usdtNow){
+  const rate = Number(t.usdtRate)>0 ? Number(t.usdtRate) : Number(usdtNow)||0;
+  const estimated = !(Number(t.usdtRate)>0);
+  const qty = Number(t.qtyIn||0), vnd = Number(t.valueVnd||0);
+  const vndPerEth = qty>0 ? vnd/qty : 0;
+  return { usd: rate>0 ? vndPerEth/rate : null, estimated };
+}
+/* purchases: mảng transfer đã lọc đích ETH, theo thứ tự thời gian tăng dần. */
+function dcaCostBasis(purchases, usdtNow){
+  let eth=0, cost=0;
+  const rows = purchases.map(t=>{
+    eth += Number(t.qtyIn||0); cost += Number(t.valueVnd||0);
+    const up = purchaseUsdPrice(t, usdtNow);
+    return {...t, ethAfter:rq(eth), avgAfter: eth>0?cost/eth:0, usdPrice:up.usd, usdEstimated:up.estimated};
+  });
+  return { rows, totalEth:rq(eth), totalCostVnd:r6(cost), avgCostVnd: eth>0?cost/eth:0 };
+}
+function dcaSummary(basis, currentPriceVnd, usdtNow){
+  const { totalEth, totalCostVnd, avgCostVnd } = basis;
+  const cpv = Number(currentPriceVnd)||0, u = Number(usdtNow)||0;
+  const currentValue = totalEth*cpv;
+  const pnl = totalCostVnd>0 || totalEth>0 ? currentValue-totalCostVnd : 0;
+  const pnlPct = totalCostVnd>0 ? pnl/totalCostVnd : null;
+  return { totalEth, totalCostVnd, avgCostVnd,
+    avgCostUsd: u>0 ? avgCostVnd/u : null,
+    currentPriceVnd: cpv, currentPriceUsd: u>0 ? cpv/u : null,
+    currentValue, pnl, pnlPct };
+}
+/* Điểm vào cho UI: đọc thẳng từ state D. */
+function dcaState(){ return dcaSummary(dcaCostBasis(ethPurchases(), price('usdt')), price('eth'), price('usdt')); }
+
 function pace(m, t){
   const target = Number(settings().incomeTarget||DEFAULT_TARGET);
   const {income} = t || monthTotals(m);
@@ -962,6 +1044,47 @@ function testAttribution(){
   return {pass:ok, fail:bad};
 }
 
+function testDca(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.01)=>{ const p = want===null ? got===null : (got!=null && Math.abs(got-want)<=tol);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${got==null?'null':got}${p?'':`   (mong đợi ${want===null?'null':want})`}`); p?ok++:bad++; };
+
+  console.log('%c1 — hai lần mua cùng tỷ giá: tổng ETH, tổng vốn, giá vốn TB và giá vốn TB sau từng lần','font-weight:600');
+  { const purchases = [
+      {date:'2026-08-01', qtyIn:0.5, valueVnd:33000, usdtRate:26.4},
+      {date:'2026-08-15', qtyIn:0.5, valueVnd:31000, usdtRate:26.4},
+    ];
+    const basis = dcaCostBasis(purchases, 26.4);
+    chk('Tổng ETH', basis.totalEth, 1); chk('Tổng vốn', basis.totalCostVnd, 64000);
+    chk('Giá vốn TB /ETH', basis.avgCostVnd, 64000);
+    chk('Giá vốn TB sau lần 1', basis.rows[0].avgAfter, 66000);
+    chk('Giá vốn TB sau lần 2', basis.rows[1].avgAfter, 64000); }
+
+  console.log('%c2 — thiếu usdtRate lúc mua ⇒ dùng usdt hiện tại, đánh dấu ước tính','font-weight:600');
+  { const up = purchaseUsdPrice({qtyIn:1, valueVnd:66000}, 26.4);
+    chk('USD ước tính', Math.round(up.usd), Math.round(66000/26.4));
+    chk('Cờ ước tính', up.estimated, true); }
+
+  console.log('%c3 — có usdtRate lúc mua ⇒ dùng đúng tỷ giá đó, không phải ước tính','font-weight:600');
+  { const up = purchaseUsdPrice({qtyIn:1, valueVnd:66000, usdtRate:26.0}, 30);
+    chk('USD dùng tỷ giá lúc mua, không phải tỷ giá hiện tại', Math.round(up.usd), Math.round(66000/26.0));
+    chk('Cờ ước tính', up.estimated, false); }
+
+  console.log('%c4 — tổng kết: giá trị hiện tại và lãi/lỗ theo giá ETH hiện tại','font-weight:600');
+  { const basis = dcaCostBasis([{date:'2026-08-01', qtyIn:1, valueVnd:66000, usdtRate:26.4}], 26.4);
+    const sm = dcaSummary(basis, 70000, 26.4);
+    chk('Giá trị hiện tại', sm.currentValue, 70000); chk('Lãi/lỗ', sm.pnl, 4000);
+    chk('Lãi/lỗ %', sm.pnlPct, 4000/66000); chk('Giá vốn TB (USD)', sm.avgCostUsd, 66000/26.4); }
+
+  console.log('%c5 — chưa có lần mua nào ⇒ mọi số về 0/null, không lỗi chia cho 0','font-weight:600');
+  { const basis = dcaCostBasis([], 26.4); const sm = dcaSummary(basis, 70000, 26.4);
+    chk('Tổng ETH', basis.totalEth, 0); chk('Giá vốn TB', basis.avgCostVnd, 0);
+    chk('Lãi/lỗ % (chưa có vốn ⇒ null)', sm.pnlPct, null); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
 /* =====================================================================
    BOOT / AUTH
    ===================================================================== */
@@ -1053,7 +1176,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !el('modal').hi
 /* =====================================================================
    ROUTING + RENDER
    ===================================================================== */
-const VIEWS = ['tong','so','congno','taisan','lichsu','caidat'];
+const VIEWS = ['tong','so','congno','taisan','dca','lichsu','caidat'];
 function route(){
   const v = location.hash.replace('#','');
   state.view = VIEWS.includes(v) ? v : 'tong';
@@ -1067,7 +1190,7 @@ addEventListener('resize', ()=>{ clearTimeout(window.__rt); window.__rt=setTimeo
 
 function render(){
   fillStaticSelects();
-  ({tong:renderOverview, so:renderLedger, congno:renderDebts, taisan:renderHoldings, lichsu:renderHistory, caidat:renderSettings})[state.view]();
+  ({tong:renderOverview, so:renderLedger, congno:renderDebts, taisan:renderHoldings, dca:renderDca, lichsu:renderHistory, caidat:renderSettings})[state.view]();
 }
 function fillStaticSelects(){
   setOptions(el('formChi').category, settings().expenseCats);
@@ -1508,6 +1631,46 @@ function renderHoldings(){
   renderTransfers();
   renderScenario();
 }
+
+/* ---- DCA (SPEC-DCA Khối C): giá vốn, lịch sử mua, lọc theo nguồn ---- */
+function renderDca(){
+  const usdt = price('usdt'), cur = price('eth');
+  const basis = dcaCostBasis(ethPurchases(), usdt);
+  const s = dcaSummary(basis, cur, usdt);
+  const hasAny = basis.rows.length>0;
+
+  el('dcaEmpty').hidden = hasAny;
+  el('dcaHistoryCard').hidden = !hasAny;
+
+  const ethPrice = D.prices.eth;
+  el('dcaUpdated').textContent = ethPrice ? 'Giá ETH cập nhật '+fmtTime(ethPrice.updatedAt) : (hasAny ? 'Chưa có giá ETH — nhập ở tab Tài sản' : '');
+
+  el('dcaStats').innerHTML = `
+    <div class="stat"><div class="lbl">Tổng ETH</div><div class="val">${fmtQty(s.totalEth)}</div><div class="sub">vốn đã bỏ ${fmtK(Math.round(s.totalCostVnd))}</div></div>
+    <div class="stat"><div class="lbl">Giá vốn trung bình</div><div class="val">${fmtUsd(s.avgCostUsd)}</div><div class="sub">${s.avgCostVnd?fmtK(Math.round(s.avgCostVnd),2)+'/ETH':'—'}</div></div>
+    <div class="stat"><div class="lbl">Giá hiện tại</div><div class="val">${fmtUsd(s.currentPriceUsd)}</div><div class="sub">${s.currentPriceVnd?fmtK(Math.round(s.currentPriceVnd))+'/ETH':'chưa có giá ETH'}</div></div>
+    <div class="stat strong"><div class="lbl">Lãi / lỗ</div><div class="val">${signed(s.pnl)}</div><div class="sub">${fmtPct(s.pnlPct)} so với vốn đã bỏ</div></div>`;
+
+  el('dcaFilterSource').value = state.dcaFilter;
+  const filtered = state.dcaFilter ? basis.rows.filter(t=>(t.source||'MANUAL')===state.dcaFilter) : basis.rows;
+  const sorted = [...filtered].reverse();  // mới nhất trước, cùng quy ước với các bảng khác
+  el('dcaTable').innerHTML = `<thead><tr><th class="first">Ngày</th><th class="n">Giá ETH (USD)</th><th class="n">Số tiền</th><th class="n">ETH nhận</th><th>Nguồn</th><th class="n">Buy Score</th><th class="n">Giá vốn TB sau</th></tr></thead><tbody>`+
+    (sorted.length ? sorted.map(t=>`<tr>
+      <td class="d first">${fmtDate(t.date)}</td>
+      <td class="n">${t.usdPrice!=null?fmtUsd(t.usdPrice):'—'}${t.usdEstimated?' <small class="mute">ước tính</small>':''}</td>
+      <td class="n">${fmtK(Math.round(t.valueVnd))}</td>
+      <td class="n">${fmtQty(t.qtyIn)}</td>
+      <td>${esc(DCA_SOURCE_LABEL[t.source]||'Tay')}</td>
+      <td class="n mute">${t.buyScore!=null?t.buyScore:'—'}</td>
+      <td class="n">${fmtK(Math.round(t.avgAfter))}</td></tr>`).join('')
+     : `<tr><td class="empty" colspan="7">${hasAny?'Không có lần mua nào theo nguồn đã lọc':'Chưa có lần mua ETH nào'}</td></tr>`)+`</tbody>`;
+
+  el('dcaHint').innerHTML = basis.rows.some(r=>r.usdEstimated)
+    ? 'Giá USD ngầm định của các lần mua chưa lưu tỷ giá lúc đó dùng tạm tỷ giá USDT hiện tại — đánh dấu "ước tính".'
+    : '';
+}
+el('dcaFilterSource').onchange = e=>{ state.dcaFilter = e.target.value; renderDca(); };
+
 function commitInline(inp){
   const f=inp.dataset.f, pk=inp.dataset.p;
   if(pk){ const v=parseNum(inp.value); if(isNaN(v)||v<0){ shake(inp); return; } if(v!==price(pk)) setPrice(pk,v,'manual'); return; }
@@ -1542,6 +1705,7 @@ function updateXferLabels(){
   const f = el('formXfer'), from = holdingById(f.fromId.value), to = holdingById(f.toId.value);
   f.qtyOut.placeholder = from && !from.priceKey ? 'số tiền' : 'số lượng';
   f.qtyIn.placeholder  = to   && !to.priceKey   ? 'số tiền nhận' : 'số lượng nhận';
+  el('xferSourceRow').hidden = !(to && to.priceKey==='eth');
   const bits = [];
   if(from) bits.push(`${esc(from.name)} đang có ${fmtQty(from.quantity)}${from.priceKey?'':'k'}`);
   const q = parseNum(f.qtyOut.value), qi = parseNum(f.qtyIn.value);
@@ -1584,8 +1748,13 @@ el('formXfer').addEventListener('submit', e=>{
   if(isNaN(qo) || qo<=0){ shake(f.qtyOut); f.qtyOut.focus(); toast('Số lượng chuyển đi không hợp lệ'); return; }
   if(isNaN(qi) || qi<=0){ shake(f.qtyIn);  f.qtyIn.focus();  toast('Số lượng nhận không hợp lệ'); return; }
   const date = todayStr();
+  const dcaExtra = {};
+  if(to.priceKey==='eth'){
+    dcaExtra.source = f.source.value || 'MANUAL';
+    const u = price('usdt'); if(u>0) dcaExtra.usdtRate = u;
+  }
   addTransfer({ date, month:date.slice(0,7), fromId:from.id, toId:to.id, qtyOut:rq(qo), qtyIn:rq(qi),
-                valueVnd: r6(transferValue(from,to,qo,qi)), note: f.note.value.trim() });
+                valueVnd: r6(transferValue(from,to,qo,qi)), note: f.note.value.trim(), ...dcaExtra });
   f.qtyOut.value=''; f.qtyIn.value=''; f.note.value=''; updateXferLabels(); f.qtyOut.focus();
   toast(`Đã chuyển ${fmtQty(qo)} ${from.name} → ${fmtQty(qi)} ${to.name}`);
 });
@@ -1951,11 +2120,13 @@ window.downloadBackup = downloadBackup;
 window.restoreBackup = restoreBackup;
 window.attribution = attribution;
 window.testAttribution = testAttribution;
+window.testDca = testDca;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
-        transferValue, scnPrice, scnNetWorth, netQty},
-  importInitialData, testAttribution, downloadBackup, restoreBackup, backupPayload };
+        transferValue, scnPrice, scnNetWorth, netQty,
+        ethHolding, ethPurchases, purchaseUsdPrice, dcaCostBasis, dcaSummary, dcaState},
+  importInitialData, testAttribution, testDca, downloadBackup, restoreBackup, backupPayload };
 
 boot();
 </script>
