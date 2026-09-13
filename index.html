@@ -546,6 +546,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <div class="warnline" id="dcaWarn" hidden></div>
       </section>
 
+      <section class="card" id="dcaBandCard" style="margin-bottom:16px">
+        <div class="colhead"><h2>Vùng giá mua <small id="dcaBandSub">giá phải về mức nào thì Buy Score vào vùng đó</small></h2><small class="mute" id="dcaBandNow"></small></div>
+        <div class="scroll"><table class="tbl" id="dcaBandTable"></table></div>
+      </section>
+
       <section class="card pad" id="dcaPlanCard" style="margin-bottom:16px">
         <div class="colhead" style="padding:0 0 12px"><h2>Tháng này <small id="dcaPlanMonth"></small></h2><small class="mute" id="dcaPlanBudget"></small></div>
         <div id="dcaPlanBody"></div>
@@ -1157,6 +1162,36 @@ function buyScore(ethCandles, btcCandles, opts){
            priceUsd:priceNow, candles:n, btcCandles:btc.length, version:C.version, reason:'' };
 }
 
+/* ---- Vùng giá: giá phải về đâu thì Buy Score chạm ngưỡng nào ----------------
+   Không có thuật toán mới: gọi lại chính buyScore() với `price` giả định.
+   Điểm giảm đơn điệu khi giá tăng (cả 5 thành phần phụ thuộc giá đều vậy — giảm từ đỉnh,
+   lệch MA200, giảm 30 ngày, percentile, lợi suất 7 ngày), nên chia đôi khoảng luôn hội tụ.
+   Trả về giá CAO NHẤT còn đạt ngưỡng: trên mức đó là rớt khỏi vùng. */
+function priceForScore(candles, refCandles, opts, target, priceNow){
+  if(!(priceNow>0)) return null;
+  const at = p => { const s = buyScore(candles, refCandles, {...(opts||{}), price:p}).score; return s==null ? -1 : s; };
+  let lo = priceNow*0.02, hi = priceNow*5;
+  if(at(lo) < target) return null;      // rẻ tới đáy vẫn không chạm ⇒ nói thẳng là không tới
+  if(at(hi) >= target) return hi;
+  for(let i=0;i<40;i++){ const mid=(lo+hi)/2; if(at(mid)>=target) lo=mid; else hi=mid; }
+  return lo;
+}
+/* Một dòng cho mỗi Market State (bỏ vùng 0 điểm vì luôn đúng), kèm % mở của Smart/Opportunity
+   tại đúng ngưỡng đó — để owner thấy ngay "xuống giá này thì được mua bao nhiêu". */
+function scoreBands(candles, refCandles, opts){
+  const base = buyScore(candles, refCandles, opts);
+  if(base.score==null) return [];
+  const now = base.priceUsd;
+  return BUY_SCORE_V1.states.filter(([min])=>min>0).map(([min,key,label])=>{
+    const raw = priceForScore(candles, refCandles, opts, min, now);
+    /* Cắt xuống chứ không làm tròn: làm tròn lên có thể vượt qua đúng cái ngưỡng vừa dò được,
+       khiến giá hiện trên bảng lại không còn đạt ngưỡng ghi bên cạnh. */
+    const p = raw==null ? null : Math.floor(raw*100)/100;
+    return { min, key, label, price: p, gap: p==null || !(now>0) ? null : p/now-1,
+             smartPct: unlockPct(DCA_PLAN_V1.smartUnlock, min), oppPct: unlockPct(DCA_PLAN_V1.oppUnlock, min) };
+  });
+}
+
 function pace(m, t){
   const target = Number(settings().incomeTarget||DEFAULT_TARGET);
   const {income} = t || monthTotals(m);
@@ -1584,6 +1619,29 @@ function testBuyScore(){
     chk('Đủ dữ liệu, cũ hơn 48 giờ', buyScore(eth,btc,{ageHours:80}).confidence, 'LOW', 0);
     chk('Thiếu BTC ⇒ Vừa', buyScore(eth,[],{ageHours:2}).confidence, 'MEDIUM', 0);
     chk('Thiếu BTC vẫn ra điểm', buyScore(eth,[],{ageHours:2}).score!=null, true); }
+
+  console.log('%c8 — điểm giảm đơn điệu khi giá tăng (điều kiện để dò vùng giá bằng chia đôi)','font-weight:600');
+  { const closes = new Array(200).fill(3000).concat(Array.from({length:165},(_,i)=>3000+i*3));
+    const eth = makeCandles(closes), btc = makeCandles(closes.map(c=>c*20));
+    const at = p => buyScore(eth, btc, {price:p}).score;
+    const seq = [800,1200,1800,2400,3000,3600,4500];
+    chk('Giá càng cao điểm càng thấp (hoặc bằng)', seq.every((p,i)=>i===0 || at(p)<=at(seq[i-1])), true);
+    chk('Giá rất rẻ ⇒ điểm cao', at(800) >= 70, true);
+    chk('Giá rất đắt ⇒ điểm thấp', at(4500) <= 25, true); }
+
+  console.log('%c9 — vùng giá: mỗi ngưỡng ra một mức giá, rẻ dần theo điểm, và đúng ngưỡng đó','font-weight:600');
+  { const closes = new Array(200).fill(3000).concat(Array.from({length:165},(_,i)=>3000+i*3));
+    const eth = makeCandles(closes), btc = makeCandles(closes.map(c=>c*20));
+    const o = {price:3400}, bands = scoreBands(eth, btc, o);
+    chk('Một dòng cho mỗi Market State có điểm > 0', bands.length, BUY_SCORE_V1.states.filter(([m])=>m>0).length, 0);
+    const got = bands.filter(b=>b.price!=null);
+    chk('Trả theo thứ tự điểm giảm dần', got.every((b,i)=>i===0 || b.min<got[i-1].min), true);
+    chk('Điểm ngưỡng càng cao thì giá càng rẻ', got.every((b,i)=>i===0 || b.price>=got[i-1].price), true);
+    /* Giá trả về là mức CAO NHẤT còn đạt ngưỡng: ngay tại đó phải đạt, nhích lên 1% là rớt. */
+    chk('Tại giá trả về thì đạt ngưỡng', got.every(b=>buyScore(eth,btc,{...o,price:b.price}).score >= b.min), true);
+    chk('Cao hơn 1% thì rớt khỏi ngưỡng', got.every(b=>buyScore(eth,btc,{...o,price:b.price*1.01}).score < b.min), true);
+    chk('% chênh so với giá hiện tại khớp', got.every(b=>Math.abs(b.gap-(b.price/3400-1))<1e-9), true);
+    chk('Chưa đủ nến ⇒ không bịa vùng giá', scoreBands(flatCandles(50,3000), flatCandles(50,60000), o).length, 0, 0); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -2050,10 +2108,11 @@ async function refreshDca(){
     const kl = {eth:ethK, btc:btcK};
     const now = Date.now(), coins = {};
     for(const c of DCA_COINS){
-      const r = buyScore(kl[c.key], kl[c.ref], {price:usd[c.key], ageHours, ratioLabel:c.ratioLabel});
+      const o = {price:usd[c.key], ageHours, ratioLabel:c.ratioLabel};
+      const r = buyScore(kl[c.key], kl[c.ref], o);
       if(r.score==null) throw new Error(`${c.label}: ${r.reason||'không đủ dữ liệu để tính điểm'}`);
       coins[c.key] = { score:r.score, components:r.components, marketState:r.marketState,
-        confidence:r.confidence, priceUsd:usd[c.key], candles:r.candles,
+        confidence:r.confidence, priceUsd:usd[c.key], candles:r.candles, bands:scoreBands(kl[c.key], kl[c.ref], o),
         dataTime, updatedAt:now, source:'binance', version:r.version };
     }
     D.prices.dca = { usd, coins, dataTime, updatedAt:now, source:'binance', version:BUY_SCORE_V1.version };
@@ -2589,13 +2648,24 @@ function renderHoldings(){
   const cu = cryptoUsd();
   el('holdTotal').innerHTML = fmtK(Math.round(ta)) + (cu ? ` <small class="mute">· crypto ≈ ${fmtUsd(cu)}</small>` : '');
   el('holdTable').innerHTML = `<thead><tr><th class="first">Tên</th><th>Nhóm</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
-    (hs.map((h,i)=>`<tr data-id="${h.id}">
+    (hs.map((h,i)=>{
+      /* Coin: cột Giá nói bằng USDT — tổng chỗ đang giữ quy ra USDT, dưới là tỉ giá 1 đơn vị.
+         Tài sản khác (tiền, vàng, bạc) giữ nguyên giá nghìn đồng, sửa tay được ngay tại ô. */
+      const cUsd = LIVE_KEYS.includes(h.priceKey) ? holdingUsd(h) : null;
+      const uUsd = cUsd==null ? null : priceUsd(h.priceKey);
+      const inUsdt = cUsd!=null && uUsd!=null;
+      const priceCell = inUsdt
+        ? `<b>${fmtUsdt(cUsd)}</b>${h.priceKey==='usdt' ? '' : `<small class="mute" style="display:block;font-weight:400">1 ${esc(priceLabel(h.priceKey))} ≈ ${fmtUsdt(uUsd)}</small>`}`
+        : h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey)) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`)
+        : '<span class="mute">—</span>';
+      return `<tr data-id="${h.id}">
       <td class="first" style="min-width:120px"><input class="inline l" data-f="name" value="${esc(h.name)}"></td>
       <td><select class="inline" data-f="group">${options(HOLDING_GROUPS,h.group)}</select></td>
       <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:110px"></td>
-      <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey)) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
-      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b>${usdSub(LIVE_KEYS.includes(h.priceKey) ? holdingUsd(h) : null)}</td>
-      <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===hs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`).join('') || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
+      <td class="n">${priceCell}</td>
+      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b>${inUsdt ? '' : usdSub(LIVE_KEYS.includes(h.priceKey) ? holdingUsd(h) : null)}</td>
+      <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===hs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`;
+    }).join('') || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
   el('donut').innerHTML = donutHtml();
   // bảng giá
   el('priceTable').innerHTML = `<thead><tr><th class="first key">Khoá</th><th>Tên</th><th class="n">Giá</th><th class="n">USDT</th><th class="c">Nguồn</th><th class="last">Cập nhật</th></tr></thead><tbody>`+
@@ -2675,6 +2745,27 @@ function renderDcaScore(){
     `</tbody>`;
 }
 
+/* ---- Vùng giá mua: đọc bands đã tính sẵn lúc bấm Cập nhật ---- */
+function renderDcaBands(){
+  const coin = dcaCoinOf(state.dcaCoin), c = dcaCache(coin.key);
+  const bands = (c && c.bands) || [], now = c && c.priceUsd, usdt = price('usdt');
+  el('dcaBandSub').textContent = `giá ${coin.label} phải về mức nào thì Buy Score vào vùng đó`;
+  el('dcaBandNow').textContent = c && c.score!=null && now ? `hiện ${fmtUsd(now)} · Score ${c.score}` : '';
+  const cur = c && c.marketState ? c.marketState.key : null;
+  el('dcaBandTable').innerHTML =
+    `<thead><tr><th class="first">Vùng</th><th class="n">Điểm</th><th class="n">Giá ${esc(coin.label)}</th><th class="n">So với hiện tại</th><th class="n">Smart mở</th><th class="last n">Opportunity mở</th></tr></thead><tbody>`+
+    (bands.length ? [...bands].sort((a,b)=>a.min-b.min).map(b=>`<tr${b.key===cur?' class="total"':''}>
+      <td class="first">${esc(b.label)}${b.key===cur?' <span class="badge on">đang ở đây</span>':''}</td>
+      <td class="n mute">≥ ${b.min}</td>
+      <td class="n">${b.price==null ? '<span class="mute">không tới được</span>'
+        : `<b>${fmtUsd(b.price)}</b>${usdt>0?`<small class="mute" style="display:block;font-weight:400">≈ ${fmtK(Math.round(b.price*usdt))}</small>`:''}`}</td>
+      <td class="n ${b.gap!=null&&b.gap<0?'':'mute'}">${b.gap==null?'—':fmtPctS(b.gap)}</td>
+      <td class="n mute">${b.smartPct}%</td>
+      <td class="last n mute">${b.oppPct?b.oppPct+'%':'—'}</td></tr>`).join('')
+     : `<tr><td class="empty" colspan="6">Chưa tính — bấm "Cập nhật" để chấm điểm và dò vùng giá</td></tr>`)+
+    `</tbody>`;
+}
+
 /* ---- DCA Khối B: card "Tháng này" ---- */
 const LEG_TEXT = { done:'đã mua đủ', due:'tới hạn, chưa mua đủ', waiting:'chưa tới hạn' };
 function renderDcaPlan(){
@@ -2728,6 +2819,7 @@ function renderDcaPlan(){
 /* ---- DCA (SPEC-DCA Khối C): giá vốn, lịch sử mua, lọc theo nguồn ---- */
 function renderDca(){
   renderDcaScore();
+  renderDcaBands();
   renderDcaPlan();
   const coin = dcaCoinOf(state.dcaCoin), L = coin.label;
   const usdt = price('usdt'), cur = price(coin.key);
@@ -3329,7 +3421,7 @@ window.FinTrace = { state, data:D,
         transferValue, scnPrice, scnNetWorth, netQty,
         coinHolding, coinPurchases, ethHolding, ethPurchases, purchaseUsdPrice, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
-        sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, BUY_SCORE_V1,
+        sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, scoreBands, priceForScore, BUY_SCORE_V1,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS},
   render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews,
