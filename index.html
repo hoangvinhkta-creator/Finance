@@ -440,6 +440,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="colhead" style="padding:0 0 8px">
             <h2>Phân rã tăng trưởng</h2>
             <select id="ovPeriod" style="width:auto;min-width:132px">
+              <option value="d7">7 ngày</option><option value="d30">30 ngày</option>
               <option value="m0">tháng này</option><option value="m1">tháng trước</option>
               <option value="m3">3 tháng</option><option value="m12">12 tháng</option>
             </select>
@@ -876,6 +877,7 @@ const fmtTime = ms => ms ? new Date(ms).toLocaleString('vi-VN',{day:'2-digit',mo
 const pad2 = n => String(n).padStart(2,'0');
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
 const thisMonth = () => todayStr().slice(0,7);
+const shiftDays = (d, k) => { const t=new Date(d+'T00:00:00'); t.setDate(t.getDate()+k); return t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate()); };
 function shiftMonth(m, k){ const [y,mo]=m.split('-').map(Number); const d=new Date(y,mo-1+k,1); return d.getFullYear()+'-'+pad2(d.getMonth()+1); }
 function daysInMonth(m){ const [y,mo]=m.split('-').map(Number); return new Date(y,mo,0).getDate(); }
 
@@ -897,7 +899,7 @@ const el = id => document.getElementById(id);
    STORE — hai adapter cùng API: Firestore (thật) và localStorage (thử cục bộ).
    Mọi document được nạp về state khi đăng nhập; UI render từ state; ghi nền.
    ===================================================================== */
-const COLLECTIONS = ['transactions','debts','holdings','transfers','months','prices','settings'];
+const COLLECTIONS = ['transactions','debts','holdings','transfers','months','snaps','prices','settings'];
 
 function makeLocalStore(){
   const KEY = 'fintrace.local.v1';
@@ -913,7 +915,8 @@ function makeLocalStore(){
     async signIn(){ return {uid:'local', email:'chế độ thử cục bộ'}; },
     async signOut(){},
     async loadAll(){ return {transactions:list('transactions'), debts:list('debts'), holdings:list('holdings'), transfers:list('transfers'),
-      months:Object.fromEntries(list('months').map(m=>[m.id,m])), prices:(db.prices.current||{}), settings:(db.settings.main||null)}; },
+      months:Object.fromEntries(list('months').map(m=>[m.id,m])), snaps:Object.fromEntries(list('snaps').map(x=>[x.id,x])),
+      prices:(db.prices.current||{}), settings:(db.settings.main||null)}; },
     newId(){ return 'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); },
     async set(c,id,data){ db[c][id] = JSON.parse(JSON.stringify(data)); save(); },
     async update(c,id,patch){ db[c][id] = {...(db[c][id]||{}), ...JSON.parse(JSON.stringify(patch))}; save(); },
@@ -943,10 +946,11 @@ async function makeFirestoreStore(){
     async signOut(){ await authM.signOut(auth); uid=null; },
     async loadAll(){
       const get = async c => (await fsM.getDocs(colRef(c))).docs.map(fromFs);
-      const [transactions,debts,holdings,transfers,months] = await Promise.all(['transactions','debts','holdings','transfers','months'].map(get));
+      const [transactions,debts,holdings,transfers,months,snaps] = await Promise.all(['transactions','debts','holdings','transfers','months','snaps'].map(get));
       const prices = await fsM.getDoc(docRef('prices','current'));
       const settings = await fsM.getDoc(docRef('settings','main'));
       return {transactions,debts,holdings,transfers, months:Object.fromEntries(months.map(m=>[m.id,m])),
+        snaps:Object.fromEntries(snaps.map(x=>[x.id,x])),
         prices: prices.exists()?prices.data():{}, settings: settings.exists()?settings.data():null};
     },
     newId(){ return fsM.doc(colRef('transactions')).id; },
@@ -974,7 +978,7 @@ async function makeFirestoreStore(){
 let store = null;
 const state = {
   uid:null, email:null, mode:'local',
-  data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, settings:{}},
+  data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, snaps:{}, settings:{}},
   month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth',
   edit:{chi:null, thu:null, receivable:null, payable:null},
   period:'m0', exUnusual:false, scn:{prices:{}, name:'', key:null, cryptoPct:0}, holdOpen:{},
@@ -1582,16 +1586,34 @@ function txForAttribution(){
 }
 
 /* ---- kỳ cho waterfall: tháng này / tháng trước / 3 tháng / 12 tháng ---- */
-const PERIODS = { m0:{n:1,label:'tháng này'}, m1:{n:1,label:'tháng trước'}, m3:{n:3,label:'3 tháng'}, m12:{n:12,label:'12 tháng'} };
+/* Kỳ theo ngày (d*) dựa vào ảnh chụp hằng ngày; kỳ theo tháng (m*) dựa vào bản chốt tháng. */
+const PERIODS = { d7:{days:7,label:'7 ngày'}, d30:{days:30,label:'30 ngày'},
+                  m0:{n:1,label:'tháng này'}, m1:{n:1,label:'tháng trước'}, m3:{n:3,label:'3 tháng'}, m12:{n:12,label:'12 tháng'} };
 function periodStats(kind){
-  const now = thisMonth();
+  const now = thisMonth(), P = PERIODS[kind];
+  if(P.days){
+    /* Kỳ theo ngày: mốc đầu là ảnh chụp gần nhất không sau (hôm nay − N ngày), mốc cuối luôn là hiện tại. */
+    const from = shiftDays(todayStr(), -P.days);
+    let S0 = snapAt(from);
+    /* Mới dùng vài ngày thì chưa có ảnh nào đủ cũ — lấy ảnh cũ nhất đang có (miễn là không phải hôm nay)
+       và ghi rõ khoảng THẬT ở rangeLabel, để kỳ này có số ngay thay vì bắt chờ đủ N ngày. */
+    if(!S0){ const older = Object.keys(D.snaps).filter(d=>d<todayStr()).sort();
+             if(older.length) S0 = snapshotOfSnap(D.snaps[older[0]]); }
+    if(S0 && S0.netWorth==null) S0 = null;
+    const S1 = currentSnapshot();
+    const a = attribution(S0, S1, txForAttribution(), D.transfers);
+    return { kind, days:P.days, start:S0?S0.month:now, end:now, S0, S1, label:P.label,
+             rangeLabel: S0 ? `${fmtDate(S0.asOf)} → hôm nay` : P.label,
+             noEnd: !S1 || S1.netWorth==null, noBase: !S0, ...a };
+  }
   const end = kind==='m1' ? shiftMonth(now,-1) : now;
-  const start = shiftMonth(end, -(PERIODS[kind].n - 1));
+  const start = shiftMonth(end, -(P.n - 1));
   const S1 = end===now ? currentSnapshot() : snapshotOf(end);
   let S0 = snapshotOf(shiftMonth(start,-1));
   if(S0 && S0.netWorth==null) S0 = null;
   const a = attribution(S0, S1, txForAttribution(), D.transfers);
-  return { kind, start, end, S0, S1, label:PERIODS[kind].label,
+  return { kind, start, end, S0, S1, label:P.label,
+           rangeLabel: `${fmtMonth(start)}${start!==end?' → '+fmtMonth(end):''}`,
            noEnd: !S1 || S1.netWorth==null, noBase: !S0, ...a };
 }
 
@@ -2282,6 +2304,40 @@ function testScenario(){
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
 }
+/* Ảnh chụp hằng ngày: chọn mốc và dọn bản cũ — testSnaps(). */
+function testSnaps(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+  const ds = ['2026-09-01','2026-09-05','2026-09-09','2026-09-13'];
+
+  console.log('%c1 — snapAtFrom: lấy ảnh chụp gần nhất KHÔNG SAU ngày cần tìm','font-weight:600');
+  chk('đúng ngày có ảnh', snapAtFrom(ds,'2026-09-05'), '2026-09-05');
+  chk('ngày không có ảnh ⇒ lùi về gần nhất trước đó', snapAtFrom(ds,'2026-09-08'), '2026-09-05');
+  chk('sau ảnh cuối ⇒ ảnh cuối', snapAtFrom(ds,'2026-10-01'), '2026-09-13');
+  chk('trước ảnh đầu ⇒ không có', snapAtFrom(ds,'2026-08-31'), null);
+  chk('chưa có ảnh nào ⇒ không có', snapAtFrom([],'2026-09-05'), null);
+  chk('không cần mảng đã sắp xếp', snapAtFrom(['2026-09-09','2026-09-01','2026-09-05'],'2026-09-06'), '2026-09-05');
+
+  console.log('%c2 — snapsToPrune: chỉ giữ N bản gần nhất, xoá phần cũ','font-weight:600');
+  chk('giữ 2 ⇒ xoá 2 bản cũ nhất', snapsToPrune(ds,2), ['2026-09-01','2026-09-05']);
+  chk('giữ nhiều hơn số đang có ⇒ không xoá gì', snapsToPrune(ds,10), []);
+  chk('giữ đúng bằng số đang có ⇒ không xoá gì', snapsToPrune(ds,4), []);
+  chk('giữ 0 ⇒ xoá hết', snapsToPrune(ds,0), ds);
+
+  console.log('%c3 — ảnh chụp ngày dùng được làm mốc: lọc theo NGÀY chụp, tính cả biến động giá','font-weight:600');
+  { const H=(id,q,pk,pr)=>({holdingId:id,name:id,group:pk?'Crypto':'Tiền',quantity:q,priceKey:pk||null,price:pr||1,value:q*(pr||1)});
+    const S0 = snapshotOfSnap({id:'2026-09-06', netWorth:100000, holdings:[H('eth',2,'eth',50000)], prices:{eth:50000}, debtQty:{}});
+    chk('mốc ngày mang đúng ngày chụp', [S0.month, S0.asOf, S0.snapAsOf], ['2026-09','2026-09-06','2026-09-06']);
+    const S1 = {month:'2026-09', asOf:'2026-09-13', snapAsOf:'2026-09-13', holdings:[H('eth',2,'eth',60000)], prices:{eth:60000}, debtQty:{}, netWorth:120000};
+    const a = attribution(S0, S1, [{type:'chi',amount:500,month:'2026-09',date:'2026-09-03'},{type:'chi',amount:300,month:'2026-09',date:'2026-09-10'}], []);
+    chk('chỉ tính chi SAU ngày chụp', a.cashFlow, -300);
+    chk('ETH 50.000k → 60.000k × 2 = thị trường 20.000k', a.market, 20000);
+    chk('Khác lệch đúng 300 (chi sau mốc chưa phản ánh vào NW giả lập)', Math.round(a.other), 300); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
 function testViews(){
   let ok=0, bad=0;
   const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
@@ -2464,6 +2520,17 @@ async function start(user){
   el('modeBadge').textContent = state.mode==='local' ? 'Chế độ thử cục bộ — chưa nối Firebase. Dữ liệu chỉ nằm trong trình duyệt này.' : state.email;
   fillStaticSelects();
   route();
+  openTasks();
+}
+/* Việc tự chạy mỗi lần mở app (owner yêu cầu 2026-09-13): lấy giá Binance rồi chụp danh mục hôm nay.
+   Chạy sau route() nên không chặn lần vẽ đầu; hỏng thì im lặng, số cũ vẫn dùng được. */
+const OPEN_REFRESH_MIN = 10;      // cache mới hơn ngần này phút thì khỏi gọi lại (tránh reload liên tục = gọi liên tục)
+async function openTasks(){
+  try{
+    const upd = D.prices.dca && D.prices.dca.updatedAt;
+    if(!upd || Date.now()-upd > OPEN_REFRESH_MIN*60e3) await refreshDca({silent:true});
+  }catch(e){ console.error(e); }
+  try{ await takeDailySnapshot(); }catch(e){ console.error(e); }
 }
 async function logout(){ await store.signOut(); location.reload(); }
 
@@ -2593,7 +2660,7 @@ function dcaCacheUsd(coin){
 const dcaStale = c => !c || !c.dataTime || (Date.now()-c.dataTime) > BUY_SCORE_V1.staleHours*3600e3;
 
 let dcaBusy = false;
-async function refreshDca(){
+async function refreshDca(opts={}){
   if(dcaBusy) return;
   dcaBusy = true; renderDca();
   try{
@@ -2633,18 +2700,55 @@ async function refreshDca(){
     }
     const missing = LIVE_SYMBOLS.filter(x=>!(usd[x.key]>0)).map(x=>priceLabel(x.key));
     render();
-    bg(store.set('prices','current', D.prices),
+    bg(store.set('prices','current', D.prices), opts.silent ? '' :
        DCA_SCORED.map(c=>`${c.label} ${coins[c.key].score}`).join(' · ') +
        (u>0 ? ' · đã cập nhật giá '+done.join(', ') : ' · chưa có giá USDT nên chưa quy ra nghìn đồng') +
        (missing.length ? ' · Binance không có giá '+missing.join(', ') : ''));
   }catch(e){
-    console.error(e);
-    toast('Không lấy được dữ liệu Binance: '+(e.message||e)+'. Giữ số liệu cũ.');
+    /* Lần tự chạy lúc mở app không làm phiền: không toast, không đổ stack đỏ ra console —
+       mất mạng một lúc là chuyện thường và số cũ vẫn dùng được. */
+    if(opts.silent) console.warn('Tự lấy giá Binance lúc mở app không thành công:', e.message||e);
+    else { console.error(e); toast('Không lấy được dữ liệu Binance: '+(e.message||e)+'. Giữ số liệu cũ.'); }
   }finally{
     dcaBusy = false; renderDca();
   }
 }
 function saveSettings(patch){ Object.assign(D.settings, patch); render(); bg(store.set('settings','main',D.settings)); }
+/* =====================================================================
+   ẢNH CHỤP HẰNG NGÀY (owner yêu cầu 2026-09-13: "tự tính mỗi ngày khi mở app thay vì phải bấm chốt tháng")
+   Mỗi lần mở app ghi một document `snaps/YYYY-MM-DD` = đúng thứ bản chốt tháng lưu (danh mục + bảng giá + công nợ vàng),
+   nên Phân rã tăng trưởng có mốc so sánh hằng ngày mà không cần bấm gì. Bản chốt tháng vẫn giữ nguyên vai trò
+   "mốc chính thức của tháng"; ảnh chụp ngày chỉ là mốc phụ, giữ SNAP_KEEP_DAYS ngày gần nhất rồi tự xoá.
+   ===================================================================== */
+const SNAP_KEEP_DAYS = 120;
+/* Hàm thuần: ảnh chụp gần nhất KHÔNG SAU ngày d. Trả null nếu chưa có. */
+function snapAtFrom(dates, d){ const c = dates.filter(x=>x<=d).sort(); return c.length ? c[c.length-1] : null; }
+/* Hàm thuần: những ngày cần xoá để chỉ giữ `keep` ngày gần nhất. */
+function snapsToPrune(dates, keep){ const a=[...dates].sort(); return a.slice(0, Math.max(0, a.length-keep)); }
+const snapAt = d => { const k = snapAtFrom(Object.keys(D.snaps), d); return k ? snapshotOfSnap(D.snaps[k]) : null; };
+function snapshotOfSnap(doc){
+  return { month: doc.id.slice(0,7), asOf: doc.id, snapAsOf: doc.id, daily:true,
+           netWorth: doc.netWorth==null?null:Number(doc.netWorth), totalAssets: doc.totalAssets==null?null:Number(doc.totalAssets),
+           holdings: Array.isArray(doc.holdings)&&doc.holdings.length ? doc.holdings : null,
+           prices: doc.prices||null, debtQty: doc.debtQty||null, debt: doc.debt||null };
+}
+/* Ghi (đè) ảnh chụp của hôm nay. Gọi sau khi đã lấy giá live để ảnh chụp dùng giá mới nhất.
+   Không ghi khi danh mục rỗng — tránh tạo mốc rác lúc chưa import dữ liệu. */
+async function takeDailySnapshot(){
+  if(!store || !D.holdings.length) return null;
+  const id = todayStr(), dt = debtTotals();
+  const doc = { netWorth: Math.round(netWorth()), totalAssets: Math.round(totalAssets()),
+    debt: { recv:Math.round(dt.recv), pay:Math.round(dt.pay), pending:Math.round(dt.pending), net:Math.round(dt.net) },
+    holdings: holdingSnapshot(), prices: priceSnapshot(), debtQty: debtQtySnapshot(), takenAt: Date.now() };
+  D.snaps[id] = {id, ...doc};
+  await store.set('snaps', id, doc);
+  for(const old of snapsToPrune(Object.keys(D.snaps), SNAP_KEEP_DAYS)){
+    delete D.snaps[old];
+    try{ await store.remove('snaps', old); }catch(e){ console.error(e); }
+  }
+  return id;
+}
+
 /* Số chỉ vàng ròng đang nằm trong công nợ (họ nợ mình − mình nợ), theo từng khoá giá.
    Phân rã tăng trưởng cần số này: giá vàng đổi thì phần công nợ tính bằng vàng cũng đổi giá trị. */
 function debtQtySnapshot(){
@@ -2838,11 +2942,16 @@ function renderOverview(){
   const p = periodStats(state.period);
   const box = el('ovWaterfall'), w = Math.max(300, box.clientWidth || 800);
   if(p.noEnd || p.noBase || p.dNW==null){
-    box.innerHTML = `<div class="mute" style="padding:18px 0">${p.noEnd?'Chưa chốt '+p.label+' nên chưa có tài sản ròng cuối kỳ.':'Chưa có bản chốt đầu kỳ ('+fmtMonth(shiftMonth(p.start,-1))+') để so sánh.'}</div>`;
-    el('ovWfNote').innerHTML = `<div class="hint" style="padding:6px 0 0">Bấm <b>Chốt tháng</b> ở tab Dòng tiền để lưu mốc so sánh (kèm ảnh chụp danh mục và bảng giá lúc đó). Từ lần chốt sau, phần <b>Thị trường</b> mới tách được ra khỏi <b>Khác</b>.</div>`;
+    const why = p.noEnd ? 'Chưa chốt '+p.label+' nên chưa có tài sản ròng cuối kỳ.'
+      : p.days ? `Chưa có ảnh chụp nào từ ${p.days} ngày trước để so sánh.`
+      : 'Chưa có bản chốt đầu kỳ ('+fmtMonth(shiftMonth(p.start,-1))+') để so sánh.';
+    box.innerHTML = `<div class="mute" style="padding:18px 0">${why}</div>`;
+    el('ovWfNote').innerHTML = `<div class="hint" style="padding:6px 0 0">${p.days
+      ? 'App tự chụp danh mục mỗi lần mở — mở lại sau vài ngày là kỳ này có số, không cần bấm gì.'
+      : 'Bấm <b>Chốt tháng</b> ở tab Dòng tiền để lưu mốc chính thức của tháng. Kỳ <b>7 ngày</b> / <b>30 ngày</b> thì không cần — app tự chụp mỗi lần mở.'}</div>`;
   } else {
     box.innerHTML = waterfallSvg(w, p);
-    const notes = [`${fmtMonth(p.start)}${p.start!==p.end?' → '+fmtMonth(p.end):''} · trục cắt, không bắt đầu từ 0`];
+    const notes = [`${p.rangeLabel} · trục cắt, không bắt đầu từ 0`];
     if(!p.marketKnown) notes.push(`Phần thị trường: bản chốt ${fmtMonth(p.S0.month)} <b>không có ảnh chụp danh mục</b> (số import từ file cũ) nên không tách được biến động giá — toàn bộ phần không phải dòng tiền đang nằm ở "Khác". Chốt lại tháng đó trong app là có.`);
     else notes.push('Phần thị trường tính từ <b>giá đang lưu trong app</b>: coin theo lần bấm Cập nhật gần nhất ở tab DCA, vàng/bạc/chứng khoán theo giá bạn tự nhập.');
     if(p.warn) notes.push('|Khác| vượt 5% ΔNW và 1.000k — <b>có biến động chưa được ghi qua Chuyển đổi hoặc sổ.</b>');
@@ -3034,7 +3143,9 @@ el('btnClose').onclick = ()=>{
   const m=state.month, t=monthTotals(m), nw=netWorth(), old=D.months[m];
   showModal((old?'Chốt lại ':'Chốt ')+fmtMonthLong(m).toLowerCase(),
     `<div class="kv"><span>Thu (gồm chưa nhận ${fmtK(t.pending)})</span><b>${fmtK(t.income)}</b><span>Chi</span><b>${fmtK(t.expense)}</b><span>Chênh lệch</span><b>${fmtK(t.income-t.expense)}</b><span>Tài sản ròng hiện tại</span><b>${fmtK(Math.round(nw))}</b></div>
-     <input id="mdNote" placeholder="Ghi chú (vd: có thưởng Tết)" value="${esc(old?old.note:'')}">${old?'<small>Sẽ ghi đè bản chốt cũ.</small>':''}`,
+     <input id="mdNote" placeholder="Ghi chú (vd: có thưởng Tết)" value="${esc(old?old.note:'')}">
+     ${old?'<small>Sẽ ghi đè bản chốt cũ — không tạo thêm bản mới.</small>':''}
+     ${m===thisMonth()?'<small>Tháng này chưa kết thúc: bản chốt sẽ là ảnh chụp <b>hôm nay</b>. Cuối tháng bấm lại là ghi đè, không sao cả. Chỉ muốn xem tình hình thì không cần chốt — vào Tổng quan chọn kỳ <b>7 ngày</b> / <b>30 ngày</b>, app tự chụp mỗi lần mở.</small>':''}`,
     old?'Chốt lại':'Chốt', ()=>closeMonth(m, el('mdNote').value.trim()));
 };
 
@@ -3990,7 +4101,7 @@ const BACKUP_VERSION = 1;
 /* Nạp kết quả store.loadAll() vào state. Dùng chung cho đăng nhập, import và khôi phục. */
 function applyLoaded(d){
   D.transactions = d.transactions || []; D.debts = d.debts || []; D.holdings = d.holdings || [];
-  D.transfers = d.transfers || []; D.months = d.months || {}; D.prices = d.prices || {};
+  D.transfers = d.transfers || []; D.months = d.months || {}; D.snaps = d.snaps || {}; D.prices = d.prices || {};
   D.settings = { incomeTarget: DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS], ...(d.settings||{}) };
   normalizeSettings();
   fixWbethPriceKey();
@@ -3999,7 +4110,7 @@ function applyLoaded(d){
 function backupPayload(){
   return { app:'fintrace', version:BACKUP_VERSION, exportedAt:new Date().toISOString(), mode:state.mode,
     data:{ transactions:D.transactions, debts:D.debts, holdings:D.holdings, transfers:D.transfers,
-           months:Object.values(D.months), prices:D.prices, settings:D.settings } };
+           months:Object.values(D.months), snaps:Object.values(D.snaps), prices:D.prices, settings:D.settings } };
 }
 
 function downloadJson(payload, filename){
@@ -4063,11 +4174,11 @@ async function restoreBackup(payload){
   if(Number(payload.version) > BACKUP_VERSION) throw new Error('Bản sao lưu mới hơn phiên bản app; hãy cập nhật app trước');
   const d = payload.data, ops = [], counts = {};
   const rowsOf = v => Array.isArray(v) ? v : (v && typeof v==='object' ? Object.values(v) : []);
-  for(const col of ['transactions','debts','holdings','transfers','months']){
+  for(const col of ['transactions','debts','holdings','transfers','months','snaps']){
     const rows = rowsOf(d[col]); counts[col] = rows.length;
     for(const row of rows){
       const {id, ...rest} = row;
-      if(col==='months' && !id) throw new Error('Bản sao lưu hỏng: có tháng thiếu id');
+      if((col==='months'||col==='snaps') && !id) throw new Error('Bản sao lưu hỏng: có '+(col==='months'?'tháng':'ảnh chụp')+' thiếu id');
       ops.push({op:'set', col, id: id || store.newId(), data: rest});
     }
   }
@@ -4226,11 +4337,12 @@ window.importDcaHistory = importDcaHistory;
 window.testUsd = testUsd;
 window.testViews = testViews;
 window.testScenario = testScenario;
+window.testSnaps = testSnaps;
 window.testRecovery = testRecovery;
 window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
-        attribution, snapshotOf, currentSnapshot, debtQtySnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
+        attribution, snapshotOf, currentSnapshot, debtQtySnapshot, snapAtFrom, snapsToPrune, snapshotOfSnap, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
         transferValue, scnPrice, scnNetWorth, netQty, scnProjection, scnApplyPct, scnPctOf,
         coinHolding, coinPurchases, coinSales, coinLedger, coinQtyHeld, coinValueHeld, familyHoldings, COIN_FAMILY,
         ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
@@ -4239,7 +4351,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS},
-  render, importInitialData, importDcaHistory, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario,
+  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps,
   refreshDca, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
