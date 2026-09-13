@@ -315,6 +315,17 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .seg button:hover{background:var(--soft)}
 .seg button.on{background:var(--ink);color:#fff;font-weight:600}
 
+/* Dòng tiền: cả tab cao đúng một màn hình (owner chốt 2026-09-13 "cuộn trong card"). Hàng thống kê giữ nguyên,
+   4 card Chi/Thu/Nợ chia phần còn lại và DANH SÁCH CUỘN BÊN TRONG TỪNG CARD — form Thêm luôn ở trên, không cuộn trang.
+   Chỉ áp cho desktop; điện thoại giữ dòng chảy thường (không có chỗ cho 4 card cố định). */
+@media (min-width:821px){
+  #view-dongtien.active{display:flex;flex-direction:column;height:calc(100vh - 52px)}   /* 52 = đệm trên + dưới của main */
+  #view-dongtien .cashtop{flex:none}
+  #view-dongtien .ledger4{flex:1;min-height:0;margin-bottom:0;align-items:stretch}
+  #view-dongtien .ledger4 .col{display:flex;flex-direction:column;min-height:0}
+  #view-dongtien .ledger4 .col .scroll{flex:1;min-height:120px;overflow-y:auto}
+}
+
 /* ---------- responsive ---------- */
 @media (max-width:1040px){ .ledger4{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:1100px){
