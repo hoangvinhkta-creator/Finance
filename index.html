@@ -1818,7 +1818,8 @@ function testUsd(){
   console.log('%c9 — Giá hiển thị làm tròn số nguyên cho gọn, không kéo theo số lượng/tỷ suất','font-weight:600');
   { chk('64.955,8593 → 64.956k (làm tròn)', fmtK(64955.8593), '64.956k');
     chk('Số lượng vẫn giữ đủ 6 chữ số thập phân', fmtQty(1.387511), '1,387511');
-    chk('Tỷ suất quy đổi vẫn giữ 4 chữ số', fmtNum(1.0538, 4), '1,0538'); }
+    chk('Tỷ suất quy đổi vẫn giữ 4 chữ số', fmtNum(1.0538, 4), '1,0538');
+    chk('Tỷ giá USDT/k dưới Bảng giá giữ đủ số lẻ, không rút gọn còn 26k', fmtK(26.4855, 4), '26,4855k'); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -2598,12 +2599,16 @@ function renderHoldings(){
   el('donut').innerHTML = donutHtml();
   // bảng giá
   el('priceTable').innerHTML = `<thead><tr><th class="first key">Khoá</th><th>Tên</th><th class="n">Giá</th><th class="n">USDT</th><th class="c">Nguồn</th><th class="last">Cập nhật</th></tr></thead><tbody>`+
-    PRICE_KEYS.map(p=>{ const cur=D.prices[p.key];
-      const rateSub = cur && cur.rate>0 ? `<br><small class="mute">1 ${esc(p.label)} ≈ ${fmtNum(cur.rate,4)} ${esc(priceLabel(cur.rateOf))}</small>` : '';
+    (()=>{ const uRate = price('usdt'); return PRICE_KEYS.map(p=>{ const cur=D.prices[p.key];
+      /* Dòng nhỏ dưới USDT: luôn ghi rõ tỉ giá 1 USDT ≈ … k đã dùng để quy đổi, cho mọi coin. */
+      const usdt = p.key==='usdt' ? null : priceUsd(p.key);
+      const rateLine = usdt!=null && uRate>0 ? `<br><small class="mute">1 USDT ≈ ${fmtK(uRate,4)}</small>` : '';
+      /* WBETH (và coin nào suy giá qua một cặp khác) có thêm dòng tỉ suất neo riêng, ví dụ 1 WBETH ≈ 1,0538 ETH. */
+      const pegLine = cur && cur.rate>0 ? `<br><small class="mute">1 ${esc(p.label)} ≈ ${fmtNum(cur.rate,4)} ${esc(priceLabel(cur.rateOf))}</small>` : '';
       return `<tr><td class="first key"><code>${p.key}</code></td><td>${esc(p.label)} <small>/ ${p.unit}</small></td>
       <td class="n"><input class="inline" data-p="${p.key}" value="${cur?esc(fmtInput(cur.value)):''}" inputmode="decimal" placeholder="nhập giá" style="width:130px"></td>
-      <td class="n mute">${p.key==='usdt' ? '<span class="mute">—</span>' : (priceUsd(p.key)!=null ? fmtUsdt(priceUsd(p.key)) : '—')}${rateSub}</td>
-      <td class="c">${cur ? (cur.source==='live'?'live':'nhập tay') : '<span class="mute">—</span>'}${cur&&cur.source==='live'?'':p.key==='usdt'?' <small>(chỉ nhập tay)</small>':p.live?' <small>(bấm Cập nhật giá live)</small>':''}</td><td class="last mute" style="white-space:nowrap">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join('')+`</tbody>`;
+      <td class="n mute">${p.key==='usdt' ? '<span class="mute">—</span>' : (usdt!=null ? fmtUsdt(usdt) : '—')}${rateLine}${pegLine}</td>
+      <td class="c">${cur ? (cur.source==='live'?'live':'nhập tay') : '<span class="mute">—</span>'}${cur&&cur.source==='live'?'':p.key==='usdt'?' <small>(chỉ nhập tay)</small>':p.live?' <small>(bấm Cập nhật giá live)</small>':''}</td><td class="last mute" style="white-space:nowrap">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join(''); })()+`</tbody>`;
   el('priceLive').disabled = dcaBusy;
   el('priceLive').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật giá live';
   renderTransfers();
