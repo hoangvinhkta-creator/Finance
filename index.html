@@ -200,6 +200,16 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .kpi{display:grid;gap:2px;font-size:13px;color:var(--ink2)}
 .kpi .n{font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-.02em}
 
+/* ---------- DCA: Buy Score (Khối A) ---------- */
+.hero .unit{font-size:14px;color:var(--mute);font-weight:400;letter-spacing:0;padding-bottom:4px}
+.badge{display:inline-block;border:1px solid var(--faint);border-radius:4px;padding:1px 7px;font-size:11px;color:var(--ink2);white-space:nowrap}
+.badge.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.badge.warn{background:var(--tint);border-style:dashed}
+.sbar{height:6px;width:96px;background:var(--line2);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle}
+.sbar i{display:block;height:100%;background:var(--ink)}
+.tbl td.pt{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+.tbl td.meas,.tbl th.meas{color:var(--mute);white-space:nowrap}
+
 /* ---------- responsive ---------- */
 @media (max-width:1100px){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -233,6 +243,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   .tbl td.first,.tbl th.first{padding-left:10px}
   .tbl td.last,.tbl th.last{padding-right:10px}
   .tbl td.c,.tbl th.c{display:none}
+  #dcaScoreTable td.bcol,#dcaScoreTable th.bcol{display:none}
+  #dcaScoreTable td.meas,#dcaScoreTable th.meas{white-space:normal}
   #priceTable .key{display:none}
   #priceTable td.first:not(.key),#priceTable th.first:not(.key){padding-left:10px}
   .donut{grid-template-columns:120px 1fr}.donut svg{width:120px;height:120px}
@@ -429,7 +441,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <div class="scroll"><table class="tbl" id="xferTable"></table></div>
       </section>
       <section class="card" style="margin-bottom:14px">
-        <div class="colhead"><h2>Bảng giá <small>nghìn đồng / 1 đơn vị</small></h2><button class="btn" disabled title="Pha 2: lấy giá qua Cloudflare Worker">Cập nhật giá live</button></div>
+        <div class="colhead"><h2>Bảng giá <small>nghìn đồng / 1 đơn vị</small></h2><button class="btn" id="priceLive" title="Lấy giá ETH, BTC, ADA từ Binance và chấm lại Buy Score">Cập nhật giá live</button></div>
         <div class="scroll"><table class="tbl" id="priceTable"></table></div>
       </section>
       <section class="card">
@@ -448,9 +460,24 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
     <!-- ===== DCA ===== -->
     <section id="view-dca" class="view">
-      <header class="vhead"><h1>DCA</h1><div class="right"><small id="dcaUpdated" class="mute"></small></div></header>
+      <header class="vhead"><h1>DCA</h1><div class="right"><small id="dcaUpdated" class="mute"></small><button class="btn primary" id="dcaRefresh">Cập nhật</button></div></header>
+
+      <section class="card pad" id="dcaScoreCard" style="margin-bottom:16px">
+        <div class="hero">
+          <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Giá ETH</div><div class="big" id="dcaHeroPrice">—</div></div>
+          <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Buy Score</div><div class="big" id="dcaHeroScore">—</div></div>
+          <div class="vs" id="dcaHeroState"></div>
+        </div>
+        <div class="split" id="dcaHeroMeta"></div>
+        <div class="warnline" id="dcaWarn" hidden></div>
+      </section>
 
       <div class="stats" id="dcaStats"></div>
+
+      <section class="card" id="dcaBreakdownCard" style="margin-bottom:16px">
+        <div class="colhead"><h2>Phân rã điểm <small>7 thành phần, tổng 100</small></h2><small class="mute" id="dcaAlgo"></small></div>
+        <div class="scroll"><table class="tbl" id="dcaScoreTable"></table></div>
+      </section>
 
       <section class="card" id="dcaEmpty" hidden>
         <div class="pad mute">Chưa có lần mua ETH nào qua tab Tài sản → Chuyển đổi. Đổi USDT (hoặc tài sản khác) sang ETH để bắt đầu theo dõi giá vốn ở đây.</div>
@@ -585,6 +612,41 @@ const DEBT_UNITS = [
 ];
 const DCA_SOURCES = ['BASE','SMART','OPPORTUNITY','MANUAL'];
 const DCA_SOURCE_LABEL = {BASE:'Base', SMART:'Smart', OPPORTUNITY:'Opportunity', MANUAL:'Tay'};
+
+/* ---- Buy Score V1 (SPEC-DCA Khối A) ------------------------------------
+   Mọi trọng số và ngưỡng nằm hết trong object này, không rải trong code.
+   Mỗi thành phần là một bảng bậc [ngưỡng, điểm] xét từ trên xuống, lấy bậc đầu tiên thoả:
+     dir 'atLeast' → giá trị >= ngưỡng     (càng lớn càng rẻ: mức giảm, khối lượng bán tháo)
+     dir 'atMost'  → giá trị <= ngưỡng     (càng nhỏ càng rẻ: RSI, percentile, lệch MA200)
+   Tổng 25+20+15+15+10+10+5 = 100. Muốn chỉnh khẩu vị thì sửa ở đây, không sửa hàm tính. */
+const BUY_SCORE_V1 = {
+  version: 'v1',
+  minCandles: 200,        // ít hơn thì không ra điểm, thà không có còn hơn có điểm sai
+  fullCandles: 365,       // đủ 1 năm mới cho Confidence cao
+  staleHours: 48,         // quá mốc này thì nhãn "dữ liệu cũ"
+  windows: { year:365, month:30, volShort:7, volLong:90, rsi:14, ma:200, ethbtc:30 },
+
+  drawdown365: { max:25, label:'Giảm từ đỉnh 365 ngày', fmt:'pct', dir:'atLeast',
+    tiers:[[0.60,25],[0.50,22],[0.40,18],[0.30,14],[0.20,9],[0.10,4],[0,0]] },
+  ma200: { max:20, label:'Lệch so với MA200', fmt:'pct', dir:'atMost',
+    tiers:[[-0.30,20],[-0.20,17],[-0.12,13],[-0.05,9],[0,5],[0.10,2],[Infinity,0]] },
+  rsi14: { max:15, label:'RSI14 (Wilder)', fmt:'num', dir:'atMost',
+    tiers:[[20,15],[25,13],[30,11],[35,8],[45,5],[55,2],[Infinity,0]] },
+  drawdownMonth: { max:15, label:'Giảm từ đỉnh 30 ngày', fmt:'pct', dir:'atLeast',
+    tiers:[[0.25,15],[0.18,12],[0.12,9],[0.08,6],[0.04,3],[0,0]] },
+  percentile365: { max:10, label:'Percentile giá trong 365 ngày', fmt:'pct', dir:'atMost',
+    tiers:[[0.05,10],[0.10,8],[0.20,6],[0.35,4],[0.50,2],[Infinity,0]] },
+  capitulation: { max:10, label:'Bán tháo (7 ngày + khối lượng)', fmt:'pct',
+    ret:[[-0.20,6],[-0.14,5],[-0.09,3],[-0.05,2],[Infinity,0]],          // atMost, tối đa 6
+    vol:[[2.00,4],[1.60,3],[1.30,2],[1.10,1],[0,0]] },                   // atLeast, tối đa 4
+  ethbtc30: { max:5, label:'ETH/BTC 30 ngày', fmt:'pct', dir:'atMost',
+    tiers:[[-0.15,5],[-0.10,4],[-0.05,3],[0,2],[0.08,1],[Infinity,0]] },
+
+  /* Market State: [điểm tối thiểu, mã, nhãn] — xét từ trên xuống. */
+  states: [[80,'CAPITULATION','Bán tháo'],[65,'DEEP_VALUE','Giảm sâu'],[45,'ACCUMULATE','Tích luỹ'],
+           [25,'NEUTRAL','Trung tính'],[0,'EXPENSIVE','Đắt']],
+  confLabel: {HIGH:'Cao', MEDIUM:'Vừa', LOW:'Thấp'},
+};
 const priceLabel = k => (PRICE_KEYS.find(p=>p.key===k)||{label:k}).label;
 
 /* ---------------- định dạng ---------------- */
@@ -811,6 +873,109 @@ function dcaSummary(basis, currentPriceVnd, usdtNow){
 }
 /* Điểm vào cho UI: đọc thẳng từ state D. */
 function dcaState(){ return dcaSummary(dcaCostBasis(ethPurchases(), price('usdt')), price('eth'), price('usdt')); }
+
+/* ---- DCA: chỉ báo và Buy Score (SPEC-DCA Khối A) -----------------------
+   Tất cả là hàm thuần: nhận mảng nến {time, close, volume}, không đọc D, không gọi mạng. */
+const r2 = x => Math.round((Number(x)||0)*100)/100;
+const tail = (arr, n) => arr.slice(Math.max(0, arr.length-n));
+/* Bảng bậc: lấy điểm của bậc đầu tiên thoả điều kiện. */
+function tierAtLeast(tiers, v){ for(const [th,p] of tiers) if(v>=th) return p; return 0; }
+function tierAtMost(tiers, v){ for(const [th,p] of tiers) if(v<=th) return p; return 0; }
+const tierOf = (cfg, v) => cfg.dir==='atLeast' ? tierAtLeast(cfg.tiers, v) : tierAtMost(cfg.tiers, v);
+
+function sma(vals, n){ if(!vals || vals.length<n) return null; let s=0; for(let i=vals.length-n;i<vals.length;i++) s+=vals[i]; return s/n; }
+const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+/* RSI Wilder: trung bình đơn cho 14 kỳ đầu, sau đó làm mượt theo Wilder. */
+function rsiWilder(vals, period=14){
+  if(!vals || vals.length < period+1) return null;
+  let gain=0, loss=0;
+  for(let i=1;i<=period;i++){ const d=vals[i]-vals[i-1]; if(d>0) gain+=d; else loss-=d; }
+  let ag=gain/period, al=loss/period;
+  for(let i=period+1;i<vals.length;i++){
+    const d=vals[i]-vals[i-1];
+    ag=(ag*(period-1)+(d>0? d:0))/period;
+    al=(al*(period-1)+(d<0?-d:0))/period;
+  }
+  if(al===0) return ag===0 ? 50 : 100;
+  return 100 - 100/(1+ag/al);
+}
+/* Tỷ lệ số phiên có giá thấp hơn giá hiện tại — 0 là đáy của cửa sổ, 1 là đỉnh. */
+function pctRank(vals, x){ if(!vals || !vals.length) return null; let below=0; for(const v of vals) if(v<x) below++; return below/vals.length; }
+
+/* Buy Score 0–100 theo BUY_SCORE_V1.
+   ethCandles / btcCandles: mảng nến ngày tăng dần theo thời gian.
+   opts.price   — giá ETH hiện tại (USD); thiếu thì lấy close của nến cuối.
+   opts.ageHours — tuổi dữ liệu tính bằng giờ, dùng cho Confidence; mặc định 0. */
+function buyScore(ethCandles, btcCandles, opts){
+  const C = BUY_SCORE_V1, o = opts||{};
+  const eth = (ethCandles||[]).filter(c=>c && isFinite(Number(c.close)) && Number(c.close)>0);
+  const btc = (btcCandles||[]).filter(c=>c && isFinite(Number(c.close)) && Number(c.close)>0);
+  const n = eth.length;
+  if(n < C.minCandles)
+    return { score:null, components:[], marketState:null, confidence:'LOW', candles:n, btcCandles:btc.length,
+             reason:`Cần ít nhất ${C.minCandles} nến ngày để tính, mới có ${n}` };
+
+  const cl = eth.map(c=>Number(c.close));
+  const vol = eth.map(c=>Number(c.volume)||0);
+  const priceNow = Number(o.price)>0 ? Number(o.price) : cl[n-1];
+  const comps = [];
+  const add = (key,cfg,points,value,note) => comps.push({key, label:cfg.label, fmt:cfg.fmt, max:cfg.max, points:r2(points), value, note:note||''});
+
+  // 1 — giảm từ đỉnh 365 ngày /25
+  const yr = tail(cl, C.windows.year);
+  const high365 = Math.max(...yr, priceNow);
+  const dd365 = high365>0 ? 1-priceNow/high365 : 0;
+  add('drawdown365', C.drawdown365, tierOf(C.drawdown365, dd365), dd365, 'đỉnh '+Math.round(high365));
+
+  // 2 — vị trí so với MA200 /20
+  const ma = sma(cl, C.windows.ma);
+  const devMa = ma ? priceNow/ma-1 : 0;
+  add('ma200', C.ma200, ma ? tierOf(C.ma200, devMa) : 0, ma ? devMa : null, ma ? 'MA200 '+Math.round(ma) : 'chưa đủ 200 phiên');
+
+  // 3 — RSI14 Wilder /15
+  const rsi = rsiWilder(cl, C.windows.rsi);
+  add('rsi14', C.rsi14, rsi==null ? 0 : tierOf(C.rsi14, rsi), rsi);
+
+  // 4 — giảm từ đỉnh 30 ngày /15
+  const mo = tail(cl, C.windows.month);
+  const high30 = Math.max(...mo, priceNow);
+  const dd30 = high30>0 ? 1-priceNow/high30 : 0;
+  add('drawdownMonth', C.drawdownMonth, tierOf(C.drawdownMonth, dd30), dd30, 'đỉnh '+Math.round(high30));
+
+  // 5 — percentile giá trong 365 ngày /10
+  const pr = pctRank(yr, priceNow);
+  add('percentile365', C.percentile365, pr==null ? 0 : tierOf(C.percentile365, pr), pr);
+
+  // 6 — bán tháo: lợi suất 7 ngày + khối lượng /10
+  const base7 = cl.length>C.windows.volShort ? cl[cl.length-1-C.windows.volShort] : cl[0];
+  const ret7 = base7>0 ? priceNow/base7-1 : 0;
+  const volShort = mean(tail(vol, C.windows.volShort)) || 0;
+  const volLong  = mean(tail(vol, C.windows.volLong)) || 0;
+  const volRatio = volLong>0 ? volShort/volLong : 0;
+  const capPts = tierAtMost(C.capitulation.ret, ret7) + tierAtLeast(C.capitulation.vol, volRatio);
+  add('capitulation', C.capitulation, Math.min(capPts, C.capitulation.max), ret7, 'khối lượng ×'+r2(volRatio));
+
+  // 7 — ETH/BTC 30 ngày /5 (ghép nến theo thời gian mở, thiếu BTC thì 0 điểm)
+  const btcAt = new Map(btc.map(c=>[c.time, Number(c.close)]));
+  const pairs = eth.filter(c=>btcAt.has(c.time)).map(c=>Number(c.close)/btcAt.get(c.time));
+  let ebChange = null, ebPts = 0;
+  if(pairs.length > C.windows.ethbtc){
+    const prev = pairs[pairs.length-1-C.windows.ethbtc], now = pairs[pairs.length-1];
+    if(prev>0){ ebChange = now/prev-1; ebPts = tierOf(C.ethbtc30, ebChange); }
+  }
+  add('ethbtc30', C.ethbtc30, ebPts, ebChange, pairs.length>C.windows.ethbtc ? '' : 'thiếu dữ liệu BTC');
+
+  const score = Math.max(0, Math.min(100, Math.round(comps.reduce((a,c)=>a+c.points, 0))));
+  const st = C.states.find(([min])=>score>=min) || C.states[C.states.length-1];
+
+  const ageH = Number(o.ageHours)||0;
+  let confidence = 'HIGH';
+  if(n < C.fullCandles || pairs.length <= C.windows.ethbtc || ma==null) confidence = 'MEDIUM';
+  if(n < 250 || ageH > C.staleHours) confidence = 'LOW';
+
+  return { score, components:comps, marketState:{key:st[1], label:st[2]}, confidence,
+           priceUsd:priceNow, candles:n, btcCandles:btc.length, version:C.version, reason:'' };
+}
 
 function pace(m, t){
   const target = Number(settings().incomeTarget||DEFAULT_TARGET);
@@ -1085,6 +1250,92 @@ function testDca(){
   return {pass:ok, fail:bad};
 }
 
+/* Dựng chuỗi nến giả lập để kiểm tra hàm tính mà không cần gọi mạng.
+   closes: mảng giá đóng cửa; nến cách nhau đúng 1 ngày. */
+function makeCandles(closes, volumes, startTime=Date.UTC(2025,0,1)){
+  return closes.map((c,i)=>({time:startTime+i*86400000, open:c, high:c, low:c, close:c,
+                             volume: volumes ? volumes[i] : 100}));
+}
+const flatCandles = (n, v, vol) => makeCandles(new Array(n).fill(v), new Array(n).fill(vol||100));
+
+function testBuyScore(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.01)=>{
+    const p = want===null ? got===null
+      : (typeof want==='number' && typeof got==='number') ? Math.abs(got-want)<=tol
+      : got===want;
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${got==null?'null':got}${p?'':`   (mong đợi ${want===null?'null':want})`}`); p?ok++:bad++; };
+  const pts = (res,key) => (res.components.find(c=>c.key===key)||{}).points;
+
+  console.log('%c1 — RSI Wilder trên ca kinh điển: chỉ tăng ⇒ 100, chỉ giảm ⇒ 0, đi ngang ⇒ 50','font-weight:600');
+  { const up = Array.from({length:40},(_,i)=>100+i);
+    const dn = Array.from({length:40},(_,i)=>100-i);
+    chk('RSI14 chuỗi tăng liên tục', rsiWilder(up,14), 100, 0.001);
+    chk('RSI14 chuỗi giảm liên tục', rsiWilder(dn,14), 0, 0.001);
+    chk('RSI14 chuỗi phẳng', rsiWilder(new Array(40).fill(100),14), 50, 0.001);
+    /* Ca tính tay: chu kỳ 2 trên [10,11,10,12].
+       Khởi tạo: tăng TB = 0,5 · giảm TB = 0,5. Bước cuối d = +2 ⇒ tăng TB = 1,25 · giảm TB = 0,25
+       ⇒ RS = 5 ⇒ RSI = 100 − 100/6 = 83,33 */
+    chk('RSI chu kỳ 2 khớp tính tay', rsiWilder([10,11,10,12],2), 100-100/6, 0.001);
+    chk('Thiếu dữ liệu (ít hơn period+1 giá)', rsiWilder([10,11],14), null); }
+
+  console.log('%c2 — MA200 và percentile tính đúng trên chuỗi đã biết trước','font-weight:600');
+  { const v = Array.from({length:200},(_,i)=>i+1);          // 1..200, trung bình 100.5
+    chk('MA200 của 1..200', sma(v,200), 100.5, 0.0001);
+    chk('MA200 khi chưa đủ 200 phiên', sma(v.slice(0,199),200), null);
+    chk('Percentile của giá thấp nhất', pctRank(v,1), 0, 0.0001);
+    chk('Percentile của giá cao nhất', pctRank(v,201), 1, 0.0001);
+    chk('Percentile giữa chuỗi', pctRank(v,101), 0.5, 0.0001); }
+
+  console.log('%c3 — dưới 200 nến ⇒ không ra điểm, trả null kèm lý do (không đoán bừa)','font-weight:600');
+  { const r = buyScore(flatCandles(150,3000), flatCandles(150,60000));
+    chk('Điểm', r.score, null); chk('Có nêu lý do', r.reason.length>0, true); chk('Độ tin cậy', r.confidence==='LOW', true); }
+
+  console.log('%c4 — thị trường đắt: giá đi ngang rồi tăng gấp đôi ⇒ điểm rất thấp, Market State "Đắt"','font-weight:600');
+  { const closes = new Array(300).fill(2000).concat(Array.from({length:65},(_,i)=>2000+i*30));  // 365 nến, kết ở 3920
+    const r = buyScore(makeCandles(closes), makeCandles(closes.map(c=>c*20)), {price:closes[364]});
+    chk('Giảm từ đỉnh 365 ngày = 0 điểm', pts(r,'drawdown365'), 0);
+    chk('Trên MA200 ⇒ 0 điểm', pts(r,'ma200'), 0);
+    chk('Percentile cao nhất ⇒ 0 điểm', pts(r,'percentile365'), 0);
+    chk('Tổng điểm ≤ 20', r.score<=20, true);
+    chk('Market State', r.marketState.key==='EXPENSIVE', true); }
+
+  console.log('%c5 — bán tháo: đỉnh rồi sập 60%, khối lượng gấp 3 ⇒ điểm rất cao','font-weight:600');
+  { const closes = new Array(300).fill(4000).concat(Array.from({length:65},(_,i)=>4000-i*40));  // kết ở 1440, −64%
+    const vols = new Array(358).fill(100).concat(new Array(7).fill(300));
+    const eth = makeCandles(closes, vols);
+    const btc = makeCandles(closes.map((c,i)=>60000 + i*0), vols);   // BTC đứng yên ⇒ ETH thua BTC
+    const r = buyScore(eth, btc, {price:1440});
+    chk('Giảm từ đỉnh 365 ngày ⇒ trọn 25', pts(r,'drawdown365'), 25);
+    chk('Dưới MA200 sâu ⇒ trọn 20', pts(r,'ma200'), 20);
+    chk('RSI rất thấp ⇒ trọn 15', pts(r,'rsi14'), 15);
+    chk('Percentile đáy ⇒ trọn 10', pts(r,'percentile365'), 10);
+    /* 7 ngày −16% ⇒ 5/6 điểm lợi suất, khối lượng ×2,6 ⇒ 4/4 điểm khối lượng */
+    chk('Bán tháo (7D −16% + khối lượng ×2,6)', pts(r,'capitulation'), 9);
+    chk('ETH/BTC 30 ngày thua ⇒ trọn 5', pts(r,'ethbtc30'), 5);
+    chk('Tổng điểm ≥ 90', r.score>=90, true);
+    chk('Market State', r.marketState.key==='CAPITULATION', true); }
+
+  console.log('%c6 — điểm luôn nằm trong 0–100 và bằng đúng tổng 7 thành phần','font-weight:600');
+  { const closes = new Array(200).fill(3000).concat(Array.from({length:165},(_,i)=>3000-i*8));
+    const r = buyScore(makeCandles(closes), makeCandles(closes.map(c=>c*20)), {price:closes[364]});
+    chk('Số thành phần', r.components.length, 7);
+    chk('Tổng thành phần = điểm', Math.round(r.components.reduce((a,c)=>a+c.points,0)), r.score);
+    chk('Trong khoảng 0–100', r.score>=0 && r.score<=100, true);
+    chk('Không thành phần nào vượt trần', r.components.every(c=>c.points<=c.max && c.points>=0), true); }
+
+  console.log('%c7 — Độ tin cậy: đủ 365 nến và dữ liệu mới ⇒ Cao; dữ liệu quá 48 giờ ⇒ Thấp','font-weight:600');
+  { const closes = new Array(365).fill(3000).map((v,i)=>v+ (i%3));
+    const eth = makeCandles(closes), btc = makeCandles(closes.map(c=>c*20));
+    chk('Đủ dữ liệu, mới', buyScore(eth,btc,{ageHours:2}).confidence, 'HIGH', 0);
+    chk('Đủ dữ liệu, cũ hơn 48 giờ', buyScore(eth,btc,{ageHours:80}).confidence, 'LOW', 0);
+    chk('Thiếu BTC ⇒ Vừa', buyScore(eth,[],{ageHours:2}).confidence, 'MEDIUM', 0);
+    chk('Thiếu BTC vẫn ra điểm', buyScore(eth,[],{ageHours:2}).score!=null, true); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
 /* =====================================================================
    BOOT / AUTH
    ===================================================================== */
@@ -1139,12 +1390,84 @@ function removeTransfer(id){
   D.transfers=D.transfers.filter(x=>x.id!==id); applyXfer(tf,-1); render(); bg(store.remove('transfers',id));
 }
 function setPrice(key, value, source='manual'){ D.prices[key] = {value, source, updatedAt:Date.now()}; render(); bg(store.set('prices','current',D.prices)); }
+
+/* ---- DCA: lấy dữ liệu Binance và cập nhật Buy Score (SPEC-DCA Khối A) ----
+   Chỉ dùng REST công khai, không cần API key. Lỗi thì giữ cache cũ, không bao giờ ra điểm sai. */
+const BINANCE_BASE = 'https://api.binance.com';
+const DCA_SYMBOLS = { eth:'ETHUSDT', btc:'BTCUSDT', ada:'ADAUSDT' };
+const DCA_KLINE_LIMIT = 400;
+
+async function fetchJson(url, ms=15000){
+  const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), ms);
+  try{
+    const r = await fetch(url, {signal:ctl.signal, cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status + (r.status===451?' — Binance chặn vùng này':r.status===429?' — bị giới hạn tần suất, thử lại sau vài phút':''));
+    return await r.json();
+  }catch(e){
+    if(e.name==='AbortError') throw new Error('quá hạn chờ');
+    if(e instanceof TypeError) throw new Error('trình duyệt chặn (CORS hoặc mất mạng)');
+    throw e;
+  }finally{ clearTimeout(t); }
+}
+/* Nến Binance: [openTime, open, high, low, close, volume, closeTime, ...] */
+const parseKlines = rows => (rows||[]).map(k=>({time:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]}));
+const fetchKlines = async (symbol, limit=DCA_KLINE_LIMIT) =>
+  parseKlines(await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=1d&limit=${limit}`));
+async function fetchTickers(symbols){
+  const rows = await fetchJson(`${BINANCE_BASE}/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(symbols))}`);
+  return Object.fromEntries((rows||[]).map(r=>[r.symbol, Number(r.price)]));
+}
+
+const dcaCache = () => (D.prices && D.prices.dca) || null;
+const dcaStale = c => !c || !c.dataTime || (Date.now()-c.dataTime) > BUY_SCORE_V1.staleHours*3600e3;
+
+let dcaBusy = false;
+async function refreshDca(){
+  if(dcaBusy) return;
+  dcaBusy = true; renderDca();
+  try{
+    const [ethK, btcK, tick] = await Promise.all([
+      fetchKlines(DCA_SYMBOLS.eth), fetchKlines(DCA_SYMBOLS.btc),
+      fetchTickers([DCA_SYMBOLS.eth, DCA_SYMBOLS.btc, DCA_SYMBOLS.ada]).catch(()=>({})),
+    ]);
+    if(!ethK.length || !btcK.length) throw new Error('Binance trả về rỗng');
+    const lastClose = a => Number(a[a.length-1].close);
+    const ethUsd = Number(tick[DCA_SYMBOLS.eth]) > 0 ? Number(tick[DCA_SYMBOLS.eth]) : lastClose(ethK);
+    const btcUsd = Number(tick[DCA_SYMBOLS.btc]) > 0 ? Number(tick[DCA_SYMBOLS.btc]) : lastClose(btcK);
+    const adaUsd = Number(tick[DCA_SYMBOLS.ada]) > 0 ? Number(tick[DCA_SYMBOLS.ada]) : null;
+    const dataTime = ethK[ethK.length-1].time;
+    const res = buyScore(ethK, btcK, {price:ethUsd, ageHours:(Date.now()-dataTime)/3600e3});
+    if(res.score==null) throw new Error(res.reason||'không đủ dữ liệu để tính điểm');
+
+    const now = Date.now();
+    D.prices.dca = { score:res.score, components:res.components, marketState:res.marketState,
+      confidence:res.confidence, ethUsd, btcUsd, adaUsd, candles:res.candles,
+      dataTime, updatedAt:now, source:'binance', version:res.version };
+
+    /* Quy ra nghìn đồng cho bảng giá — cần tỷ giá USDT, hiện vẫn nhập tay. */
+    const u = price('usdt');
+    if(u>0){
+      D.prices.eth = {value:r6(ethUsd*u), source:'live', updatedAt:now};
+      D.prices.btc = {value:r6(btcUsd*u), source:'live', updatedAt:now};
+      if(adaUsd!=null) D.prices.ada = {value:r6(adaUsd*u), source:'live', updatedAt:now};
+    }
+    render();
+    bg(store.set('prices','current', D.prices),
+       u>0 ? `Buy Score ${res.score} · đã cập nhật giá ETH, BTC${adaUsd!=null?', ADA':''}`
+           : `Buy Score ${res.score} · chưa có giá USDT nên chưa quy ra nghìn đồng`);
+  }catch(e){
+    console.error(e);
+    toast('Không lấy được dữ liệu Binance: '+(e.message||e)+'. Giữ số liệu cũ.');
+  }finally{
+    dcaBusy = false; renderDca();
+  }
+}
 function saveSettings(patch){ Object.assign(D.settings, patch); render(); bg(store.set('settings','main',D.settings)); }
 function holdingSnapshot(){
   return D.holdings.map(h=>({ holdingId:h.id, name:h.name, group:h.group, quantity:Number(h.quantity)||0,
     priceKey:h.priceKey||null, price: h.priceKey?price(h.priceKey):1, value: r6(holdingValue(h)) }));
 }
-const priceSnapshot = () => Object.fromEntries(Object.entries(D.prices).map(([k,v])=>[k, Number(v&&v.value)||0]));
+const priceSnapshot = () => Object.fromEntries(PRICE_KEYS.map(p=>[p.key, price(p.key)]));   // chỉ khoá giá thật, bỏ khoá cache 'dca'
 function closeMonth(m, note){
   const t = monthTotals(m), dt = debtTotals();
   const doc = { income:t.income, expense:t.expense, byCategory:t.byCategory, netWorth:Math.round(netWorth()),
@@ -1627,13 +1950,60 @@ function renderHoldings(){
   el('priceTable').innerHTML = `<thead><tr><th class="first key">Khoá</th><th>Tên</th><th class="n">Giá</th><th class="c">Nguồn</th><th class="last">Cập nhật</th></tr></thead><tbody>`+
     PRICE_KEYS.map(p=>{ const cur=D.prices[p.key]; return `<tr><td class="first key"><code>${p.key}</code></td><td>${esc(p.label)} <small>/ ${p.unit}</small></td>
       <td class="n"><input class="inline" data-p="${p.key}" value="${cur?esc(fmtInput(cur.value)):''}" inputmode="decimal" placeholder="nhập giá" style="width:130px"></td>
-      <td class="c">${cur ? (cur.source==='live'?'live':'nhập tay') : '<span class="mute">—</span>'}${p.live?' <small>(live: Pha 2)</small>':''}</td><td class="last mute" style="white-space:nowrap">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join('')+`</tbody>`;
+      <td class="c">${cur ? (cur.source==='live'?'live':'nhập tay') : '<span class="mute">—</span>'}${cur&&cur.source==='live'?'':p.key==='usdt'?' <small>(chỉ nhập tay)</small>':p.live?' <small>(bấm Cập nhật giá live)</small>':''}</td><td class="last mute" style="white-space:nowrap">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join('')+`</tbody>`;
+  el('priceLive').disabled = dcaBusy;
+  el('priceLive').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật giá live';
   renderTransfers();
   renderScenario();
 }
 
+/* ---- DCA Khối A: hero Buy Score + bảng phân rã 7 thành phần ---- */
+const fmtPctS = x => x==null||!isFinite(x) ? '—' : (x>0?'+':'')+fmtPct(x);   // % có dấu; signed() là cho tiền nên không dùng ở đây
+const fmtCompVal = c => c.value==null ? '—'
+  : c.fmt==='pct' ? (c.key==='drawdown365'||c.key==='drawdownMonth' ? '−'+fmtPct(c.value) : fmtPctS(c.value))
+  : fmtNum(c.value, 1);
+function renderDcaScore(){
+  const c = dcaCache(), stale = dcaStale(c);
+  const usdt = price('usdt');
+  el('dcaRefresh').disabled = dcaBusy;
+  el('dcaRefresh').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật';
+
+  el('dcaHeroPrice').innerHTML = c && c.ethUsd ? fmtUsd(c.ethUsd) : '—';
+  el('dcaHeroScore').innerHTML = c && c.score!=null ? String(c.score)+'<span class="unit"> /100</span>' : '—';
+  el('dcaHeroState').innerHTML = c && c.marketState
+    ? `<span class="badge on">${esc(c.marketState.label)}</span> <span class="badge">Độ tin cậy: ${esc(BUY_SCORE_V1.confLabel[c.confidence]||c.confidence||'—')}</span>${stale?' <span class="badge warn">dữ liệu cũ</span>':''}`
+    : '<span class="mute">chưa có dữ liệu thị trường</span>';
+
+  el('dcaHeroMeta').innerHTML = c ? [
+    c.ethUsd && usdt>0 ? `<span>ETH <b>${fmtK(Math.round(c.ethUsd*usdt))}</b><span class="u"> /ETH</span></span>` : '',
+    c.btcUsd ? `<span>BTC <b>${fmtUsd(c.btcUsd)}</b></span>` : '',
+    c.candles ? `<span>dữ liệu <b>${c.candles}</b><span class="u"> nến ngày</span></span>` : '',
+    `<span>nến cuối <b>${fmtTime(c.dataTime)}</b></span>`,
+    `<span>cập nhật <b>${fmtTime(c.updatedAt)}</b></span>`,
+  ].filter(Boolean).join('') : '<span class="u">Bấm "Cập nhật" để lấy 400 ngày nến ETH và BTC từ Binance rồi chấm điểm.</span>';
+
+  const warns = [];
+  if(c && stale) warns.push(`Dữ liệu quá ${BUY_SCORE_V1.staleHours} giờ — điểm bên trên là của lần cập nhật trước, bấm "Cập nhật" để chấm lại.`);
+  if(c && !(usdt>0)) warns.push('Chưa có giá USDT trong bảng giá nên chưa quy được giá ETH/BTC ra nghìn đồng. Nhập ở tab Tài sản.');
+  el('dcaWarn').hidden = !warns.length;
+  el('dcaWarn').innerHTML = warns.join(' ');
+
+  el('dcaAlgo').textContent = c ? 'Buy Score '+(c.version||BUY_SCORE_V1.version)+' · nguồn '+(c.source||'—') : '';
+  const rows = (c && c.components) || [];
+  el('dcaScoreTable').innerHTML = `<thead><tr><th class="first">Thành phần</th><th class="meas">Đo được</th><th class="n">Điểm</th><th class="last bcol"></th></tr></thead><tbody>`+
+    (rows.length ? rows.map(r=>`<tr>
+      <td class="first">${esc(r.label)}</td>
+      <td class="meas">${esc(fmtCompVal(r))}${r.note?` <small class="mute">${esc(r.note)}</small>`:''}</td>
+      <td class="pt">${fmtNum(r.points,1)}<span class="mute">/${r.max}</span></td>
+      <td class="last bcol"><span class="sbar"><i style="width:${r.max?Math.round(100*r.points/r.max):0}%"></i></span></td></tr>`).join('')
+     : `<tr><td class="empty" colspan="4">Chưa chấm điểm lần nào — bấm "Cập nhật"</td></tr>`)+
+    (rows.length ? `<tr class="total"><td class="first">Tổng</td><td class="meas"></td><td class="pt">${c.score}<span class="mute">/100</span></td><td class="last bcol"></td></tr>`:'')+
+    `</tbody>`;
+}
+
 /* ---- DCA (SPEC-DCA Khối C): giá vốn, lịch sử mua, lọc theo nguồn ---- */
 function renderDca(){
+  renderDcaScore();
   const usdt = price('usdt'), cur = price('eth');
   const basis = dcaCostBasis(ethPurchases(), usdt);
   const s = dcaSummary(basis, cur, usdt);
@@ -1643,7 +2013,7 @@ function renderDca(){
   el('dcaHistoryCard').hidden = !hasAny;
 
   const ethPrice = D.prices.eth;
-  el('dcaUpdated').textContent = ethPrice ? 'Giá ETH cập nhật '+fmtTime(ethPrice.updatedAt) : (hasAny ? 'Chưa có giá ETH — nhập ở tab Tài sản' : '');
+  el('dcaUpdated').textContent = ethPrice ? '' : (hasAny ? 'Chưa có giá ETH — bấm Cập nhật, hoặc nhập tay ở tab Tài sản' : '');
 
   el('dcaStats').innerHTML = `
     <div class="stat"><div class="lbl">Tổng ETH</div><div class="val">${fmtQty(s.totalEth)}</div><div class="sub">vốn đã bỏ ${fmtK(Math.round(s.totalCostVnd))}</div></div>
@@ -1670,6 +2040,8 @@ function renderDca(){
     : '';
 }
 el('dcaFilterSource').onchange = e=>{ state.dcaFilter = e.target.value; renderDca(); };
+el('dcaRefresh').onclick = ()=> refreshDca();
+el('priceLive').onclick = ()=> refreshDca();
 
 function commitInline(inp){
   const f=inp.dataset.f, pk=inp.dataset.p;
@@ -2121,12 +2493,15 @@ window.restoreBackup = restoreBackup;
 window.attribution = attribution;
 window.testAttribution = testAttribution;
 window.testDca = testDca;
+window.testBuyScore = testBuyScore;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
         transferValue, scnPrice, scnNetWorth, netQty,
-        ethHolding, ethPurchases, purchaseUsdPrice, dcaCostBasis, dcaSummary, dcaState},
-  importInitialData, testAttribution, testDca, downloadBackup, restoreBackup, backupPayload };
+        ethHolding, ethPurchases, purchaseUsdPrice, dcaCostBasis, dcaSummary, dcaState,
+        sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, BUY_SCORE_V1},
+  render, importInitialData, testAttribution, testDca, testBuyScore, refreshDca, makeCandles,
+  downloadBackup, restoreBackup, backupPayload };
 
 boot();
 </script>
