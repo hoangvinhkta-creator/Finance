@@ -1523,6 +1523,16 @@ function attribution(S0, S1, transactions, transfers){
       const v1 = b ? Number(b.value)||0 : 0;                 // ngược lại ⇒ value1 = 0
       market += (v1 - v0) - ((flowIn.get(id)||0) - (flowOut.get(id)||0));
     }
+    /* Công nợ tính bằng chỉ vàng cũng đổi giá trị khi giá vàng đổi — đó là biến động giá chứ không phải "Khác".
+       Chỉ tính hiệu ứng GIÁ trên số lượng đầu kỳ; vay thêm hay tất toán trong kỳ là sự kiện thật, không phải thị trường.
+       Bản chốt cũ chưa có debtQty thì bỏ qua, phần đó vẫn rơi vào "Khác" như trước. */
+    if(S0.debtQty && S0.prices && S1.prices){
+      for(const k of Object.keys(S0.debtQty)){
+        const p0 = Number(S0.prices[k]), p1 = Number(S1.prices[k]);
+        if(!isFinite(p0) || !isFinite(p1)) continue;
+        market += (Number(S0.debtQty[k])||0) * (p1 - p0);
+      }
+    }
   }
 
   const other = dNW==null ? null : (marketKnown ? dNW - cashFlow - market : dNW - cashFlow);
@@ -1536,12 +1546,12 @@ function snapshotOf(m){
   return { month:m, asOf:lastDay(m), netWorth: doc.netWorth==null?null:Number(doc.netWorth),
            totalAssets: doc.totalAssets==null?null:Number(doc.totalAssets),
            holdings: Array.isArray(doc.holdings)&&doc.holdings.length ? doc.holdings : null,
-           prices: doc.prices||null, debt: doc.debt||null };
+           prices: doc.prices||null, debtQty: doc.debtQty||null, debt: doc.debt||null };
 }
 function currentSnapshot(){
   const dt = debtTotals();
   return { month:thisMonth(), asOf:todayStr(), netWorth:netWorth(), totalAssets:totalAssets(),
-           holdings:holdingSnapshot(), prices:priceSnapshot(), debt:dt, live:true };
+           holdings:holdingSnapshot(), prices:priceSnapshot(), debtQty:debtQtySnapshot(), debt:dt, live:true };
 }
 /* Tháng import từ sheet không có transactions — dựng hai dòng thay thế để dòng tiền
    của các kỳ dài (3/12 tháng) vẫn đúng. Không ghi vào đâu cả. */
@@ -1679,6 +1689,22 @@ function testAttribution(){
       [{month:'2026-09',date:'2026-09-05',fromId:'vcb',toId:'eth',qtyOut:20000,qtyIn:q,valueVnd:20000}]);
     console.log(`  biến thể khớp giá sổ: nhận ${r3(q)} ETH`);
     chk('ΔNW < 1k (đúng tiêu chí mục 7)',b.dNW,0); }
+
+  console.log('%c8 — công nợ tính bằng vàng: giá vàng đổi là THỊ TRƯỜNG, không phải "Khác"','font-weight:600');
+  { /* Danh mục chỉ có tiền, không có vàng; công nợ ròng 2 chỉ. Giá vàng 14.000 → 15.000. */
+    const mk = gp => ({month:'x', asOf:'x', holdings:[H('vcb',50000,null,1)], prices:{gold_pd:gp}, debtQty:{gold_pd:2}, netWorth:50000 + 2*gp});
+    const a = attribution({...mk(14000), month:'2026-08', asOf:'2026-08-31'}, {...mk(15000), month:'2026-09', asOf:'2026-09-30'}, [], []);
+    chk('ΔNW = 2 chỉ × 1.000k', a.dNW, 2000);
+    chk('ThịTrường ăn trọn phần vàng của công nợ', a.market, 2000);
+    chk('Khác = 0 (trước đây rơi hết vào đây)', a.other, 0);
+    chk('không bật cờ nhắc sai', a.warn?1:0, 0);
+    const mk2 = gp => ({month:'x', asOf:'x', holdings:[H('vcb',50000,null,1)], prices:{gold_pd:gp}, debtQty:{gold_pd:-3}, netWorth:50000 - 3*gp});
+    chk('mình nợ vàng nhiều hơn ⇒ giá lên thì thị trường âm', attribution({...mk2(14000),month:'2026-08'}, {...mk2(15000),month:'2026-09'}, [], []).market, -3000);
+    const old0 = {month:'2026-08', asOf:'2026-08-31', holdings:[H('vcb',50000,null,1)], prices:{gold_pd:14000}, netWorth:78000};
+    const old1 = {month:'2026-09', asOf:'2026-09-30', holdings:[H('vcb',50000,null,1)], prices:{gold_pd:15000}, netWorth:80000};
+    const c = attribution(old0, old1, [], []);
+    chk('bản chốt cũ không có debtQty ⇒ thị trường 0', c.market, 0);
+    chk('… phần vàng vẫn rơi vào Khác như trước', c.other, 2000); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -2593,6 +2619,17 @@ async function refreshDca(){
   }
 }
 function saveSettings(patch){ Object.assign(D.settings, patch); render(); bg(store.set('settings','main',D.settings)); }
+/* Số chỉ vàng ròng đang nằm trong công nợ (họ nợ mình − mình nợ), theo từng khoá giá.
+   Phân rã tăng trưởng cần số này: giá vàng đổi thì phần công nợ tính bằng vàng cũng đổi giá trị. */
+function debtQtySnapshot(){
+  const out = {};
+  for(const d of D.debts){
+    if(d.settled || d.unit!=='GOLD_CHI') continue;
+    const k = d.priceKey || 'gold_pd';
+    out[k] = r6((out[k]||0) + (d.direction==='receivable'?1:-1)*(Number(d.quantity)||0));
+  }
+  return out;
+}
 function holdingSnapshot(){
   return D.holdings.map(h=>({ holdingId:h.id, name:h.name, group:h.group, quantity:Number(h.quantity)||0,
     priceKey:h.priceKey||null, price: h.priceKey?price(h.priceKey):1, value: r6(holdingValue(h)) }));
@@ -2603,7 +2640,7 @@ function closeMonth(m, note){
   const doc = { income:t.income, expense:t.expense, byCategory:t.byCategory, netWorth:Math.round(netWorth()),
     totalAssets: Math.round(totalAssets()),
     debt: { recv:Math.round(dt.recv), pay:Math.round(dt.pay), pending:Math.round(dt.pending), net:Math.round(dt.net) },
-    holdings: holdingSnapshot(), prices: priceSnapshot(),
+    holdings: holdingSnapshot(), prices: priceSnapshot(), debtQty: debtQtySnapshot(),
     note:note||'', closedAt:Date.now() };
   D.months[m] = {id:m, ...doc}; render(); bg(store.set('months',m,doc), 'Đã chốt '+fmtMonthLong(m).toLowerCase());
 }
@@ -2776,11 +2813,12 @@ function renderOverview(){
   const box = el('ovWaterfall'), w = Math.max(300, box.clientWidth || 800);
   if(p.noEnd || p.noBase || p.dNW==null){
     box.innerHTML = `<div class="mute" style="padding:18px 0">${p.noEnd?'Chưa chốt '+p.label+' nên chưa có tài sản ròng cuối kỳ.':'Chưa có bản chốt đầu kỳ ('+fmtMonth(shiftMonth(p.start,-1))+') để so sánh.'}</div>`;
-    el('ovWfNote').innerHTML = '';
+    el('ovWfNote').innerHTML = `<div class="hint" style="padding:6px 0 0">Bấm <b>Chốt tháng</b> ở tab Dòng tiền để lưu mốc so sánh (kèm ảnh chụp danh mục và bảng giá lúc đó). Từ lần chốt sau, phần <b>Thị trường</b> mới tách được ra khỏi <b>Khác</b>.</div>`;
   } else {
     box.innerHTML = waterfallSvg(w, p);
     const notes = [`${fmtMonth(p.start)}${p.start!==p.end?' → '+fmtMonth(p.end):''} · trục cắt, không bắt đầu từ 0`];
-    if(!p.marketKnown) notes.push('Phần thị trường: <b>cần chốt tháng có snapshot</b> — toàn bộ phần không phải dòng tiền đang nằm ở "Khác".');
+    if(!p.marketKnown) notes.push(`Phần thị trường: bản chốt ${fmtMonth(p.S0.month)} <b>không có ảnh chụp danh mục</b> (số import từ file cũ) nên không tách được biến động giá — toàn bộ phần không phải dòng tiền đang nằm ở "Khác". Chốt lại tháng đó trong app là có.`);
+    else notes.push('Phần thị trường tính từ <b>giá đang lưu trong app</b>: coin theo lần bấm Cập nhật gần nhất ở tab DCA, vàng/bạc/chứng khoán theo giá bạn tự nhập.');
     if(p.warn) notes.push('|Khác| vượt 5% ΔNW và 1.000k — <b>có biến động chưa được ghi qua Chuyển đổi hoặc sổ.</b>');
     el('ovWfNote').innerHTML = `<div class="hint" style="padding:10px 0 0">${notes.join('<br>')}</div>`;
   }
@@ -4166,7 +4204,7 @@ window.testRecovery = testRecovery;
 window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
-        attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
+        attribution, snapshotOf, currentSnapshot, debtQtySnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
         transferValue, scnPrice, scnNetWorth, netQty, scnProjection, scnApplyPct, scnPctOf,
         coinHolding, coinPurchases, coinSales, coinLedger, coinQtyHeld, coinValueHeld, familyHoldings, COIN_FAMILY,
         ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
