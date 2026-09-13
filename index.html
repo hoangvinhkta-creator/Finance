@@ -97,10 +97,18 @@ select.inline:hover{border-color:var(--line)}
 .ledger4 .tbl td,.ledger4 .tbl th{padding:6px 6px}
 .ledger4 .tbl td.first,.ledger4 .tbl th.first{padding-left:12px}
 .ledger4 .tbl td.last,.ledger4 .tbl th.last{padding-right:12px}
-.ledger4 .tbl td.c{display:none}                    /* nhóm chi đã có card "Chi theo nhóm" riêng */
-.ledger4 .tbl td.act{white-space:normal;text-align:right}   /* cụm nút xuống dòng cho vừa card hẹp */
-.ledger4 .tbl td.act button{padding:2px 3px}
-.ledger4 .tbl td.act button.tag{padding:1px 5px;margin-bottom:3px}
+/* Mỗi dòng Chi/Thu/Nợ giờ chỉ có một ô "rowcell": tên — icon — số tiền trên đúng một hàng.
+   Tên bị cắt gọn (ellipsis) để chiều cao hàng luôn cố định, không phụ thuộc tên dài hay ngắn. */
+.rline{display:flex;align-items:center;gap:5px;min-height:20px}
+.rline .rn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rline .ric{display:inline-flex;gap:1px;flex:none}
+.rline .ramt{flex:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rnote{display:block;color:var(--mute);font-size:11px;margin-top:2px;overflow-wrap:anywhere}
+.rowbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;color:var(--mute);flex:none}
+.rowbtn:hover{background:var(--soft);color:var(--ink)}
+.rowbtn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.rowbtn.tag{border:1px solid var(--ink);color:var(--ink)}
+.rowbtn.tag:hover{background:var(--ink);color:#fff}
 .nomonth{font-weight:400;font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:3px;padding:0 5px;white-space:nowrap}
 .stats.five{grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,1.4fr)}
 .col{min-width:0}
@@ -729,6 +737,15 @@ const DCA_PLAN_V1 = {
 const DEFAULT_DCA = { budget:0, split:{base:50, smart:30, opp:20}, baseDays:[3,13,23], baseWeights:[40,30,30],
                       startMonth:'', oppCapMonths:6 };   // startMonth rỗng ⇒ normalizeSettings điền tháng hiện tại
 const priceLabel = k => (PRICE_KEYS.find(p=>p.key===k)||{label:k}).label;
+
+/* Icon nhỏ cho các nút hành động trên từng dòng (tab Dòng tiền): sửa, xoá, đã nhận/tất toán, mở lại.
+   Cùng phong cách nét mảnh với icon điều hướng (svg.ic), chỉ nhỏ hơn để nằm gọn cạnh tên khoản. */
+const IC_EDIT  = '<svg viewBox="0 0 18 18"><path d="M11.6 3.4l3 3L6.3 14.7l-4 .9.9-4z"/><path d="M10.3 4.7l3 3"/></svg>';
+const IC_DEL   = '<svg viewBox="0 0 18 18"><path d="M3.5 5.5h11M7 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5"/><path d="M6.3 5.5l.6 9.1a1 1 0 0 0 1 .9h2.2a1 1 0 0 0 1-.9l.6-9.1"/><path d="M8 8v5M10 8v5"/></svg>';
+const IC_CHECK = '<svg viewBox="0 0 18 18"><path d="M3.6 9.6l3.2 3.2L14.4 5"/></svg>';
+const IC_UNDO  = '<svg viewBox="0 0 18 18"><path d="M4 7.6a5.5 5.5 0 1 1 1.6 4.3"/><path d="M4 4v3.6h3.6"/></svg>';
+/* Một nút hành động dạng icon. cls='tag' để tô viền nổi bật (dùng cho hành động chính: đã nhận/tất toán). */
+const rowBtn = (act, icon, title, cls) => `<button class="rowbtn${cls?' '+cls:''}" data-act="${act}" title="${title}" aria-label="${title}">${icon}</button>`;
 
 /* ---------------- định dạng ---------------- */
 const NF = {};
@@ -2279,11 +2296,15 @@ function renderLedger(){
   const rows = type => txOfMonth(m).filter(x=>x.type===type).sort((a,b)=> b.date<a.date?-1: b.date>a.date?1 : (b.createdAt||0)-(a.createdAt||0));
   const row = x => `<tr class="${x.pending?'pending':''}" data-id="${x.id}">
       <td class="d first">${fmtDate(x.date)}</td>
-      <td class="name">${esc(x.name)}${x.unusual?'<em class="tagx">bất thường</em>':''}${x.parts||x.note?`<small>${esc(partsStr(x.parts))}${x.parts&&x.note?' · ':''}${esc(x.note||'')}</small>`:''}</td>
-      <td class="c">${esc(x.category)}</td>
-      <td class="n">${fmtK(x.amount)}</td>
-      <td class="act last">${x.pending?'<button class="tag" data-act="received">Đã nhận</button>':''}<button data-act="edit">sửa</button><button data-act="del">xoá</button></td></tr>`;
-  const empty = '<tr><td class="empty" colspan="5">Chưa có khoản nào</td></tr>';
+      <td class="rowcell last">
+        <div class="rline">
+          <span class="rn" title="${esc(x.name)}">${esc(x.name)}</span>${x.unusual?'<em class="tagx">bất thường</em>':''}
+          <span class="ric">${x.pending?rowBtn('received',IC_CHECK,'Đã nhận','tag'):''}${rowBtn('edit',IC_EDIT,'Sửa')}${rowBtn('del',IC_DEL,'Xoá')}</span>
+          <span class="ramt">${fmtK(x.amount)}</span>
+        </div>
+        ${x.parts||x.note?`<small class="rnote">${esc(partsStr(x.parts))}${x.parts&&x.note?' · ':''}${esc(x.note||'')}</small>`:''}
+      </td></tr>`;
+  const empty = '<tr><td class="empty" colspan="2">Chưa có khoản nào</td></tr>';
   el('rowsChi').innerHTML = rows('chi').map(row).join('') || empty;
   el('rowsThu').innerHTML = rows('thu').map(row).join('') || empty;
   const cats = [...settings().expenseCats, ...Object.keys(t.byCategory).filter(c=>!settings().expenseCats.includes(c))];
@@ -2371,22 +2392,26 @@ function renderDebts(){
   el('showSettled').checked = state.showSettled;
   const list = dir => D.debts.filter(d=>d.direction===dir && (state.showSettled || !d.settled)).sort((a,b)=>(a.settled?1:0)-(b.settled?1:0) || (a.createdAt||0)-(b.createdAt||0));
   const row = d => `<tr class="${d.settled?'settled':''}" data-id="${d.id}">
-      <td class="name first"><span class="name">${esc(d.party)}</span>${d.note?`<small>${esc(d.note)}</small>`:''}</td>
-      <td class="c">${debtQtyStr(d)}</td>
-      <td class="n">${fmtK(Math.round(debtValue(d)))}</td>
-      <td class="act last">${d.settled?'<button data-act="reopen">mở lại</button>':'<button class="tag" data-act="settle">Tất toán</button>'}<button data-act="edit">sửa</button><button data-act="del">xoá</button></td></tr>`;
+      <td class="rowcell first last">
+        <div class="rline">
+          <span class="rn" title="${esc(d.party)}">${esc(d.party)}</span>
+          <span class="ric">${d.settled?rowBtn('reopen',IC_UNDO,'Mở lại'):rowBtn('settle',IC_CHECK,'Tất toán','tag')}${rowBtn('edit',IC_EDIT,'Sửa')}${rowBtn('del',IC_DEL,'Xoá')}</span>
+          <span class="ramt">${fmtK(Math.round(debtValue(d)))}</span>
+        </div>
+        ${d.note?`<small class="rnote">${esc(d.note)}</small>`:''}
+      </td></tr>`;
   /* Thu chưa nhận cũng là tiền người ta nợ mình nên phải nằm trong công nợ ròng.
      Khoản của tháng đang xem đã hiện đầy đủ ở cột Thu ngay bên cạnh ⇒ gộp một dòng cho khỏi lặp.
      Khoản của tháng khác không nhìn thấy ở đâu khác ⇒ liệt kê từng khoản. */
   const pend = D.transactions.filter(x=>x.type==='thu'&&x.pending).sort((a,b)=>a.date<b.date?-1:1);
   const pendHere = pend.filter(x=>x.month===state.month), pendOther = pend.filter(x=>x.month!==state.month);
-  const head = txt => `<tr><td colspan="4" class="first" style="padding-top:12px"><small>${txt}</small></td></tr>`;
+  const head = txt => `<tr><td colspan="1" class="first" style="padding-top:12px"><small>${txt}</small></td></tr>`;
   const pendRows = !pend.length ? '' :
     (pendHere.length ? head('Thu chưa nhận')+
-       `<tr class="pending"><td class="name first">${pendHere.length} khoản của ${esc(fmtMonthLong(state.month).toLowerCase())}<small>đang hiện đầy đủ ở cột Thu</small></td><td class="c">k</td><td class="n">${fmtK(sum(pendHere,x=>x.amount))}</td><td class="act last"></td></tr>` : '')+
+       `<tr class="pending"><td class="rowcell first last"><div class="rline"><span class="rn">${pendHere.length} khoản của ${esc(fmtMonthLong(state.month).toLowerCase())}</span><span class="ramt">${fmtK(sum(pendHere,x=>x.amount))}</span></div><small class="rnote">đang hiện đầy đủ ở cột Thu</small></td></tr>` : '')+
     (pendOther.length ? head(pendHere.length?'Thu chưa nhận từ tháng khác':'Thu chưa nhận từ tháng khác')+
-       pendOther.map(x=>`<tr class="pending" data-tx="${x.id}"><td class="name first">${esc(x.name)}<small>${fmtMonthLong(x.month)}${x.parts?' · '+esc(partsStr(x.parts)):''}</small></td><td class="c">k</td><td class="n">${fmtK(x.amount)}</td><td class="act last"><button class="tag" data-act="received">Đã nhận</button></td></tr>`).join('') : '');
-  const empty = '<tr><td class="empty" colspan="4">Không có khoản nào</td></tr>';
+       pendOther.map(x=>`<tr class="pending" data-tx="${x.id}"><td class="rowcell first last"><div class="rline"><span class="rn" title="${esc(x.name)}">${esc(x.name)}</span><span class="ric">${rowBtn('received',IC_CHECK,'Đã nhận','tag')}</span><span class="ramt">${fmtK(x.amount)}</span></div><small class="rnote">${fmtMonthLong(x.month)}${x.parts?' · '+esc(partsStr(x.parts)):''}</small></td></tr>`).join('') : '');
+  const empty = '<tr><td class="empty" colspan="1">Không có khoản nào</td></tr>';
   el('rowsRecv').innerHTML = (list('receivable').map(row).join('') || (pend.length?'':empty)) + pendRows;
   el('rowsPay').innerHTML = list('payable').map(row).join('') || empty;
   el('recvTotal').textContent = fmtK(Math.round(t.recv+t.pending)); el('payTotal').textContent = fmtK(Math.round(t.pay));
