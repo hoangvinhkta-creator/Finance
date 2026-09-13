@@ -101,9 +101,10 @@ Làm theo thứ tự **Khối C → Khối A → Khối B**, mỗi khối một 
 
 ### Đồng bộ tài sản từ Binance (làm sau khi 3 khối chạy)
 - Mục đích: kéo số dư ETH/USDT/BTC/ADA từ tài khoản Binance về `holdings` thay vì nhập tay.
-- Chỉ dùng **API key read-only**, tắt withdraw và trade. Key lưu trong `settings/main` trên Firestore (rules đã chặn mọi uid khác), **không bao giờ** commit vào repo.
-- Endpoint `GET /api/v3/account` cần ký HMAC-SHA256 bằng Web Crypto ngay trong trình duyệt. Nếu Binance chặn CORS với endpoint đã ký thì dừng, báo owner, không tự dựng proxy khi chưa hỏi.
+- Chỉ dùng **API key read-only**, tắt withdraw và trade. **Không bao giờ** commit key vào repo.
 - Đồng bộ là nút bấm, không tự chạy. Có bảng đối chiếu "Binance / FinTrace / lệch" trước khi ghi đè quantity.
+- **Đã xác nhận 2026-09-13: Binance chặn CORS với endpoint đã ký.** Ký thẳng trong trình duyệt không dùng được. Owner đã đồng ý dựng Cloudflare Worker trung gian (`binance-worker.js`, hướng dẫn `BINANCE.md`). Worker giữ `BINANCE_KEY` / `BINANCE_SECRET` làm biến bí mật, chỉ nhận `GET /account`, chỉ trả số dư khác 0, gác bằng `ACCESS_TOKEN`. Firestore giờ chỉ giữ `binance.workerUrl` và `binance.accessToken` — khoá API không còn ở đó nữa; `normalizeSettings` đặt cờ `legacyKey` để Cài đặt nhắc gỡ khoá cũ.
+- Endpoint **công khai** của Binance (klines, ticker) vẫn gọi thẳng từ trình duyệt bình thường — Buy Score và giá live không cần Worker.
 
 ### Khối E — ETH và BTC song song (thêm 2026-09-13, owner yêu cầu)
 - Tab DCA có bộ chọn coin **ETH / BTC** áp cho cả bốn phần: Buy Score, kế hoạch vốn tháng, giá vốn, lịch sử mua.
@@ -130,3 +131,4 @@ Mở khi P1 đã dùng thật ít nhất một tháng. Thứ tự dự kiến: L
 |---|---|
 | 2026-09-12 | Bỏ roadmap Finance × CoinDCA và repo `coin`. DCA thành tab nhẹ trong FinTrace. Firebase project mới. Binance trước, CoinGecko dự phòng. P1 = 3 khối C/A/B; state machine, ladder... để P2. |
 | 2026-09-13 | Owner yêu cầu theo dõi BTC đầy đủ như ETH. Mở Khối E: tab DCA thành đa coin (ETH/BTC), cùng thuật toán, mỗi coin một ngân sách. "Nhiều coin" ra khỏi mục Không làm; thay bằng "chiến lược riêng cho từng coin". |
+| 2026-09-13 | Owner thử trên app thật: Binance chặn CORS endpoint đã ký, endpoint công khai vẫn chạy. Đã hỏi và owner chốt **dựng Cloudflare Worker**. Thêm `binance-worker.js` + `BINANCE.md`; khoá API rời Firestore, chuyển vào biến bí mật của Worker. |

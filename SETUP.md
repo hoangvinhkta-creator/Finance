@@ -133,6 +133,12 @@ sang một project Firebase khác nếu sau này cần.
 | Vẫn thấy dòng "Chế độ thử cục bộ" | `apiKey` hoặc `projectId` trong `CONFIG` còn trống |
 | "Không nạp được Firebase SDK" | mạng chặn `gstatic.com`, hoặc sai `firebaseSdkVersion` |
 
+## Đồng bộ số dư từ Binance
+
+Việc này tách riêng vì cần thêm một Cloudflare Worker (Binance không cho trình duyệt gọi thẳng endpoint số dư). Xem `BINANCE.md`. Không làm cũng không sao — mọi thứ khác vẫn chạy, chỉ là nhập số lượng tài sản bằng tay.
+
+---
+
 ## Chi phí
 
 Gói **Spark** (miễn phí) là đủ: một người dùng, vài nghìn document, dưới 50k lượt đọc/ngày.
