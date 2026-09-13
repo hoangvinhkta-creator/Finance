@@ -36,11 +36,11 @@ Mọi thứ nằm trong `index.html` (~1.900 dòng). Thứ tự trong file:
 | State | `const state`, `const D` | Mọi document nạp về `D` lúc đăng nhập. UI render từ `D`, ghi nền qua `bg()`. |
 | Calc | `monthTotals`, `debtTotals`, `netWorth`, `attribution`, ... | Hàm thuần, tính từ `D`. Tiền là **nghìn đồng**. |
 | Mutation | `addTx`, `addHolding`, `addTransfer`, `setPrice`, `saveSettings`, `closeMonth` | Mẫu chuẩn: sửa `D` → `render()` → `bg(store.set(...))`. |
-| Router | `VIEWS`, `route()`, `render()` | Hash routing `#tong #so #congno #taisan #lichsu #caidat`. `render()` gọi đúng một `renderXxx` theo `state.view`. |
-| Render | `renderOverview`, `renderLedger`, `renderDebts`, `renderHoldings`, `renderHistory`, `renderSettings` | Mỗi tab một hàm, dựng innerHTML bằng template string, `esc()` mọi chuỗi người dùng. |
+| Router | `VIEWS`, `VIEW_ALIAS`, `route()`, `render()` | Hash routing `#tong #dongtien #taisan #dca #lichsu #caidat`. `VIEW_ALIAS` giữ hash cũ `#so` và `#congno` chạy được. `render()` gọi đúng một `renderXxx` theo `state.view`. |
+| Render | `renderOverview`, `renderCashflow`, `renderHoldings`, `renderDca`, `renderHistory`, `renderSettings` | Mỗi tab một hàm, dựng innerHTML bằng template string, `esc()` mọi chuỗi người dùng. `renderCashflow` gọi `renderLedger` + `renderDebts`. |
 | Import | `importInitialData` | Chạy một lần, dữ liệu mục 6 SPEC.md. |
 
-**Thêm một tab mới** cần đúng 5 chỗ: một `<a data-view>` trong `nav.nav` (sidebar) và trong `nav.tabbar` (mobile), một `<section id="view-xxx" class="view">`, thêm tên vào `VIEWS`, thêm `renderXxx` vào map trong `render()`. Mobile tabbar đang là `grid-template-columns:repeat(6,1fr)` — thêm tab thì đổi thành 7 hoặc gộp bớt.
+**Thêm hoặc gộp tab** cần đúng 5 chỗ: một `<a data-view>` trong `nav.nav` (sidebar) và trong `nav.tabbar` (mobile), một `<section id="view-xxx" class="view">`, tên trong `VIEWS`, và `renderXxx` trong map của `render()`. Cộng thêm số cột của `.tabbar` (`grid-template-columns:repeat(N,1fr)`, N = số tab) và `VIEW_ALIAS` nếu bỏ một hash cũ. **`testViews()` kiểm tra đủ sáu chỗ này** — chạy nó sau mọi thay đổi điều hướng.
 
 Dữ liệu đã có sẵn và **phải dùng lại** cho DCA:
 - `holdings`: có ETH (priceKey `eth`) và USDT (priceKey `usdt`), giá trị = quantity × price, quy về nghìn đồng.
@@ -124,6 +124,15 @@ Endpoint **công khai** của Binance (klines, ticker) vẫn gọi thẳng từ 
 - Một lần bấm Cập nhật chấm điểm cả hai coin, **không** thêm lệnh gọi mạng nào (ETH và BTC vốn đã tải sẵn để tính thành phần thứ 7).
 - Thêm coin thứ ba = thêm một dòng vào `DCA_COINS` và một holding có `priceKey` tương ứng. Không đụng hàm tính.
 
+### Tab Dòng tiền (gộp 2026-09-13, owner yêu cầu)
+Sổ tháng + Công nợ gộp thành một tab `#dongtien`, bốn card ngang chia đều: **Chi | Thu | Họ nợ mình | Mình nợ**.
+
+- **Thu chi theo tháng đang xem; công nợ luôn là số dư hôm nay** (owner chốt), có nhãn `số dư hôm nay` trên card và trên ô thống kê. Lùi tháng thì cột thu/chi đổi, hai cột nợ giữ nguyên.
+- Hàng thống kê 5 ô: Thu · Chi · Chênh lệch · Công nợ ròng · Mục tiêu.
+- **Thu chưa nhận** trước đây hiện đủ ở cả hai tab. Giờ: khoản của tháng đang xem gộp thành một dòng tổng trong "Họ nợ mình" (đã thấy đầy đủ ở cột Thu ngay cạnh), khoản của tháng khác vẫn liệt kê từng dòng vì không nhìn thấy ở đâu khác.
+- **Nhóm chi "Trả nợ" giữ nguyên, chỉ là ghi chú** (owner chốt). Trả nợ thật đi qua nút Tất toán — ghi một Chuyển đổi, tài sản ròng không đổi, không vào sổ tháng. Card "Chi theo nhóm" có một dòng nhắc khi tháng đó có chi nhóm này.
+- **Ngưỡng bố cục đo bằng Playwright, không đoán:** 4 card vừa khít tới 1050px (card 193px, không bảng nào phải cuộn, không ô nhập nào tràn). Đặt ngưỡng 1040px → 2 card, 820px → 1 card. Muốn đổi bố cục thì đo lại, đừng ước lượng.
+
 ### Không làm trong P1
 State machine, cooldown, crash mode, ACTION_PENDING, ladder/buy zones, backtest, decision log, versioning nhiều thuật toán, **chiến lược riêng cho từng coin**, tự động mua, thông báo.
 
@@ -143,4 +152,5 @@ Mở khi P1 đã dùng thật ít nhất một tháng. Thứ tự dự kiến: L
 | 2026-09-13 | Owner yêu cầu theo dõi BTC đầy đủ như ETH. Mở Khối E: tab DCA thành đa coin (ETH/BTC), cùng thuật toán, mỗi coin một ngân sách. "Nhiều coin" ra khỏi mục Không làm; thay bằng "chiến lược riêng cho từng coin". |
 | 2026-09-13 | Owner thử trên app thật: Binance chặn CORS endpoint đã ký, endpoint công khai vẫn chạy. Đã hỏi và owner chốt **dựng Cloudflare Worker**. Thêm `binance-worker.js` + `BINANCE.md`; khoá API rời Firestore, chuyển vào biến bí mật của Worker. |
 | 2026-09-13 | **Gỡ hẳn đồng bộ số dư Binance.** Worker bị Binance trả 403 (chặn IP trung tâm dữ liệu) — bức tường thứ hai sau CORS. Owner chốt dừng. Đổi lại: nhập tay chỉ nhập số lượng, app tự quy ra nghìn đồng và USD; thêm khoá giá `wbeth` với cặp dự phòng `WBETHETH` vì Binance có thể không có `WBETHUSDT`. |
+| 2026-09-13 | **Gộp Sổ tháng + Công nợ thành tab Dòng tiền.** Bốn card ngang chia đều. Công nợ giữ nguyên là số dư hôm nay dù xem tháng nào. Bỏ trùng lặp "thu chưa nhận". Nhóm chi "Trả nợ" giữ nguyên như ghi chú. Ngưỡng bố cục đo thật chứ không đoán. Thêm `testViews()`. |
 | 2026-09-13 | **Sự cố mất dữ liệu.** Owner khôi phục file cũ lên Firebase và mất dữ liệu cả tháng 9. Firestore không có đường hoàn tác: `getFirestore()` mặc định là cache trong RAM nên không còn bản sao trong IndexedDB, và PITR phải bật trước (Blaze). Hai việc đã làm: (1) nút **Tìm dữ liệu cũ trong trình duyệt này** đọc lại `localStorage` còn sót từ thời chế độ thử cục bộ — chế độ Firebase không bao giờ đụng vào chỗ đó; (2) `restoreBackup` và `importInitialData({force})` giờ **tự tải một bản sao lưu về máy trước khi gọi `clearAll()`**. Mọi thao tác xoá sạch về sau phải giữ chốt này. |

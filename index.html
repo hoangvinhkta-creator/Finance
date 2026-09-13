@@ -85,6 +85,24 @@ select.inline:hover{border-color:var(--line)}
 .stat.strong .lbl,.stat.strong .sub{color:#bdbdbd}
 .grid2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;margin-bottom:14px}
 .ledger{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;align-items:start}
+/* Bốn card thu/chi/nợ chia đều một hàng ngang. Card hẹp nên form nhập xếp dọc. */
+.ledger4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px;align-items:start}
+.ledger4 .quick{grid-template-columns:minmax(0,1fr);gap:7px;padding:0 12px 12px}
+.ledger4 .quick > *{grid-column:1/-1}
+.ledger4 .quick .acts-row{justify-content:flex-start}
+.ledger4 .quick .acts-row .btn{flex:1}
+.ledger4 .quick .chk small{display:none}      /* card hẹp: bỏ phần giải thích dài của ô tích */
+.ledger4 .colhead{padding:12px 12px 8px;gap:8px}
+.ledger4 .colhead h2{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.ledger4 .tbl td,.ledger4 .tbl th{padding:6px 6px}
+.ledger4 .tbl td.first,.ledger4 .tbl th.first{padding-left:12px}
+.ledger4 .tbl td.last,.ledger4 .tbl th.last{padding-right:12px}
+.ledger4 .tbl td.c{display:none}                    /* nhóm chi đã có card "Chi theo nhóm" riêng */
+.ledger4 .tbl td.act{white-space:normal;text-align:right}   /* cụm nút xuống dòng cho vừa card hẹp */
+.ledger4 .tbl td.act button{padding:2px 3px}
+.ledger4 .tbl td.act button.tag{padding:1px 5px;margin-bottom:3px}
+.nomonth{font-weight:400;font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:3px;padding:0 5px;white-space:nowrap}
+.stats.five{grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,1.4fr)}
 .col{min-width:0}
 .colhead{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px 10px}
 .colhead span{font-weight:600}
@@ -227,20 +245,25 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .seg button.on{background:var(--ink);color:#fff;font-weight:600}
 
 /* ---------- responsive ---------- */
+@media (max-width:1040px){ .ledger4{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:1100px){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid2{grid-template-columns:minmax(0,1fr)}
   .quick{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)}
   .quick input[type=date]{grid-column:1/3}
 }
+/* Hàng 5 ô giữ nguyên tới đúng chỗ 4 card gãy, rồi mới xuống 2 */
+@media (max-width:1040px){ .stats.five{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:820px){
   .app{display:block}
   .side{display:none}
   main{padding:18px 14px 90px}
   .ledger{grid-template-columns:minmax(0,1fr)}
+  .ledger4{grid-template-columns:minmax(0,1fr)}
+  .stats.five{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stats{gap:8px}
   .stat{padding:12px 14px}.stat .val{font-size:20px}
-  .tabbar{display:grid;grid-template-columns:repeat(7,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
+  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
   .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--mute);padding:4px 0}
   .tabbar a.active{color:var(--ink);font-weight:600}
   .quick{grid-template-columns:1fr 1fr;padding:0 10px 10px}
@@ -287,8 +310,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
     <div class="brand"><i></i>FinTrace</div>
     <nav class="nav">
       <a href="#tong" data-view="tong"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 9l3.5-2.5M9 9v-4"/></svg>Tổng quan</a>
-      <a href="#so" data-view="so"><svg class="ic" viewBox="0 0 18 18"><rect x="2.5" y="3" width="5" height="12" rx="1"/><rect x="10.5" y="3" width="5" height="12" rx="1"/></svg>Sổ tháng</a>
-      <a href="#congno" data-view="congno"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Công nợ</a>
+      <a href="#dongtien" data-view="dongtien"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Dòng tiền</a>
       <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
       <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
       <a href="#lichsu" data-view="lichsu"><svg class="ic" viewBox="0 0 18 18"><path d="M3.5 15.5V9M8.5 15.5V3.5M13.5 15.5V7M2 15.5h14"/></svg>Lịch sử</a>
@@ -337,7 +359,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
     </section>
 
     <!-- ===== Sổ tháng ===== -->
-    <section id="view-so" class="view">
+    <!-- ===== Dòng tiền: thu chi của tháng + công nợ ===== -->
+    <section id="view-dongtien" class="view">
       <header class="vhead">
         <div class="month-nav">
           <button class="ib" id="mPrev" aria-label="Tháng trước"><svg class="ic" viewBox="0 0 18 18"><path d="M11 4l-5 5 5 5"/></svg></button>
@@ -345,11 +368,12 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <button class="ib" id="mNext" aria-label="Tháng sau"><svg class="ic" viewBox="0 0 18 18"><path d="M7 4l5 5-5 5"/></svg></button>
           <button class="link" id="mToday">tháng này</button>
         </div>
-        <div class="right"><span id="closedInfo" class="mute" style="font-size:12px"></span><button class="btn" id="btnClose">Chốt tháng</button></div>
+        <div class="right"><label class="chk"><input type="checkbox" id="showSettled"> Hiện nợ đã tất toán</label><span id="closedInfo" class="mute" style="font-size:12px"></span><button class="btn" id="btnClose">Chốt tháng</button></div>
       </header>
       <div id="importNotice" class="notice" hidden>Tháng đã import từ sheet — xem chi tiết theo nhóm ở Lịch sử. Số dưới đây là số đã chốt, không có từng dòng giao dịch.</div>
-      <div class="stats" id="soStats"></div>
-      <div class="ledger">
+      <div class="stats five" id="soStats"></div>
+
+      <div class="ledger4">
         <section class="col card">
           <div class="colhead"><h2>Chi</h2><span id="chiTotal"></span></div>
           <form class="quick" id="formChi" data-type="chi" autocomplete="off">
@@ -360,8 +384,9 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
             <label class="chk"><input type="checkbox" name="unusual"> bất thường <small style="color:var(--faint)">· không tính vào trung bình ở Tổng quan</small></label>
           </form>
-          <table class="tbl"><tbody id="rowsChi"></tbody></table>
+          <div class="scroll"><table class="tbl"><tbody id="rowsChi"></tbody></table></div>
         </section>
+
         <section class="col card">
           <div class="colhead"><h2>Thu</h2><span id="thuTotal"></span></div>
           <form class="quick" id="formThu" data-type="thu" autocomplete="off">
@@ -372,22 +397,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
             <label class="chk"><input type="checkbox" name="pending"> chưa nhận</label>
           </form>
-          <table class="tbl"><tbody id="rowsThu"></tbody></table>
+          <div class="scroll"><table class="tbl"><tbody id="rowsThu"></tbody></table></div>
         </section>
-      </div>
-      <section class="card" style="max-width:520px">
-        <div class="colhead"><h2>Chi theo nhóm</h2><span id="byCatTotal"></span></div>
-        <table class="tbl"><tbody id="byCat"></tbody></table>
-      </section>
-    </section>
 
-    <!-- ===== Công nợ ===== -->
-    <section id="view-congno" class="view">
-      <header class="vhead"><h1>Công nợ</h1><label class="chk"><input type="checkbox" id="showSettled"> Hiện đã tất toán</label></header>
-      <div class="stats" id="debtStats"></div>
-      <div class="ledger">
         <section class="col card">
-          <div class="colhead"><h2>Họ nợ mình</h2><span id="recvTotal"></span></div>
+          <div class="colhead"><h2>Họ nợ mình <small class="nomonth">số dư hôm nay</small></h2><span id="recvTotal"></span></div>
           <form class="quick debt" data-dir="receivable" autocomplete="off">
             <input name="party" placeholder="Tên" required>
             <input name="quantity" placeholder="Số tiền / số chỉ" inputmode="decimal">
@@ -395,10 +409,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <input name="note" placeholder="Ghi chú">
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
           </form>
-          <table class="tbl"><tbody id="rowsRecv"></tbody></table>
+          <div class="scroll"><table class="tbl"><tbody id="rowsRecv"></tbody></table></div>
         </section>
+
         <section class="col card">
-          <div class="colhead"><h2>Mình nợ</h2><span id="payTotal"></span></div>
+          <div class="colhead"><h2>Mình nợ <small class="nomonth">số dư hôm nay</small></h2><span id="payTotal"></span></div>
           <form class="quick debt" data-dir="payable" autocomplete="off">
             <input name="party" placeholder="Tên" required>
             <input name="quantity" placeholder="Số tiền / số chỉ" inputmode="decimal">
@@ -406,9 +421,15 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <input name="note" placeholder="Ghi chú">
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
           </form>
-          <table class="tbl"><tbody id="rowsPay"></tbody></table>
+          <div class="scroll"><table class="tbl"><tbody id="rowsPay"></tbody></table></div>
         </section>
       </div>
+
+      <section class="card" style="max-width:520px">
+        <div class="colhead"><h2>Chi theo nhóm</h2><span id="byCatTotal"></span></div>
+        <table class="tbl"><tbody id="byCat"></tbody></table>
+        <div class="hint" id="byCatHint"></div>
+      </section>
     </section>
 
     <!-- ===== Tài sản ===== -->
@@ -599,8 +620,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
 <nav class="tabbar" id="tabbar">
   <a href="#tong" data-view="tong"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 9l3.5-2.5M9 9v-4"/></svg>Tổng quan</a>
-  <a href="#so" data-view="so"><svg class="ic" viewBox="0 0 18 18"><rect x="2.5" y="3" width="5" height="12" rx="1"/><rect x="10.5" y="3" width="5" height="12" rx="1"/></svg>Sổ</a>
-  <a href="#congno" data-view="congno"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Công nợ</a>
+  <a href="#dongtien" data-view="dongtien"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Dòng tiền</a>
   <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
   <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
   <a href="#lichsu" data-view="lichsu"><svg class="ic" viewBox="0 0 18 18"><path d="M3.5 15.5V9M8.5 15.5V3.5M13.5 15.5V7M2 15.5h14"/></svg>Lịch sử</a>
@@ -1654,6 +1674,47 @@ function testDcaCoins(){
   return {pass:ok, fail:bad};
 }
 
+/* Gộp/tách tab phải sửa đúng 5 chỗ (link sidebar, link thanh dưới, section, VIEWS, map render)
+   và số cột của thanh tab dưới. Test này bắt lỗi lệch giữa các chỗ đó. */
+function testViews(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+
+  console.log('%c1 — mọi link điều hướng trỏ tới view có thật, và có section tương ứng','font-weight:600');
+  { const links = [...document.querySelectorAll('[data-view]')].map(a=>a.dataset.view);
+    chk('Link lạ không có trong VIEWS', links.filter(v=>!VIEWS.includes(v)), []);
+    chk('Link thiếu section', links.filter(v=>!document.getElementById('view-'+v)), []);
+    chk('href khớp data-view', [...document.querySelectorAll('a[data-view]')].filter(a=>a.getAttribute('href')!=='#'+a.dataset.view).map(a=>a.dataset.view), []); }
+
+  console.log('%c2 — mọi view trong VIEWS đều có section và có link ở cả hai thanh điều hướng','font-weight:600');
+  { chk('View thiếu section', VIEWS.filter(v=>!document.getElementById('view-'+v)), []);
+    chk('View thiếu link sidebar', VIEWS.filter(v=>!document.querySelector(`.nav [data-view="${v}"], .side-foot [data-view="${v}"]`)), []);
+    chk('View thiếu link thanh dưới', VIEWS.filter(v=>!document.querySelector(`.tabbar [data-view="${v}"]`)), []); }
+
+  console.log('%c3 — không còn section thừa của tab đã gộp','font-weight:600');
+  { const orphan = [...document.querySelectorAll('section.view')].map(s=>s.id.replace('view-','')).filter(v=>!VIEWS.includes(v));
+    chk('Section không thuộc VIEWS', orphan, []); }
+
+  console.log('%c4 — hash cũ vẫn dẫn về đúng tab sau khi gộp','font-weight:600');
+  { chk('#so → dongtien', VIEW_ALIAS['so'], 'dongtien');
+    chk('#congno → dongtien', VIEW_ALIAS['congno'], 'dongtien');
+    chk('Mọi alias trỏ tới view có thật', Object.values(VIEW_ALIAS).filter(v=>!VIEWS.includes(v)), []);
+    chk('Alias không trùng tên view thật', Object.keys(VIEW_ALIAS).filter(k=>VIEWS.includes(k)), []); }
+
+  console.log('%c5 — thanh tab dưới chia đúng số cột bằng số tab','font-weight:600');
+  { const n = document.querySelectorAll('.tabbar [data-view]').length;
+    /* Thanh dưới bị ẩn ở màn rộng nên getComputedStyle vô dụng — đọc thẳng khai báo CSS. */
+    const rules = [...document.styleSheets[0].cssRules].flatMap(r=>r.cssRules?[...r.cssRules]:[r]);
+    const decl = rules.filter(r=>r.selectorText==='.tabbar' && r.style && r.style.gridTemplateColumns).pop();
+    const cols = decl ? Number((decl.style.gridTemplateColumns.match(/repeat\((\d+)/)||[])[1]) : null;
+    chk('Số tab', n, VIEWS.length);
+    chk('Số cột grid khớp số tab', cols, n); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
 function testUsd(){
   let ok=0, bad=0;
   const chk=(lb,got,want,tol=0.01)=>{
@@ -1962,21 +2023,23 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !el('modal').hi
 /* =====================================================================
    ROUTING + RENDER
    ===================================================================== */
-const VIEWS = ['tong','so','congno','taisan','dca','lichsu','caidat'];
+const VIEWS = ['tong','dongtien','taisan','dca','lichsu','caidat'];
+const VIEW_ALIAS = {so:'dongtien', congno:'dongtien'};        // hai tab cũ đã gộp, giữ link cũ chạy được
 function route(){
-  const v = location.hash.replace('#','');
+  const raw = location.hash.replace('#','');
+  const v = VIEW_ALIAS[raw] || raw;
   state.view = VIEWS.includes(v) ? v : 'tong';
   document.querySelectorAll('[data-view]').forEach(a=>a.classList.toggle('active', a.dataset.view===state.view));
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active', s.id==='view-'+state.view));
   render();
-  if(state.view==='so' && isDesktop() && !state.edit.chi && !state.edit.thu) el('formChi').name.focus();
+  if(state.view==='dongtien' && isDesktop() && !state.edit.chi && !state.edit.thu) el('formChi').name.focus();
 }
 addEventListener('hashchange', route);
 addEventListener('resize', ()=>{ clearTimeout(window.__rt); window.__rt=setTimeout(()=>{ if(state.view==='lichsu') renderHistory(); if(state.view==='taisan') renderHoldings(); if(state.view==='tong') renderOverview(); },120); });
 
 function render(){
   fillStaticSelects();
-  ({tong:renderOverview, so:renderLedger, congno:renderDebts, taisan:renderHoldings, dca:renderDca, lichsu:renderHistory, caidat:renderSettings})[state.view]();
+  ({tong:renderOverview, dongtien:renderCashflow, taisan:renderHoldings, dca:renderDca, lichsu:renderHistory, caidat:renderSettings})[state.view]();
 }
 function fillStaticSelects(){
   setOptions(el('formChi').category, settings().expenseCats);
@@ -2185,7 +2248,7 @@ el('ovUnusual').onchange = e=>{ state.exUnusual=e.target.checked; renderOverview
    ===================================================================== */
 /* 4 ô Thu · Chi · Chênh lệch/Tích lũy · Cần thu thêm — Sổ tháng và Tổng quan dùng chung đúng code này.
    Chỉ khác nhãn cột thứ ba: Sổ tháng giữ "Chênh lệch" của Pha 1, Tổng quan gọi là "Tích lũy" (SPEC-PHA3 mục 5.2). */
-function monthStatsHtml(m, t, importOnly, diffLabel='Chênh lệch'){
+function monthStatsHtml(m, t, importOnly, diffLabel='Chênh lệch', extraTiles=''){
   const p = pace(m, t);
   let paceHtml;
   if(!p.current) paceHtml = `<div class="lbl">Mục tiêu ${fmtBig(p.target)}</div><div class="val">${p.income>=p.target?'Đã đạt':'Đạt '+fmtPct(p.income/p.target)+' mục tiêu'}</div><div class="sub">${p.income>=p.target?'vượt '+fmtBig(p.income-p.target):'thiếu '+fmtBig(p.target-p.income)}</div>`;
@@ -2195,8 +2258,11 @@ function monthStatsHtml(m, t, importOnly, diffLabel='Chênh lệch'){
     <div class="stat"><div class="lbl">Thu</div><div class="val">${fmtBig(t.income)}</div><div class="sub">${t.pending?'trong đó chưa nhận: '+fmtK(t.pending):'đã nhận đủ'}</div></div>
     <div class="stat"><div class="lbl">Chi</div><div class="val">${fmtBig(t.expense)}</div><div class="sub">${importOnly?'số đã chốt · không có dòng chi tiết':txOfMonth(m).filter(x=>x.type==='chi').length+' khoản'}</div></div>
     <div class="stat"><div class="lbl">${esc(diffLabel)}</div><div class="val">${fmtBig(t.income-t.expense)}</div><div class="sub">thu − chi</div></div>
+    ${extraTiles}
     <div class="stat wide">${paceHtml}</div>`;
 }
+/* Tab Dòng tiền = thu chi của tháng đang xem + công nợ (số dư hôm nay, không theo tháng). */
+function renderCashflow(){ renderLedger(); renderDebts(); }
 function renderLedger(){
   const m = state.month;
   const closed = D.months[m];
@@ -2208,7 +2274,7 @@ function renderLedger(){
   el('closedInfo').textContent = closed && closed.closedAt ? 'đã chốt '+fmtTime(closed.closedAt) : '';
   el('btnClose').textContent = closed ? 'Chốt lại tháng' : 'Chốt tháng';
   el('importNotice').hidden = !importOnly;
-  el('soStats').innerHTML = monthStatsHtml(m, t, importOnly);
+  el('soStats').innerHTML = monthStatsHtml(m, t, importOnly, 'Chênh lệch', debtTileHtml());
   el('chiTotal').textContent = fmtK(t.expense); el('thuTotal').textContent = fmtK(t.income);
   const rows = type => txOfMonth(m).filter(x=>x.type===type).sort((a,b)=> b.date<a.date?-1: b.date>a.date?1 : (b.createdAt||0)-(a.createdAt||0));
   const row = x => `<tr class="${x.pending?'pending':''}" data-id="${x.id}">
@@ -2223,6 +2289,9 @@ function renderLedger(){
   const cats = [...settings().expenseCats, ...Object.keys(t.byCategory).filter(c=>!settings().expenseCats.includes(c))];
   el('byCat').innerHTML = cats.map(c=>{ const v=t.byCategory[c]||0; return `<tr><td class="first">${esc(c)}<div class="bar"><i style="width:${t.expense?Math.round(v/t.expense*100):0}%"></i></div></td><td class="n">${fmtK(v)}</td><td class="n last mute" style="width:1%">${t.expense?fmtPct(v/t.expense):'—'}</td></tr>`; }).join('');
   el('byCatTotal').textContent = fmtK(t.expense);
+  el('byCatHint').innerHTML = (t.byCategory['Trả nợ']||0) > 0
+    ? 'Nhóm <b>Trả nợ</b> chỉ là ghi chú cho dễ nhớ. Việc trả nợ thật đã ghi qua nút <b>Tất toán</b> ở cột công nợ (tài sản giảm, nợ giảm, tài sản ròng không đổi) — khoản chi ở đây không trừ thêm lần nữa vào tài sản.'
+    : '';
   for(const type of ['chi','thu']){ const f = el(type==='chi'?'formChi':'formThu'); if(!state.edit[type] && !f.date.value) f.date.value = todayStr(); }
 }
 el('mPrev').onclick = ()=>{ state.month=shiftMonth(state.month,-1); render(); };
@@ -2291,13 +2360,14 @@ function debtQtyStr(d){
   if(d.unit==='GOLD_CHI') return fmtQty(d.quantity)+' chỉ vàng'+(d.priceKey==='gold_acr'?' ACR':' PĐ');
   return fmtK(d.quantity);
 }
+/* Ô thống kê công nợ, chèn vào hàng stats của tab Dòng tiền. Số dư hôm nay, không theo tháng đang xem. */
+function debtTileHtml(){
+  const t = debtTotals();
+  return `<div class="stat"><div class="lbl">Công nợ ròng <span class="nomonth">hôm nay</span></div><div class="val">${fmtBig(t.net)}</div>
+    <div class="sub">họ nợ ${fmtBig(t.recv)} − mình nợ ${fmtBig(t.pay)} + chưa nhận ${fmtBig(t.pending)}</div></div>`;
+}
 function renderDebts(){
   const t = debtTotals();
-  el('debtStats').innerHTML = `
-    <div class="stat strong"><div class="lbl">Công nợ ròng</div><div class="val">${fmtBig(t.net)}</div><div class="sub">họ nợ − mình nợ + thu chưa nhận</div></div>
-    <div class="stat"><div class="lbl">Họ nợ mình</div><div class="val">${fmtBig(t.recv)}</div><div class="sub">${D.debts.filter(d=>!d.settled&&d.direction==='receivable').length} khoản</div></div>
-    <div class="stat"><div class="lbl">Mình nợ</div><div class="val">${fmtBig(t.pay)}</div><div class="sub">${D.debts.filter(d=>!d.settled&&d.direction==='payable').length} khoản</div></div>
-    <div class="stat"><div class="lbl">Thu chưa nhận</div><div class="val">${fmtBig(t.pending)}</div><div class="sub">đã cộng vào công nợ ròng</div></div>`;
   el('showSettled').checked = state.showSettled;
   const list = dir => D.debts.filter(d=>d.direction===dir && (state.showSettled || !d.settled)).sort((a,b)=>(a.settled?1:0)-(b.settled?1:0) || (a.createdAt||0)-(b.createdAt||0));
   const row = d => `<tr class="${d.settled?'settled':''}" data-id="${d.id}">
@@ -2305,15 +2375,24 @@ function renderDebts(){
       <td class="c">${debtQtyStr(d)}</td>
       <td class="n">${fmtK(Math.round(debtValue(d)))}</td>
       <td class="act last">${d.settled?'<button data-act="reopen">mở lại</button>':'<button class="tag" data-act="settle">Tất toán</button>'}<button data-act="edit">sửa</button><button data-act="del">xoá</button></td></tr>`;
+  /* Thu chưa nhận cũng là tiền người ta nợ mình nên phải nằm trong công nợ ròng.
+     Khoản của tháng đang xem đã hiện đầy đủ ở cột Thu ngay bên cạnh ⇒ gộp một dòng cho khỏi lặp.
+     Khoản của tháng khác không nhìn thấy ở đâu khác ⇒ liệt kê từng khoản. */
   const pend = D.transactions.filter(x=>x.type==='thu'&&x.pending).sort((a,b)=>a.date<b.date?-1:1);
-  const pendRows = pend.length ? `<tr><td colspan="4" class="first" style="padding-top:12px"><small>Thu chưa nhận (từ sổ tháng)</small></td></tr>`+pend.map(x=>`<tr class="pending" data-tx="${x.id}"><td class="name first">${esc(x.name)}<small>${fmtMonthLong(x.month)}${x.parts?' · '+esc(partsStr(x.parts)):''}</small></td><td class="c">k</td><td class="n">${fmtK(x.amount)}</td><td class="act last"><button class="tag" data-act="received">Đã nhận</button></td></tr>`).join('') : '';
+  const pendHere = pend.filter(x=>x.month===state.month), pendOther = pend.filter(x=>x.month!==state.month);
+  const head = txt => `<tr><td colspan="4" class="first" style="padding-top:12px"><small>${txt}</small></td></tr>`;
+  const pendRows = !pend.length ? '' :
+    (pendHere.length ? head('Thu chưa nhận')+
+       `<tr class="pending"><td class="name first">${pendHere.length} khoản của ${esc(fmtMonthLong(state.month).toLowerCase())}<small>đang hiện đầy đủ ở cột Thu</small></td><td class="c">k</td><td class="n">${fmtK(sum(pendHere,x=>x.amount))}</td><td class="act last"></td></tr>` : '')+
+    (pendOther.length ? head(pendHere.length?'Thu chưa nhận từ tháng khác':'Thu chưa nhận từ tháng khác')+
+       pendOther.map(x=>`<tr class="pending" data-tx="${x.id}"><td class="name first">${esc(x.name)}<small>${fmtMonthLong(x.month)}${x.parts?' · '+esc(partsStr(x.parts)):''}</small></td><td class="c">k</td><td class="n">${fmtK(x.amount)}</td><td class="act last"><button class="tag" data-act="received">Đã nhận</button></td></tr>`).join('') : '');
   const empty = '<tr><td class="empty" colspan="4">Không có khoản nào</td></tr>';
   el('rowsRecv').innerHTML = (list('receivable').map(row).join('') || (pend.length?'':empty)) + pendRows;
   el('rowsPay').innerHTML = list('payable').map(row).join('') || empty;
   el('recvTotal').textContent = fmtK(Math.round(t.recv+t.pending)); el('payTotal').textContent = fmtK(Math.round(t.pay));
 }
 el('showSettled').onchange = e=>{ state.showSettled=e.target.checked; render(); };
-document.querySelectorAll('#view-congno form.debt').forEach(f=>{
+document.querySelectorAll('#view-dongtien form.debt').forEach(f=>{
   const dir = f.dataset.dir;
   f.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.tagName!=='BUTTON'){ e.preventDefault(); f.requestSubmit(); } if(e.key==='Escape') resetDebtForm(f); });
   f.querySelector('.cancel').onclick = ()=>resetDebtForm(f);
@@ -2338,7 +2417,7 @@ for(const id of ['rowsRecv','rowsPay']) el(id).addEventListener('click', e=>{
   else if(b.dataset.act==='reopen') reopenDebt(d);
   else if(b.dataset.act==='del'){ if(confirm(`Xoá khoản nợ "${d.party}"?`)) removeDebt(d.id); }
   else if(b.dataset.act==='edit'){
-    const f=document.querySelector(`#view-congno form[data-dir=${d.direction}]`);
+    const f=document.querySelector(`#view-dongtien form[data-dir=${d.direction}]`);
     state.edit[d.direction]=d.id; f.classList.add('editing');
     f.party.value=d.party; f.quantity.value=String(d.quantity).replace('.',','); f.note.value=d.note||'';
     f.unit.value = d.unit==='GOLD_CHI' ? (d.priceKey||'gold_pd') : 'VND';
@@ -3128,6 +3207,7 @@ window.testBuyScore = testBuyScore;
 window.testDcaPlan = testDcaPlan;
 window.testDcaCoins = testDcaCoins;
 window.testUsd = testUsd;
+window.testViews = testViews;
 window.testRecovery = testRecovery;
 window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
@@ -3139,7 +3219,7 @@ window.FinTrace = { state, data:D,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, BUY_SCORE_V1,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS},
-  render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd,
+  render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews,
   refreshDca, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
