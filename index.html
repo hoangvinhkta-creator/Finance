@@ -1034,46 +1034,97 @@ const xfersSorted = () => [...D.transfers].sort((a,b)=> b.date<a.date?-1 : b.dat
    USD của một lần mua = (valueVnd / qtyIn) / usdtRate lúc mua; nếu lúc tạo transfer
    chưa lưu usdtRate (dữ liệu cũ, hoặc chưa có giá usdt) thì dùng usdt hiện tại và đánh dấu ước tính. */
 function coinHolding(priceKey){ return D.holdings.find(h=>h.priceKey===priceKey) || null; }
-function coinPurchases(priceKey){
-  const h = coinHolding(priceKey); if(!h) return [];
-  return D.transfers.filter(t=>t.toId===h.id && Number(t.qtyIn)>0)
-    .sort((a,b)=> a.date<b.date?-1 : a.date>b.date?1 : (a.createdAt||0)-(b.createdAt||0));
+/* WBETH là chính ETH đã stake qua Binance Earn — cùng một tài sản, chỉ khác vỏ, và 1 WBETH lớn
+   dần so với 1 ETH. Gộp vào ETH ở mọi chỗ tính: số lượng đang giữ, giá trị hiện tại, và một lần
+   chuyển ETH ↔ WBETH là chuyển nội bộ chứ không phải mua hay bán. */
+const COIN_FAMILY = { eth: ['eth','wbeth'] };
+const familyKeys = key => COIN_FAMILY[key] || [key];
+const familyHoldings = key => { const ks = familyKeys(key); return D.holdings.filter(h=>ks.includes(h.priceKey)); };
+/* Quy mọi thành viên trong họ về đơn vị coin gốc theo tỉ giá hiện tại (1 WBETH ≈ 1,1 ETH). */
+function coinQtyHeld(key){
+  const base = price(key);
+  if(!(base>0)) return sum(familyHoldings(key).filter(h=>h.priceKey===key), h=>Number(h.quantity)||0);
+  return sum(familyHoldings(key), h=>{ const p = price(h.priceKey); return (Number(h.quantity)||0) * (p>0 ? p/base : 0); });
 }
+const coinValueHeld = key => sum(familyHoldings(key), holdingValue);
+/* Tách transfers của một họ coin thành mua (tiền ngoài đi vào) và bán (coin đi ra ngoài họ).
+   Chuyển trong họ (ETH → WBETH) bị bỏ qua ở cả hai phía. `qtyBase` là số lượng đã quy về
+   đơn vị coin gốc để cộng trừ được với nhau. */
+function coinLedger(key){
+  const ids = new Set(familyHoldings(key).map(h=>h.id));
+  if(!ids.size) return { buys:[], sells:[] };
+  const base = price(key);
+  const toBase = (hid, qty) => { const h = holdingById(hid), p = h && h.priceKey ? price(h.priceKey) : 0;
+    return base>0 && p>0 ? Number(qty||0)*(p/base) : Number(qty||0); };
+  const byTime = (a,b)=> a.date<b.date?-1 : a.date>b.date?1 : (a.createdAt||0)-(b.createdAt||0);
+  const buys=[], sells=[];
+  for(const t of D.transfers){
+    const into = ids.has(t.toId), outOf = ids.has(t.fromId);
+    if(into && outOf) continue;                                     // chuyển nội bộ trong họ
+    if(into && Number(t.qtyIn)>0) buys.push({...t, qtyBase: toBase(t.toId, t.qtyIn)});
+    else if(outOf && Number(t.qtyOut)>0) sells.push({...t, qtyBase: toBase(t.fromId, t.qtyOut)});
+  }
+  return { buys: buys.sort(byTime), sells: sells.sort(byTime) };
+}
+function coinPurchases(key){ return coinLedger(key).buys; }
+function coinSales(key){ return coinLedger(key).sells; }
 function ethHolding(){ return coinHolding('eth'); }
 function ethPurchases(){ return coinPurchases('eth'); }
-function purchaseUsdPrice(t, usdtNow){
+/* Tổng USD của một lần chuyển, theo đúng tỷ giá USDT lúc đó. Thiếu tỷ giá lúc mua (dữ liệu cũ)
+   thì đành dùng tỷ giá hiện tại và đánh dấu ước tính. */
+function transferUsd(t, usdtNow){
   const rate = Number(t.usdtRate)>0 ? Number(t.usdtRate) : Number(usdtNow)||0;
-  const estimated = !(Number(t.usdtRate)>0);
-  const qty = Number(t.qtyIn||0), vnd = Number(t.valueVnd||0);
-  const vndPerEth = qty>0 ? vnd/qty : 0;
-  return { usd: rate>0 ? vndPerEth/rate : null, estimated };
+  return { usd: rate>0 ? Number(t.valueVnd||0)/rate : null, estimated: !(Number(t.usdtRate)>0) };
 }
-/* purchases: mảng transfer đã lọc theo đích là holding của coin, thứ tự thời gian tăng dần.
+function purchaseUsdPrice(t, usdtNow){
+  const tu = transferUsd(t, usdtNow);
+  const qty = Number(t.qtyBase!=null ? t.qtyBase : t.qtyIn)||0;
+  return { usd: tu.usd!=null && qty>0 ? tu.usd/qty : null, estimated: tu.estimated };
+}
+/* buys/sells: transfer đã lọc theo họ coin, thứ tự thời gian tăng dần.
+   Bán thì trừ thẳng số tiền thu về khỏi vốn đã bỏ — đúng cách sổ tay của owner tính: giá vốn là
+   "tiền ròng đã bỏ ra trên mỗi coin còn giữ", tức mức hoà vốn, chứ không phải giá vốn kế toán.
    Tên trường giữ nguyên totalEth/ethAfter cho tương thích ngược — với BTC thì đọc là "số lượng coin". */
-function dcaCostBasis(purchases, usdtNow){
-  let qty=0, cost=0;
-  const rows = purchases.map(t=>{
-    qty += Number(t.qtyIn||0); cost += Number(t.valueVnd||0);
-    const up = purchaseUsdPrice(t, usdtNow);
-    return {...t, ethAfter:rq(qty), avgAfter: qty>0?cost/qty:0, usdPrice:up.usd, usdEstimated:up.estimated};
-  });
-  return { rows, totalEth:rq(qty), totalCostVnd:r6(cost), avgCostVnd: qty>0?cost/qty:0 };
+function dcaCostBasis(buys, usdtNow, sells){
+  /* Trộn mua và bán theo đúng thứ tự thời gian rồi mới chạy: có vậy cột "giá vốn TB sau" của
+     lần mua cuối mới bằng đúng con số tổng kết, kể cả khi có lần bán chen vào giữa. */
+  const ev = [...(buys||[]).map(t=>({t, sign:1})), ...(sells||[]).map(t=>({t, sign:-1}))]
+    .sort((a,b)=> a.t.date<b.t.date?-1 : a.t.date>b.t.date?1 : (a.t.createdAt||0)-(b.t.createdAt||0));
+  let qty=0, vnd=0, usd=0, bQty=0, sQty=0, sVnd=0;
+  const rows = [];
+  for(const {t, sign} of ev){
+    const q = Number(t.qtyBase!=null ? t.qtyBase : (sign>0 ? t.qtyIn : t.qtyOut))||0;
+    const tu = transferUsd(t, usdtNow);
+    qty += sign*q; vnd += sign*(Number(t.valueVnd)||0); usd += sign*(tu.usd||0);
+    if(sign>0){ bQty += q;
+      rows.push({...t, qtyBase:q, ethAfter:rq(qty), avgAfter: qty>0?vnd/qty:0,
+                 usdPrice: tu.usd!=null && q>0 ? tu.usd/q : null, usdEstimated: tu.estimated});
+    } else { sQty += q; sVnd += Number(t.valueVnd)||0; }
+  }
+  return { rows, boughtQty:rq(bQty), soldQty:rq(sQty), soldCostVnd:r6(sVnd),
+    totalEth:rq(qty), totalCostVnd:r6(vnd), totalCostUsd:r6(usd),
+    avgCostVnd: qty>0?vnd/qty:0, avgCostUsd: qty>0?usd/qty:null };
 }
-function dcaSummary(basis, currentPriceVnd, usdtNow){
+/* held (tuỳ chọn): số dư thật đang giữ, đã gộp cả họ coin. Không truyền thì suy từ sổ mua như cũ. */
+function dcaSummary(basis, currentPriceVnd, usdtNow, held){
   const { totalEth, totalCostVnd, avgCostVnd } = basis;
   const cpv = Number(currentPriceVnd)||0, u = Number(usdtNow)||0;
-  const currentValue = totalEth*cpv;
-  const pnl = totalCostVnd>0 || totalEth>0 ? currentValue-totalCostVnd : 0;
+  const qtyHeld = held && held.qty!=null ? Number(held.qty) : totalEth;
+  const currentValue = held && held.valueVnd!=null ? Number(held.valueVnd) : qtyHeld*cpv;
+  const pnl = totalCostVnd>0 || qtyHeld>0 ? currentValue-totalCostVnd : 0;
   const pnlPct = totalCostVnd>0 ? pnl/totalCostVnd : null;
-  return { totalEth, totalCostVnd, avgCostVnd,
-    avgCostUsd: u>0 ? avgCostVnd/u : null,
+  return { totalEth, qtyHeld, totalCostVnd, totalCostUsd: basis.totalCostUsd, avgCostVnd,
+    /* Giá vốn USD cộng dồn theo tỷ giá TỪNG LẦN MUA. Không lấy avgCostVnd chia tỷ giá hôm nay:
+       USDT/VNĐ trôi vài phần trăm mỗi mùa nên chia kiểu đó thổi lệch hẳn giá vốn. */
+    avgCostUsd: basis.avgCostUsd!=null ? basis.avgCostUsd : (u>0 ? avgCostVnd/u : null),
     currentPriceVnd: cpv, currentPriceUsd: u>0 ? cpv/u : null,
     currentValue, pnl, pnlPct };
 }
 /* Điểm vào cho UI: đọc thẳng từ state D. */
 function dcaState(coin){
-  const k = coin || state.dcaCoin;
-  return dcaSummary(dcaCostBasis(coinPurchases(k), price('usdt')), price(k), price('usdt'));
+  const k = coin || state.dcaCoin, u = price('usdt'), led = coinLedger(k);
+  return dcaSummary(dcaCostBasis(led.buys, u, led.sells), price(k), u,
+                    { qty: coinQtyHeld(k), valueVnd: coinValueHeld(k) });
 }
 
 /* ---- Nạp lịch sử mua coin từ file Excel theo dõi cũ (owner cung cấp 2026-09-13) -------
@@ -1563,6 +1614,65 @@ function testDca(){
   { const basis = dcaCostBasis([], 26.4); const sm = dcaSummary(basis, 70000, 26.4);
     chk('Tổng ETH', basis.totalEth, 0); chk('Giá vốn TB', basis.avgCostVnd, 0);
     chk('Lãi/lỗ % (chưa có vốn ⇒ null)', sm.pnlPct, null); }
+
+  /* Lỗi thật đã gặp: giá vốn USD bị thổi từ 2143 lên 2252 vì lấy giá vốn VNĐ chia tỷ giá HÔM NAY,
+     trong khi vốn được bỏ ra hồi tỷ giá còn cao hơn. Phải cộng USD theo tỷ giá từng lần mua. */
+  console.log('%c6 — giá vốn USD cộng theo tỷ giá lúc mua, không chia theo tỷ giá hôm nay','font-weight:600');
+  { const buys = [
+      {date:'2025-11-03', qtyIn:1, valueVnd:27832, usdtRate:27.832},   // đúng 1.000 USD
+      {date:'2026-06-02', qtyIn:1, valueVnd:26339, usdtRate:26.339},   // đúng 1.000 USD
+    ];
+    const basis = dcaCostBasis(buys, 25.756);
+    chk('Vốn USD = 2.000 dù hai tỷ giá khác nhau', basis.totalCostUsd, 2000);
+    chk('Giá vốn TB USD = 1.000', basis.avgCostUsd, 1000);
+    chk('Giá vốn TB VNĐ = trung bình hai lần', basis.avgCostVnd, (27832+26339)/2);
+    const sm = dcaSummary(basis, 30000, 25.756);
+    chk('Tổng kết dùng đúng giá vốn USD lịch sử', sm.avgCostUsd, 1000);
+    /* Cách sai cũ cho ra ~1.051 — khoá lại để không quay về. */
+    chk('Không phải kiểu chia tỷ giá hôm nay', Math.abs(sm.avgCostUsd - basis.avgCostVnd/25.756) > 40, true); }
+
+  console.log('%c7 — bán ra thì trừ cả số lượng lẫn tiền thu về khỏi vốn ròng','font-weight:600');
+  { const buys = [{date:'2026-01-01', qtyIn:2, valueVnd:52000, usdtRate:26}];
+    const sells = [{date:'2026-02-01', qtyOut:0.5, valueVnd:15600, usdtRate:26}];
+    const basis = dcaCostBasis(buys, 26, sells);
+    chk('Đã mua', basis.boughtQty, 2); chk('Đã bán', basis.soldQty, 0.5);
+    chk('Còn lại', basis.totalEth, 1.5);
+    chk('Vốn ròng VNĐ = 52.000 − 15.600', basis.totalCostVnd, 36400);
+    chk('Giá vốn TB VNĐ = 36.400 / 1,5', basis.avgCostVnd, 36400/1.5);
+    chk('Giá vốn TB USD = (2.000 − 600) / 1,5', basis.avgCostUsd, 1400/1.5); }
+
+  console.log('%c7b — lần bán chen giữa hai lần mua: cột "giá vốn TB sau" của lần mua cuối bằng số tổng kết','font-weight:600');
+  { const buys = [
+      {date:'2026-01-01', createdAt:1, qtyIn:1, valueVnd:30000, usdtRate:26},
+      {date:'2026-03-01', createdAt:3, qtyIn:1, valueVnd:20000, usdtRate:26},
+    ];
+    const sells = [{date:'2026-02-01', createdAt:2, qtyOut:0.5, valueVnd:18000, usdtRate:26}];
+    const basis = dcaCostBasis(buys, 26, sells);
+    chk('Còn lại 1,5', basis.totalEth, 1.5);
+    chk('Vốn ròng = 30.000 − 18.000 + 20.000', basis.totalCostVnd, 32000);
+    chk('Dòng cuối của bảng khớp giá vốn tổng kết', basis.rows[1].avgAfter, basis.avgCostVnd);
+    chk('Số lượng sau lần mua cuối đã trừ phần bán', basis.rows[1].ethAfter, 1.5); }
+
+  console.log('%c8 — WBETH là ETH đã stake: gộp vào ETH theo tỉ giá, chuyển nội bộ không tính mua/bán','font-weight:600');
+  { const savedH = D.holdings, savedP = D.prices, savedT = D.transfers;
+    D.holdings = [
+      {id:'E', name:'ETH', priceKey:'eth', quantity:1.387511},
+      {id:'W', name:'WBETH (Earn)', priceKey:'wbeth', quantity:0.591049},
+      {id:'U', name:'USDT', priceKey:'usdt', quantity:100},
+    ];
+    D.prices = { eth:{value:64873}, wbeth:{value:71691}, usdt:{value:25.756} };   // 1 WBETH ≈ 1,1051 ETH
+    chk('Số ETH đang giữ gồm cả WBETH quy đổi', coinQtyHeld('eth'), 1.387511 + 0.591049*(71691/64873), 0.0001);
+    chk('Giá trị đang giữ cộng cả hai ví', coinValueHeld('eth'), 1.387511*64873 + 0.591049*71691, 1);
+    D.transfers = [
+      {id:'t1', date:'2026-01-01', fromId:'U', toId:'E', qtyIn:1, qtyOut:2500, valueVnd:64000, usdtRate:26},
+      {id:'t2', date:'2026-02-01', fromId:'E', toId:'W', qtyOut:0.6, qtyIn:0.55, valueVnd:38900},  // stake, nội bộ
+      {id:'t3', date:'2026-03-01', fromId:'E', toId:'U', qtyOut:0.1, qtyIn:250, valueVnd:6500, usdtRate:26},
+    ];
+    const led = coinLedger('eth');
+    chk('Chỉ 1 lần mua (bỏ chuyển nội bộ sang WBETH)', led.buys.length, 1);
+    chk('Chỉ 1 lần bán ra ngoài họ', led.sells.length, 1);
+    chk('Lần bán là đúng transfer ra USDT', led.sells[0].id==='t3', true);
+    D.holdings = savedH; D.prices = savedP; D.transfers = savedT; }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -3127,8 +3237,9 @@ function renderDca(){
   renderDcaWallet();
   const coin = dcaCoinOf(state.dcaCoin), L = coin.label;
   const usdt = price('usdt'), cur = price(coin.key);
-  const basis = dcaCostBasis(coinPurchases(coin.key), usdt);
-  const s = dcaSummary(basis, cur, usdt);
+  const led = coinLedger(coin.key);
+  const basis = dcaCostBasis(led.buys, usdt, led.sells);
+  const s = dcaSummary(basis, cur, usdt, { qty: coinQtyHeld(coin.key), valueVnd: coinValueHeld(coin.key) });
   const hasAny = basis.rows.length>0;
 
   el('dcaEmpty').hidden = hasAny;
@@ -3137,9 +3248,14 @@ function renderDca(){
 
   el('dcaUpdated').textContent = D.prices[coin.key] ? '' : (hasAny ? `Chưa có giá ${L} — bấm Cập nhật, hoặc nhập tay ở tab Tài sản` : '');
 
+  /* Đang giữ gồm cả họ coin — ETH thì cộng luôn WBETH đã quy về ETH, ghi rõ ở dòng nhỏ. */
+  const fam = familyHoldings(coin.key).filter(h=>Number(h.quantity)>0);
+  const famSub = fam.length>1 ? fam.map(h=>`${fmtQty(h.quantity)} ${esc(priceLabel(h.priceKey))}`).join(' + ')+' · ' : '';
+  const soldSub = basis.soldQty>0 ? ` · đã trừ ${fmtQty(basis.soldQty)} bán ra` : '';
+
   el('dcaStats').innerHTML = `
-    <div class="stat"><div class="lbl">Tổng ${esc(L)}</div><div class="val">${fmtQty(s.totalEth)}</div><div class="sub">vốn đã bỏ ${fmtK(Math.round(s.totalCostVnd))}</div></div>
-    <div class="stat"><div class="lbl">Giá vốn trung bình</div><div class="val">${fmtUsd(s.avgCostUsd)}</div><div class="sub">${s.avgCostVnd?fmtK(Math.round(s.avgCostVnd),2)+'/'+esc(L):'—'}</div></div>
+    <div class="stat"><div class="lbl">Đang giữ (${esc(L)})</div><div class="val">${fmtQty(s.qtyHeld)}</div><div class="sub">${famSub}vốn ròng ${fmtK(Math.round(s.totalCostVnd))}</div></div>
+    <div class="stat"><div class="lbl">Giá vốn trung bình</div><div class="val">${fmtUsd(s.avgCostUsd)}</div><div class="sub">${s.avgCostVnd?fmtK(Math.round(s.avgCostVnd),2)+'/'+esc(L):'—'}${soldSub}</div></div>
     <div class="stat"><div class="lbl">Giá hiện tại</div><div class="val">${fmtUsd(s.currentPriceUsd)}</div><div class="sub">${s.currentPriceVnd?fmtK(Math.round(s.currentPriceVnd))+'/'+esc(L):'chưa có giá '+esc(L)}</div></div>
     <div class="stat strong"><div class="lbl">Lãi / lỗ</div><div class="val">${signed(s.pnl)}</div><div class="sub">${fmtPct(s.pnlPct)} so với vốn đã bỏ</div></div>`;
 
@@ -3752,7 +3868,8 @@ window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
         transferValue, scnPrice, scnNetWorth, netQty,
-        coinHolding, coinPurchases, ethHolding, ethPurchases, purchaseUsdPrice, dcaCostBasis, dcaSummary, dcaState,
+        coinHolding, coinPurchases, coinSales, coinLedger, coinQtyHeld, coinValueHeld, familyHoldings, COIN_FAMILY,
+        ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, scoreBands, priceForScore, BUY_SCORE_V1,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
