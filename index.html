@@ -209,6 +209,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .sbar i{display:block;height:100%;background:var(--ink)}
 .tbl td.pt{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
 .tbl td.meas,.tbl th.meas{color:var(--mute);white-space:nowrap}
+#holdTable select.inline{min-width:96px}
+#holdTable small{font-size:11px}
 .plan3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .pblock{min-width:0}
 .pblock .lbl{font-size:12px;color:var(--mute);margin-bottom:6px;display:flex;align-items:center;gap:6px}
@@ -258,6 +260,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   .tbl td.last,.tbl th.last{padding-right:10px}
   .tbl td.c,.tbl th.c{display:none}
   #dcaScoreTable td.bcol,#dcaScoreTable th.bcol{display:none}
+  #holdTable select.inline{min-width:0}
   .plan3{grid-template-columns:minmax(0,1fr);gap:16px}
   #dcaScoreTable td.meas,#dcaScoreTable th.meas{white-space:normal}
   #priceTable .key{display:none}
@@ -436,7 +439,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       </section>
       <div class="grid2">
         <section class="card">
-          <div class="colhead"><h2>Danh mục</h2><div class="acts-row"><button class="btn" id="btnBinanceSync" title="Đối chiếu số dư ETH, USDT, BTC, ADA với tài khoản Binance">Đồng bộ Binance</button><span id="holdTotal"></span></div></div>
+          <div class="colhead"><h2>Danh mục</h2><span id="holdTotal"></span></div>
           <div class="scroll"><table class="tbl" id="holdTable"></table></div>
           <form class="quick debt" id="formHold" autocomplete="off" style="border-top:1px solid var(--line);border-bottom:0;padding-top:12px">
             <input name="name" placeholder="Tên tài sản" required>
@@ -564,15 +567,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="hint" style="padding:8px 0 0">Mỗi coin có ngân sách, tỷ lệ và lịch Base riêng — đổi ô Coin ở trên để sửa coin còn lại. Ngân sách 0 thì card "Tháng này" của coin đó ở tab DCA tắt. Số ngày và số tỷ lệ của lịch Base phải bằng nhau; lệch thì tự chia đều. Opportunity Fund không có sổ riêng: số dư = số tháng đã góp × phần góp mỗi tháng − các lần chuyển đổi gắn nhãn Opportunity, chặn trên ở cap.</div>
         </section>
         <section class="card pad">
-          <h2>Binance — đồng bộ số dư</h2>
-          <div class="row"><span class="mute" style="min-width:120px">Địa chỉ Worker</span><input id="setBnUrl" autocomplete="off" spellcheck="false" placeholder="https://fintrace-binance.<tên>.workers.dev"></div>
-          <div class="row"><span class="mute" style="min-width:120px">Mã truy cập</span><input id="setBnToken" type="password" autocomplete="new-password" placeholder="chuỗi ACCESS_TOKEN đã đặt trong Cloudflare"></div>
-          <div class="row"><button class="btn" id="saveBinance">Lưu</button><button class="btn" id="clearBinance">Xoá</button><span class="mute" id="bnInfo"></span></div>
-          <div class="warnline" id="bnLegacy" style="margin-top:12px" hidden>Khoá API Binance của bản trước vẫn còn nằm trong Firestore và <b>không còn dùng đến nữa</b> — khoá giờ nằm trong Worker. Bấm <b>Lưu</b> hoặc <b>Xoá</b> ở trên để gỡ hẳn khỏi Firestore.</div>
-          <div class="warnline" style="margin-top:12px">Binance <b>không cho trình duyệt gọi thẳng</b> endpoint số dư (đã thử trên app thật, bị chặn CORS). Cần một Cloudflare Worker trung gian — miễn phí, dựng hoàn toàn trên trình duyệt trong khoảng 10 phút. Các bước ở file <code>BINANCE.md</code> trong repo.</div>
-          <div class="hint" style="padding:8px 0 0">Khoá API Binance nằm trong biến bí mật của Worker, <b>không</b> nằm trên Firestore và không bao giờ vào repo. Firestore chỉ giữ địa chỉ Worker và mã truy cập; lộ hai thứ này thì người ta cũng chỉ đọc được số dư, không đặt lệnh hay rút tiền được, và bạn đổi ACCESS_TOKEN trong Cloudflare là xong. Đồng bộ là nút bấm ở tab Tài sản, không tự chạy, và luôn hiện bảng đối chiếu trước khi ghi đè.</div>
-        </section>
-        <section class="card pad">
           <h2>Nhóm chi</h2>
           <div class="taglist" id="expCats"></div>
           <div class="row"><input id="newExpCat" placeholder="Thêm nhóm chi"><button class="btn" id="addExpCat">Thêm</button></div>
@@ -593,7 +587,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <div class="row"><button class="btn" id="btnBackup">Tải bản sao lưu</button><button class="btn" id="btnRestore">Khôi phục từ file</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
             <div class="row" style="margin-top:10px"><button class="btn" id="btnFindOld">Tìm dữ liệu cũ trong trình duyệt này</button><span class="mute" id="findOldInfo"></span></div>
             <div class="hint" style="padding:8px 0 14px">Trước khi nối Firebase, app cất dữ liệu trong bộ nhớ của chính trình duyệt. Nối Firebase xong thì chỗ đó không còn được đọc nữa nhưng vẫn nằm nguyên đó. Nút này lục lại và tải về thành file sao lưu — <b>chỉ đọc, không xoá gì</b>. Bấm trên đúng trình duyệt và đúng máy đã dùng hồi đó.</div>
-            <div class="hint" style="padding:8px 0 14px">Sao lưu ra một file JSON chứa toàn bộ dữ liệu. Dùng để chuyển dữ liệu từ chế độ thử cục bộ lên Firebase, đổi sang project Firebase khác, hoặc giữ một bản phòng thân trước khi làm gì đó lớn. Khôi phục sẽ xoá sạch dữ liệu hiện có rồi ghi lại từ file. File sao lưu chứa cả khoá API Binance nếu đã lưu — giữ file cẩn thận.</div>
+            <div class="hint" style="padding:8px 0 14px">Sao lưu ra một file JSON chứa toàn bộ dữ liệu. Dùng để chuyển dữ liệu từ chế độ thử cục bộ lên Firebase, đổi sang project Firebase khác, hoặc giữ một bản phòng thân trước khi làm gì đó lớn. Khôi phục sẽ xoá sạch dữ liệu hiện có rồi ghi lại từ file.</div>
             <div class="row"><button class="btn" id="btnImport">Import dữ liệu ban đầu</button><label class="chk"><input type="checkbox" id="importForce"> xoá dữ liệu hiện có trước khi import</label></div>
             <div class="hint" style="padding:8px 0 0">Chạy một lần. Cũng gọi được từ console: <code>importInitialData()</code> hoặc <code>importInitialData({force:true})</code>.</div>
           </details>
@@ -641,6 +635,7 @@ const PRICE_KEYS = [
   {key:'usdt', label:'USDT', unit:'USDT', live:true},
   {key:'btc',  label:'BTC',  unit:'BTC',  live:true},
   {key:'eth',  label:'ETH',  unit:'ETH',  live:true},
+  {key:'wbeth',label:'WBETH',unit:'WBETH',live:true},   // ETH đã stake qua Binance Earn, 1 WBETH > 1 ETH và lớn dần
   {key:'ada',  label:'ADA',  unit:'ADA',  live:true},
   {key:'gold_pd',      label:'Vàng Phi Đoan', unit:'chỉ'},
   {key:'gold_acr',     label:'Vàng Ancarat',  unit:'chỉ'},
@@ -711,8 +706,6 @@ const DCA_PLAN_V1 = {
   smartUnlock: [[75,100],[60,75],[45,50],[30,25],[0,0]],   // mục 10 — Smart bám theo Buy Score
   oppUnlock:   [[85,100],[75,50],[65,25],[0,0]],           // mục 11 — Opportunity dè dặt hơn, chỉ mở khi thật rẻ
 };
-/* Khối D: khoá priceKey của holding ↔ mã tài sản trên Binance. */
-const BINANCE_ASSETS = { usdt:'USDT', btc:'BTC', eth:'ETH', ada:'ADA' };
 const DEFAULT_DCA = { budget:0, split:{base:50, smart:30, opp:20}, baseDays:[3,13,23], baseWeights:[40,30,30],
                       startMonth:'', oppCapMonths:6 };   // startMonth rỗng ⇒ normalizeSettings điền tháng hiện tại
 const priceLabel = k => (PRICE_KEYS.find(p=>p.key===k)||{label:k}).label;
@@ -863,6 +856,15 @@ function debtTotals(){
   return { recv, pay, pending, net: recv - pay + pending };
 }
 const holdingValue = h => Number(h.quantity||0) * (h.priceKey ? price(h.priceKey) : 1);
+/* Quy đổi sang USD (≈ USDT). Cần giá USDT trong bảng giá; chưa có thì trả null chứ không đoán. */
+const usdRate = () => price('usdt') > 0 ? price('usdt') : null;
+/* Hàm thuần khi truyền rate; không truyền thì lấy tỷ giá USDT hiện hành. */
+function toUsd(vnd, rate){ const u = rate===undefined ? usdRate() : rate; return u>0 ? Number(vnd||0)/u : null; }
+const priceUsd = key => price(key)>0 ? toUsd(price(key)) : null;
+const holdingUsd = h => toUsd(holdingValue(h));
+/* Tổng giá trị USD của các tài sản gắn khoá giá live (crypto). */
+const cryptoUsd = () => { const u = usdRate(); if(!u) return null;
+  return sum(D.holdings.filter(h=>LIVE_KEYS.includes(h.priceKey)), holdingValue)/u; };
 const totalAssets = () => sum(D.holdings, holdingValue);
 const netWorth = () => totalAssets() + debtTotals().net;
 
@@ -908,12 +910,9 @@ function normalizeSettings(){
   /* DCA (Khối B): thiếu hoặc sai thì về mặc định, không để card kế hoạch vốn tính trên rác. */
   st.dca = migrateDcaSettings(st.dca);
 
-  /* Nối Worker Binance (Khối D). Không có thì để chuỗi rỗng, nút Đồng bộ sẽ chỉ đường sang Cài đặt.
-     legacyKey đánh dấu bản cũ còn sót khoá API trên Firestore — Cài đặt sẽ nhắc gỡ. */
-  const bn = st.binance && typeof st.binance==='object' ? st.binance : {};
-  st.binance = { workerUrl: String(bn.workerUrl||'').trim(), accessToken: String(bn.accessToken||'').trim(),
-                 updatedAt: Number(bn.updatedAt)||0,
-                 legacyKey: !!(String(bn.apiKey||'').trim() || String(bn.apiSecret||'').trim()) };
+  /* Đồng bộ số dư từ Binance đã gỡ — Binance chặn IP trung tâm dữ liệu, xem nhật ký CLAUDE.md.
+     Xoá hẳn khoá `binance` để lần lưu cài đặt tới gỡ luôn khoá API cũ khỏi Firestore. */
+  delete st.binance;
 }
 const r6 = x => Math.round((Number(x)||0)*1e6)/1e6;          // tiền: 6 chữ số là thừa đủ
 const rq = x => Math.round((Number(x)||0)*1e10)/1e10;        // số lượng: đủ mịn để cộng/trừ rồi đảo lại không lệch
@@ -1601,72 +1600,6 @@ function testDcaPlan(){
   return {pass:ok, fail:bad};
 }
 
-function testBinance(){
-  let ok=0, bad=0;
-  const chk=(lb,got,want,tol=1e-9)=>{
-    const p = want===null ? got===null
-      : (typeof want==='number' && typeof got==='number') ? Math.abs(got-want)<=tol
-      : got===want;
-    console.log(`  ${p?'✓':'✗'} ${lb}: ${got==null?'null':got}${p?'':`   (mong đợi ${want===null?'null':want})`}`); p?ok++:bad++; };
-
-  const holdings = [
-    {id:'h1', name:'USDT', priceKey:'usdt', quantity:565.49},
-    {id:'h2', name:'ETH',  priceKey:'eth',  quantity:1.932126},
-    {id:'h3', name:'BTC',  priceKey:'btc',  quantity:0.004712},
-    {id:'h4', name:'ADA',  priceKey:'ada',  quantity:1079.26},
-    {id:'h5', name:'Vietcombank', priceKey:null, quantity:531},
-  ];
-
-  console.log('%c1 — số dư = free + locked, ghép đúng holding theo khoá giá','font-weight:600');
-  { const rows = binanceDiff([
-      {asset:'USDT', free:'500.00000000', locked:'65.49000000'},
-      {asset:'ETH',  free:'2.00000000',   locked:'0'},
-      {asset:'BTC',  free:'0.00471200',   locked:'0'},
-      {asset:'ADA',  free:'1000',         locked:'79.26'},
-      {asset:'DOGE', free:'12345',        locked:'0'},
-    ], holdings);
-    const at = a => rows.find(r=>r.asset===a);
-    chk('Số dòng (bỏ DOGE và tài sản không phải crypto)', rows.length, 4);
-    chk('USDT free + locked', at('USDT').remote, 565.49);
-    chk('USDT khớp sổ', at('USDT').same, true);
-    chk('ETH trên Binance', at('ETH').remote, 2);
-    chk('ETH lệch', at('ETH').diff, rq(2-1.932126));
-    chk('ETH không khớp', at('ETH').same, false);
-    chk('BTC khớp', at('BTC').same, true);
-    chk('ADA khớp', at('ADA').same, true); }
-
-  console.log('%c2 — tài sản không có trên Binance ⇒ "không có", không ghi đè thành 0','font-weight:600');
-  { const rows = binanceDiff([{asset:'ETH', free:'2', locked:'0'}], holdings);
-    const ada = rows.find(r=>r.asset==='ADA');
-    chk('ADA số dư từ Binance', ada.remote, null);
-    chk('ADA lệch', ada.diff, null);
-    chk('ADA không bị coi là khớp', ada.same, false); }
-
-  console.log('%c3 — danh mục không có holding tương ứng thì bỏ qua, không tự tạo tài sản mới','font-weight:600');
-  { const rows = binanceDiff([{asset:'ETH', free:'2', locked:'0'}, {asset:'BTC', free:'1', locked:'0'}],
-                             [{id:'x', name:'ETH', priceKey:'eth', quantity:0}]);
-    chk('Chỉ còn dòng ETH', rows.length, 1); chk('Đúng holding', rows[0].id, 'x'); }
-
-  console.log('%c4 — số dư rỗng hoặc thiếu ⇒ không lỗi, mọi dòng là "không có"','font-weight:600');
-  { const rows = binanceDiff([], holdings);
-    chk('Vẫn đủ 4 dòng', rows.length, 4);
-    chk('Không dòng nào có số từ Binance', rows.every(r=>r.remote===null), true);
-    chk('Không dòng nào bị đánh dấu khớp', rows.every(r=>r.same===false), true);
-    chk('Đối chiếu với danh sách rỗng', binanceDiff(null, []).length, 0); }
-
-  console.log('%c5 — địa chỉ Worker: bỏ dấu / thừa, tự thêm /account, thiếu thì trả null','font-weight:600');
-  { const u = x => workerAccountUrl({workerUrl:x});
-    chk('Địa chỉ gốc', u('https://w.example.workers.dev'), 'https://w.example.workers.dev/account');
-    chk('Có dấu / cuối', u('https://w.example.workers.dev/'), 'https://w.example.workers.dev/account');
-    chk('Nhiều dấu / cuối', u('https://w.example.workers.dev///'), 'https://w.example.workers.dev/account');
-    chk('Dán kèm sẵn /account', u('https://w.example.workers.dev/account'), 'https://w.example.workers.dev/account');
-    chk('Có khoảng trắng thừa', u('  https://w.example.workers.dev  '), 'https://w.example.workers.dev/account');
-    chk('Rỗng', u(''), null); chk('Không có cấu hình', workerAccountUrl(null), null); }
-
-  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
-  return {pass:ok, fail:bad};
-}
-
 function testDcaCoins(){
   let ok=0, bad=0;
   const chk=(lb,got,want,tol=0.01)=>{
@@ -1716,6 +1649,45 @@ function testDcaCoins(){
     const c7 = r.components.find(c=>c.key==='ethbtc30');
     chk('Thành phần thứ 7', c7.points, 0); chk('Có ghi chú thiếu dữ liệu', c7.note.length>0, true);
     chk('Vẫn ra điểm', r.score!=null, true); }
+
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
+
+function testUsd(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.01)=>{
+    const p = want===null ? got===null
+      : (typeof want==='number' && typeof got==='number') ? Math.abs(got-want)<=tol
+      : got===want;
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${got==null?'null':got}${p?'':`   (mong đợi ${want===null?'null':want})`}`); p?ok++:bad++; };
+
+  console.log('%c1 — quy nghìn đồng sang USD; chưa có tỷ giá thì trả null chứ không đoán','font-weight:600');
+  { chk('127.513k ÷ 26,4855', toUsd(127513, 26.4855), 127513/26.4855);
+    chk('0 đồng', toUsd(0, 26.4855), 0);
+    chk('Chưa có tỷ giá USDT', toUsd(127513, 0), null);
+    chk('Tỷ giá null', toUsd(127513, null), null); }
+
+  console.log('%c2 — WBETH có cặp thẳng ra USDT thì dùng thẳng','font-weight:600');
+  { const r = resolveLiveUsd({eth:2500, btc:80000, ada:0.62, wbeth:2700}, {WBETHETH:1.05});
+    chk('Giữ giá thẳng, không nhân lại', r.wbeth, 2700); }
+
+  console.log('%c3 — không có cặp thẳng thì suy từ WBETH/ETH × giá ETH','font-weight:600');
+  { const r = resolveLiveUsd({eth:2500, btc:80000, ada:0.62, wbeth:null}, {WBETHETH:1.08});
+    chk('2500 × 1,08', r.wbeth, 2700);
+    chk('Không đụng ETH', r.eth, 2500); chk('Không đụng BTC', r.btc, 80000); chk('Không đụng ADA', r.ada, 0.62); }
+
+  console.log('%c4 — thiếu dữ liệu thì để null, không bịa giá','font-weight:600');
+  { chk('Thiếu cả hai cặp', resolveLiveUsd({eth:2500, wbeth:null}, {}).wbeth, null);
+    chk('Có tỷ lệ nhưng thiếu giá ETH', resolveLiveUsd({eth:null, wbeth:null}, {WBETHETH:1.08}).wbeth, null);
+    chk('Tỷ lệ bằng 0', resolveLiveUsd({eth:2500, wbeth:null}, {WBETHETH:0}).wbeth, null);
+    chk('Không có mã nào', Object.keys(resolveLiveUsd(null, null)).length, 0); }
+
+  console.log('%c5 — WBETH đã nằm trong bảng giá và được coi là khoá live','font-weight:600');
+  { chk('Có trong PRICE_KEYS', PRICE_KEYS.some(p=>p.key==='wbeth'), true);
+    chk('Là khoá live', LIVE_KEYS.includes('wbeth'), true);
+    chk('Có trong danh sách lấy giá', LIVE_SYMBOLS.some(x=>x.key==='wbeth'), true);
+    chk('Có cặp quy đổi dự phòng', LIVE_SYMBOLS.find(x=>x.key==='wbeth').via.symbol, 'WBETHETH'); }
 
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
@@ -1833,6 +1805,14 @@ function setPrice(key, value, source='manual'){ D.prices[key] = {value, source, 
    Chỉ dùng REST công khai, không cần API key. Lỗi thì giữ cache cũ, không bao giờ ra điểm sai. */
 const BINANCE_BASE = 'https://api.binance.com';
 const DCA_SYMBOLS = { eth:'ETHUSDT', btc:'BTCUSDT', ada:'ADAUSDT' };
+/* Khoá giá ↔ cách lấy giá USD. `via` là cặp quy đổi qua một khoá khác khi Binance
+   không niêm yết cặp thẳng ra USDT (WBETH thường chỉ có cặp WBETH/ETH). */
+const LIVE_SYMBOLS = [
+  {key:'eth',   symbol:'ETHUSDT'},
+  {key:'btc',   symbol:'BTCUSDT'},
+  {key:'ada',   symbol:'ADAUSDT'},
+  {key:'wbeth', symbol:'WBETHUSDT', via:{symbol:'WBETHETH', of:'eth'}},
+];
 const DCA_KLINE_LIMIT = 400;
 
 async function fetchJson(url, ms=15000){
@@ -1851,55 +1831,34 @@ async function fetchJson(url, ms=15000){
 const parseKlines = rows => (rows||[]).map(k=>({time:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]}));
 const fetchKlines = async (symbol, limit=DCA_KLINE_LIMIT) =>
   parseKlines(await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=1d&limit=${limit}`));
-async function fetchTickers(symbols){
-  const rows = await fetchJson(`${BINANCE_BASE}/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(symbols))}`);
-  return Object.fromEntries((rows||[]).map(r=>[r.symbol, Number(r.price)]));
+/* Hỏi từng mã một thay vì gộp một lệnh: Binance trả lỗi cho cả lô nếu chỉ một mã không tồn tại,
+   mà WBETH thì không chắc có cặp thẳng ra USDT. Mã nào hỏng thì bỏ mã đó, phần còn lại vẫn về. */
+async function fetchTicker(symbol){
+  try{
+    const r = await fetchJson(`${BINANCE_BASE}/api/v3/ticker/price?symbol=${encodeURIComponent(symbol)}`, 10000);
+    const v = Number(r && r.price);
+    return v>0 ? v : null;
+  }catch(e){ return null; }
 }
-
-/* ---- Khối D: đồng bộ số dư từ tài khoản Binance -------------------------
-   Binance chặn CORS với endpoint cần chữ ký (xác nhận trên trình duyệt thật 2026-09-13),
-   nên trình duyệt không gọi thẳng /api/v3/account được. FinTrace gọi một Cloudflare Worker
-   do owner tự dựng; Worker giữ khoá API và ký hộ. Xem binance-worker.js và BINANCE.md.
-   Trình duyệt chỉ giữ URL Worker và một mã truy cập — không còn giữ secret của Binance. */
-const workerAccountUrl = cfg => {
-  const base = String((cfg&&cfg.workerUrl)||'').trim().replace(/\/+$/,'');
-  if(!base) return null;
-  return /\/account$/.test(base) ? base : base+'/account';       // dán kèm /account cũng chấp nhận
-};
-async function binanceAccount(cfg){
-  const url = workerAccountUrl(cfg);
-  if(!url) throw new Error('chưa có địa chỉ Worker');
-  const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), 20000);
-  let r;
-  try{ r = await fetch(url, {headers:{'Authorization':'Bearer '+cfg.accessToken}, signal:ctl.signal, cache:'no-store'}); }
-  catch(e){
-    if(e.name==='AbortError') throw new Error('Worker không trả lời trong 20 giây');
-    throw new Error('không gọi được Worker — kiểm tra lại địa chỉ đã dán, hoặc Worker chưa deploy');
-  }finally{ clearTimeout(t); }
-  let body = null; try{ body = await r.json(); }catch(e){}
-  if(!r.ok){
-    if(r.status===401) throw new Error('Worker từ chối: sai mã truy cập (so lại ACCESS_TOKEN trong Cloudflare)');
-    if(r.status===404) throw new Error('Worker không có đường dẫn /account — kiểm tra lại địa chỉ, hoặc code Worker chưa đúng bản mới');
-    throw new Error((body && (body.error||body.msg)) || ('Worker trả HTTP '+r.status));
+/* Hàm thuần: ghép giá lấy thẳng với các cặp quy đổi. direct và ratios là map, thiếu thì null. */
+function resolveLiveUsd(direct, ratios){
+  const out = {...(direct||{})};
+  for(const x of LIVE_SYMBOLS){
+    if(out[x.key]!=null || !x.via) continue;
+    const r = Number(ratios && ratios[x.via.symbol]);
+    const base = Number(out[x.via.of]);
+    if(r>0 && base>0) out[x.key] = r*base;
   }
-  if(!body || !Array.isArray(body.balances)) throw new Error('Worker trả về dữ liệu lạ, không có danh sách số dư');
-  return body;
+  return out;
 }
-/* Hàm thuần: ghép số dư Binance với holdings để ra bảng đối chiếu. */
-function binanceDiff(balances, holdings){
-  const bal = {};
-  for(const b of (balances||[])) bal[String(b.asset).toUpperCase()] = (Number(b.free)||0) + (Number(b.locked)||0);
-  const rows = [];
-  for(const [pk, asset] of Object.entries(BINANCE_ASSETS)){
-    const h = holdings.find(x=>x.priceKey===pk);
-    if(!h) continue;
-    const remote = bal[asset]==null ? null : rq(bal[asset]);
-    const local = rq(Number(h.quantity)||0);
-    rows.push({ id:h.id, name:h.name, asset, priceKey:pk, remote, local,
-                diff: remote==null ? null : rq(remote-local),
-                same: remote!=null && Math.abs(remote-local) < 1e-8 });
-  }
-  return rows;
+async function fetchLiveUsd(){
+  const direct = Object.fromEntries(await Promise.all(
+    LIVE_SYMBOLS.map(async x => [x.key, await fetchTicker(x.symbol)])));
+  /* Chỉ hỏi cặp quy đổi cho mã nào không lấy được giá thẳng. */
+  const needVia = LIVE_SYMBOLS.filter(x => x.via && direct[x.key]==null);
+  const ratios = Object.fromEntries(await Promise.all(
+    needVia.map(async x => [x.via.symbol, await fetchTicker(x.via.symbol)])));
+  return resolveLiveUsd(direct, ratios);
 }
 
 /* Cache Buy Score. Bản mới: {updatedAt, usd:{...}, coins:{eth:{...}, btc:{...}}}.
@@ -1919,75 +1878,23 @@ function dcaCacheUsd(coin){
 }
 const dcaStale = c => !c || !c.dataTime || (Date.now()-c.dataTime) > BUY_SCORE_V1.staleHours*3600e3;
 
-let binanceBusy = false;
-async function syncBinance(){
-  if(binanceBusy) return;
-  const cfg = settings().binance;
-  if(!workerAccountUrl(cfg) || !cfg.accessToken){
-    showModal('Chưa nối Worker Binance',
-      '<div class="mute">Binance không cho trình duyệt gọi thẳng endpoint số dư, nên cần một Cloudflare Worker trung gian (miễn phí, dựng hoàn toàn trên trình duyệt — xem <code>BINANCE.md</code> trong repo). Dựng xong thì vào <b>Cài đặt → Binance — đồng bộ số dư</b> dán địa chỉ Worker và mã truy cập.</div>',
-      'Sang Cài đặt', ()=>{ location.hash='#caidat'; });
-    return;
-  }
-  binanceBusy = true; renderHoldings();
-  try{
-    const acc = await binanceAccount(cfg);
-    const rows = binanceDiff(acc.balances, D.holdings);
-    if(!rows.length){ toast('Không có tài sản nào trong danh mục gắn khoá giá ETH, USDT, BTC hoặc ADA'); return; }
-    showBinanceDiff(rows);
-  }catch(e){
-    console.error(e);
-    toast('Không đồng bộ được Binance: '+(e.message||e));
-  }finally{
-    binanceBusy = false; renderHoldings();
-  }
-}
-/* Bảng đối chiếu Binance / FinTrace / lệch — không ghi gì cho tới khi bấm nút ghi đè. */
-const fmtQty8 = x => x==null ? '—' : fmtNum(x, 8);
-const signedQty8 = x => x==null ? '—' : (x>0?'+':'')+fmtQty8(x);
-function showBinanceDiff(rows){
-  const diffs = rows.filter(r=>r.remote!=null && !r.same);
-  const body = `<div class="scroll"><table class="tbl"><thead><tr>
-      <th class="first">Ghi đè</th><th>Tài sản</th><th class="n">Binance</th><th class="n">FinTrace</th><th class="n last">Lệch</th></tr></thead><tbody>`+
-    rows.map(r=>`<tr>
-      <td class="first"><label class="chk"><input type="checkbox" data-bnid="${esc(r.id)}" ${r.remote!=null && !r.same?'checked':''} ${r.remote==null?'disabled':''}></label></td>
-      <td>${esc(r.name)} <small class="mute">${esc(r.asset)}</small></td>
-      <td class="n">${r.remote==null?'<span class="mute">không có</span>':fmtQty8(r.remote)}</td>
-      <td class="n">${fmtQty8(r.local)}</td>
-      <td class="n last">${r.remote==null?'—':r.same?'<span class="mute">khớp</span>':signedQty8(r.diff)}</td></tr>`).join('')+
-    `</tbody></table></div>
-    <div class="hint" style="padding:10px 0 0">${diffs.length
-      ? 'Chỉ ghi đè <b>số lượng</b> của các dòng được tích. Giá và mọi thứ khác giữ nguyên.'
-      : 'Mọi số dư đã khớp — không có gì để ghi đè.'}</div>`;
-  showModal('Đối chiếu số dư Binance', body, diffs.length?'Ghi đè số lượng đã chọn':'Đóng', ()=>{
-    if(!diffs.length) return;
-    const picked = [...document.querySelectorAll('#mdBody input[data-bnid]:checked')].map(i=>i.dataset.bnid);
-    const apply = rows.filter(r=>picked.includes(r.id) && r.remote!=null && !r.same);
-    if(!apply.length){ toast('Không dòng nào được chọn'); return; }
-    for(const r of apply){ const h = D.holdings.find(x=>x.id===r.id); if(h) h.quantity = r.remote; }
-    render();
-    bg(Promise.all(apply.map(r=>store.update('holdings', r.id, {quantity:r.remote}))),
-       `Đã ghi đè số lượng ${apply.length} tài sản từ Binance`);
-  });
-}
-
 let dcaBusy = false;
 async function refreshDca(){
   if(dcaBusy) return;
   dcaBusy = true; renderDca();
   try{
     const [ethK, btcK, tick] = await Promise.all([
-      fetchKlines(DCA_SYMBOLS.eth), fetchKlines(DCA_SYMBOLS.btc),
-      fetchTickers([DCA_SYMBOLS.eth, DCA_SYMBOLS.btc, DCA_SYMBOLS.ada]).catch(()=>({})),
+      fetchKlines(DCA_SYMBOLS.eth), fetchKlines(DCA_SYMBOLS.btc), fetchLiveUsd().catch(()=>({})),
     ]);
     if(!ethK.length || !btcK.length) throw new Error('Binance trả về rỗng');
     const lastClose = a => Number(a[a.length-1].close);
-    const ethUsd = Number(tick[DCA_SYMBOLS.eth]) > 0 ? Number(tick[DCA_SYMBOLS.eth]) : lastClose(ethK);
-    const btcUsd = Number(tick[DCA_SYMBOLS.btc]) > 0 ? Number(tick[DCA_SYMBOLS.btc]) : lastClose(btcK);
-    const adaUsd = Number(tick[DCA_SYMBOLS.ada]) > 0 ? Number(tick[DCA_SYMBOLS.ada]) : null;
+    const usd = {...tick};
+    if(!(usd.eth>0)) usd.eth = lastClose(ethK);     // ticker hỏng thì lấy close của nến cuối
+    if(!(usd.btc>0)) usd.btc = lastClose(btcK);
+    const ethUsd = usd.eth, btcUsd = usd.btc;
     const dataTime = ethK[ethK.length-1].time;
     const ageHours = (Date.now()-dataTime)/3600e3;
-    const kl = {eth:ethK, btc:btcK}, usd = {eth:ethUsd, btc:btcUsd, ada:adaUsd};
+    const kl = {eth:ethK, btc:btcK};
     const now = Date.now(), coins = {};
     for(const c of DCA_COINS){
       const r = buyScore(kl[c.key], kl[c.ref], {price:usd[c.key], ageHours, ratioLabel:c.ratioLabel});
@@ -1999,16 +1906,18 @@ async function refreshDca(){
     D.prices.dca = { usd, coins, dataTime, updatedAt:now, source:'binance', version:BUY_SCORE_V1.version };
 
     /* Quy ra nghìn đồng cho bảng giá — cần tỷ giá USDT, hiện vẫn nhập tay. */
-    const u = price('usdt');
-    if(u>0){
-      D.prices.eth = {value:r6(ethUsd*u), source:'live', updatedAt:now};
-      D.prices.btc = {value:r6(btcUsd*u), source:'live', updatedAt:now};
-      if(adaUsd!=null) D.prices.ada = {value:r6(adaUsd*u), source:'live', updatedAt:now};
+    const u = price('usdt'), done = [];
+    if(u>0) for(const x of LIVE_SYMBOLS){
+      if(!(usd[x.key]>0)) continue;
+      D.prices[x.key] = {value:r6(usd[x.key]*u), source:'live', updatedAt:now};
+      done.push(priceLabel(x.key));
     }
+    const missing = LIVE_SYMBOLS.filter(x=>!(usd[x.key]>0)).map(x=>priceLabel(x.key));
     render();
     bg(store.set('prices','current', D.prices),
        DCA_COINS.map(c=>`${c.label} ${coins[c.key].score}`).join(' · ') +
-       (u>0 ? ` · đã cập nhật giá ETH, BTC${adaUsd!=null?', ADA':''}` : ' · chưa có giá USDT nên chưa quy ra nghìn đồng'));
+       (u>0 ? ' · đã cập nhật giá '+done.join(', ') : ' · chưa có giá USDT nên chưa quy ra nghìn đồng') +
+       (missing.length ? ' · Binance không có giá '+missing.join(', ') : ''));
   }catch(e){
     console.error(e);
     toast('Không lấy được dữ liệu Binance: '+(e.message||e)+'. Giữ số liệu cũ.');
@@ -2483,6 +2392,8 @@ function donutHtml(){
   return `<div class="donut"><svg viewBox="0 0 150 150">${arcs}<text x="75" y="72" text-anchor="middle" style="font-size:11px">Tổng</text><text x="75" y="88" text-anchor="middle" style="font-size:13px;fill:var(--ink);font-weight:600">${fmtBig(ta)}</text></svg>
     <div class="dl">${segs.map((s,i)=>`<div><i style="background:${SHADES[i%SHADES.length]}"></i><span>${esc(s.g)}</span><span>${fmtBig(s.v)}</span><span class="p">${fmtPct(s.v/ta)}</span></div>`).join('')}</div></div>`;
 }
+/* Dòng USD nhỏ dưới một ô số. null thì không hiện gì. */
+const usdSub = v => v==null || !isFinite(v) ? '' : `<small class="mute" style="display:block;font-weight:400">≈ ${fmtUsd(v)}</small>`;
 function renderHoldings(){
   const t=debtTotals(), ta=totalAssets(), nw=ta+t.net;
   el('assetStats').innerHTML = `
@@ -2490,25 +2401,25 @@ function renderHoldings(){
     <div class="stat"><div class="lbl">Công nợ ròng</div><div class="val">${fmtBig(t.net)}</div><div class="sub">gồm thu chưa nhận ${fmtK(t.pending)}</div></div>
     <div class="stat strong"><div class="lbl">Tài sản ròng</div><div class="val">${fmtBig(nw)}</div><div class="sub">tổng tài sản + công nợ ròng</div></div>`;
   const hs=[...D.holdings].sort((a,b)=>(a.order||0)-(b.order||0));
-  el('holdTotal').textContent=fmtK(Math.round(ta));
+  const cu = cryptoUsd();
+  el('holdTotal').innerHTML = fmtK(Math.round(ta)) + (cu ? ` <small class="mute">· crypto ≈ ${fmtUsd(cu)}</small>` : '');
   el('holdTable').innerHTML = `<thead><tr><th class="first">Tên</th><th>Nhóm</th><th class="n">Số lượng</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last"></th></tr></thead><tbody>`+
     (hs.map((h,i)=>`<tr data-id="${h.id}">
       <td class="first" style="min-width:120px"><input class="inline l" data-f="name" value="${esc(h.name)}"></td>
       <td><select class="inline" data-f="group">${options(HOLDING_GROUPS,h.group)}</select></td>
       <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:110px"></td>
       <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey),4) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:110px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
-      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b></td>
+      <td class="n"><b>${fmtK(Math.round(holdingValue(h)))}</b>${usdSub(LIVE_KEYS.includes(h.priceKey) ? holdingUsd(h) : null)}</td>
       <td class="act last"><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===hs.length-1?'disabled':''}>↓</button><button data-act="del">xoá</button></td></tr>`).join('') || '<tr><td class="empty" colspan="6">Chưa có tài sản</td></tr>')+`</tbody>`;
   el('donut').innerHTML = donutHtml();
   // bảng giá
-  el('priceTable').innerHTML = `<thead><tr><th class="first key">Khoá</th><th>Tên</th><th class="n">Giá</th><th class="c">Nguồn</th><th class="last">Cập nhật</th></tr></thead><tbody>`+
+  el('priceTable').innerHTML = `<thead><tr><th class="first key">Khoá</th><th>Tên</th><th class="n">Giá</th><th class="n">USD</th><th class="c">Nguồn</th><th class="last">Cập nhật</th></tr></thead><tbody>`+
     PRICE_KEYS.map(p=>{ const cur=D.prices[p.key]; return `<tr><td class="first key"><code>${p.key}</code></td><td>${esc(p.label)} <small>/ ${p.unit}</small></td>
       <td class="n"><input class="inline" data-p="${p.key}" value="${cur?esc(fmtInput(cur.value)):''}" inputmode="decimal" placeholder="nhập giá" style="width:130px"></td>
+      <td class="n mute">${p.key==='usdt' ? '<span class="mute">—</span>' : (priceUsd(p.key)!=null ? fmtUsd(priceUsd(p.key)) : '—')}</td>
       <td class="c">${cur ? (cur.source==='live'?'live':'nhập tay') : '<span class="mute">—</span>'}${cur&&cur.source==='live'?'':p.key==='usdt'?' <small>(chỉ nhập tay)</small>':p.live?' <small>(bấm Cập nhật giá live)</small>':''}</td><td class="last mute" style="white-space:nowrap">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join('')+`</tbody>`;
   el('priceLive').disabled = dcaBusy;
   el('priceLive').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật giá live';
-  el('btnBinanceSync').disabled = binanceBusy;
-  el('btnBinanceSync').textContent = binanceBusy ? 'Đang đối chiếu…' : 'Đồng bộ Binance';
   renderTransfers();
   renderScenario();
 }
@@ -2666,7 +2577,6 @@ function renderDca(){
 el('dcaFilterSource').onchange = e=>{ state.dcaFilter = e.target.value; renderDca(); };
 el('dcaRefresh').onclick = ()=> refreshDca();
 el('priceLive').onclick = ()=> refreshDca();
-el('btnBinanceSync').onclick = ()=> syncBinance();
 
 function commitInline(inp){
   const f=inp.dataset.f, pk=inp.dataset.p;
@@ -2931,31 +2841,12 @@ function renderSettings(){
   el('setDcaBase').value = String(dc.split.base); el('setDcaSmart').value = String(dc.split.smart); el('setDcaOpp').value = String(dc.split.opp);
   el('setDcaDays').value = dc.baseDays.join(', '); el('setDcaWeights').value = dc.baseWeights.map(x=>Math.round(x*100)/100).join(', ');
   el('setDcaStart').value = dc.startMonth; el('setDcaCap').value = String(dc.oppCapMonths);
-  const bn = settings().binance;
-  el('setBnUrl').value = bn.workerUrl; el('setBnToken').value = bn.accessToken;
-  el('bnLegacy').hidden = !bn.legacyKey;
-  el('bnInfo').textContent = bn.workerUrl && bn.accessToken
-    ? 'Đã nối Worker, lưu lúc '+fmtTime(bn.updatedAt)
-    : 'Chưa nối — nút Đồng bộ Binance ở tab Tài sản sẽ chỉ về đây.';
   const used = new Set(D.transactions.map(t=>t.category));
   const tags = (list, kind) => list.map(c=>`<span>${esc(c)}<button data-kind="${kind}" data-cat="${esc(c)}" ${used.has(c)?'disabled title="Đã có giao dịch dùng nhóm này"':''} aria-label="xoá">×</button></span>`).join('');
   el('expCats').innerHTML = tags(settings().expenseCats,'exp'); el('incCats').innerHTML = tags(settings().incomeCats,'inc');
   el('acctInfo').textContent = state.mode==='local' ? 'Chế độ thử cục bộ (chưa điền CONFIG Firebase)' : 'Đăng nhập: '+state.email;
   el('btnLogout').hidden = state.mode==='local';
 }
-el('saveBinance').onclick = ()=>{
-  const workerUrl = el('setBnUrl').value.trim().replace(/\/+$/,'').replace(/\/account$/,''), accessToken = el('setBnToken').value.trim();
-  if(!/^https:\/\/\S+$/.test(workerUrl)){ shake(el('setBnUrl')); toast('Địa chỉ Worker phải bắt đầu bằng https://'); return; }
-  if(!accessToken){ shake(el('setBnToken')); toast('Cần mã truy cập — chính là ACCESS_TOKEN đã đặt trong Cloudflare'); return; }
-  /* Ghi đè cả object nên khoá API của bản cũ (nếu còn) bị gỡ khỏi Firestore luôn. */
-  saveSettings({binance:{workerUrl, accessToken, updatedAt:Date.now()}});
-  toast('Đã nối Worker — sang tab Tài sản bấm Đồng bộ Binance');
-};
-el('clearBinance').onclick = ()=>{
-  if(!confirm('Gỡ Worker Binance khỏi FinTrace? Worker trên Cloudflare vẫn còn, muốn dừng hẳn thì xoá nó bên Cloudflare.')) return;
-  saveSettings({binance:{workerUrl:'', accessToken:'', updatedAt:0}});
-  toast('Đã gỡ Worker Binance');
-};
 el('saveDca').onclick = ()=>{
   const numList = v => String(v||'').split(',').map(x=>parseNum(x.trim())).filter(x=>!isNaN(x));
   const budget = el('setDcaBudget').value.trim()==='' ? 0 : parseNum(el('setDcaBudget').value);
@@ -3235,8 +3126,8 @@ window.testAttribution = testAttribution;
 window.testDca = testDca;
 window.testBuyScore = testBuyScore;
 window.testDcaPlan = testDcaPlan;
-window.testBinance = testBinance;
 window.testDcaCoins = testDcaCoins;
+window.testUsd = testUsd;
 window.testRecovery = testRecovery;
 window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
@@ -3246,9 +3137,10 @@ window.FinTrace = { state, data:D,
         coinHolding, coinPurchases, ethHolding, ethPurchases, purchaseUsdPrice, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, BUY_SCORE_V1,
-        unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1, binanceDiff, workerAccountUrl},
-  render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testBinance, testDcaCoins,
-  refreshDca, syncBinance, makeCandles,
+        unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
+        toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS},
+  render, importInitialData, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd,
+  refreshDca, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
 boot();

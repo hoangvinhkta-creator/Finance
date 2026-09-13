@@ -133,9 +133,11 @@ sang một project Firebase khác nếu sau này cần.
 | Vẫn thấy dòng "Chế độ thử cục bộ" | `apiKey` hoặc `projectId` trong `CONFIG` còn trống |
 | "Không nạp được Firebase SDK" | mạng chặn `gstatic.com`, hoặc sai `firebaseSdkVersion` |
 
-## Đồng bộ số dư từ Binance
+## Giá crypto
 
-Việc này tách riêng vì cần thêm một Cloudflare Worker (Binance không cho trình duyệt gọi thẳng endpoint số dư). Xem `BINANCE.md`. Không làm cũng không sao — mọi thứ khác vẫn chạy, chỉ là nhập số lượng tài sản bằng tay.
+Nút **Cập nhật giá live** ở tab Tài sản lấy giá ETH, BTC, ADA, WBETH thẳng từ Binance, không cần khoá API, không cần cài gì. Tỷ giá `usdt` vẫn nhập tay. Số lượng tài sản nhập tay; giá trị nghìn đồng và quy đổi USD app tự tính.
+
+Đồng bộ số dư thẳng từ tài khoản Binance đã thử và **bỏ** — Binance chặn cả gọi từ trình duyệt lẫn từ máy chủ trung gian. Xem `CLAUDE.md` mục 5.
 
 ---
 
