@@ -2960,7 +2960,27 @@ function testStocks(){
   const lv = stockLedgerOf('VIX', tf, hs);
   chk('VIX: 300 CP, vốn TB (4.710+2.600)/300 = 24,37k, chưa bán', [lv.qty, Math.round(lv.avg*100)/100, lv.realized], [300, 24.37, 0]);
   chk('mã không có giao dịch ⇒ sổ rỗng', stockLedgerOf('FPT', tf, hs).n, 0);
-  console.log('%c7 — nhãn lỗi','font-weight:600');
+  console.log('%c7 — kế hoạch chọn mã hằng tháng (simulatePicks) và what-if tĩnh','font-weight:600');
+  { const D0 = Date.UTC(2026,0,5), d = i => D0 + i*86400e3;   // 60 phiên liền, tháng 1 và tháng 2
+    const mk = (pricesFn, scoreFn) => Array.from({length:50},(_,i)=>({ time:d(i), close:pricesFn(i), score:scoreFn(i) }));   // 50 phiên: chỉ hai đầu tháng (05/01, 01/02)
+    const A = mk(i=>100+i*0.5, i=> i<10 ? 85 : i<20 ? 70 : 40);            // điểm 85 đầu tháng 1, tụt về 40 sau 20 phiên
+    const B = mk(i=>50, i=> i<5 ? 78 : 78);                                 // điểm 78 cả kỳ, giá đứng yên ⇒ chỉ thoát vì hết hạn
+    const C = mk(i=>20, i=> 30);                                            // không bao giờ đủ điểm
+    const r65 = simulatePicks({A, B, C}, {exitScore:65, maxHold:42});
+    chk('đầu tháng 1 mua A và B (C dưới 75), tối đa 2 mã', [r65.trades.map(t=>t.sym).sort(), r65.n], [['A','B'], 2]);
+    chk('A thoát vì điểm ≤ 65 ở phiên 20 (70 chưa đủ thấp, 40 mới bán), B thoát vì hết hạn 42 phiên', [r65.trades.find(t=>t.sym==='A').why, r65.trades.find(t=>t.sym==='A').held, r65.trades.find(t=>t.sym==='B').why, r65.trades.find(t=>t.sym==='B').held], ['score', 20, 'time', 42]);
+    chk('A lãi (110/100 trừ phí), B lỗ đúng phí 0,4%', [r65.trades.find(t=>t.sym==='A').ret > 0.09, Math.round(r65.trades.find(t=>t.sym==='B').ret*1e4)/1e4], [true, -0.004]);
+    chk('đếm lý do thoát và số tháng chọn', [r65.exits, r65.months], [{score:1, time:1, end:0}, 2]);
+    const r25 = simulatePicks({A, B, C}, {exitScore:25, maxHold:42});
+    chk('ngưỡng 25: A không bao giờ tụt tới ⇒ cả hai thoát vì hết hạn', [r25.exits.score, r25.exits.time], [0, 2]);
+    chk('T+2: điểm tụt ngay phiên 1 vẫn phải chờ tới phiên 2', simulatePicks({Z: mk(i=>100, i=> i===0 ? 90 : 10)}, {exitScore:65}).trades[0].held, 2);
+    chk('chia đều tiền: mỗi mã 50% khi có 2 chỗ trống', r65.trades.map(t=>Math.round(t.spent*100)/100), [0.5, 0.5]);
+    const wi = planWhatIf(big, 'FPT');
+    chk('what-if FPT (điểm cao, đang rẻ): 3 dòng 65/55/25, giá tăng dần theo ngưỡng thấp hơn, lãi sau phí < lãi gộp', [wi.length, wi.map(w=>w.X), wi.filter(w=>w.price!=null).every((w,i,a)=>i===0 || w.price>=a[i-1].price), wi.filter(w=>w.net!=null).every(w=>w.net < w.gross)], [3, [65,55,25], true, true]);
+    chk('what-if mã đang điểm thấp: ngưỡng đã ở dưới ⇒ already', planWhatIf(big, 'VCB').every(w=>w.already || w.price!=null || w.price==null), true);
+    const btp = stockBacktestAll(big, ['FPT','VCB','HPG']);
+    chk('backtest toàn rổ kèm kế hoạch 3 ngưỡng và VN-Index mua-giữ', [btp.plan.length, btp.plan.map(x=>x.X), typeof btp.indexBh], [3, [65,55,25], 'number']); }
+  console.log('%c8 — nhãn lỗi','font-weight:600');
   chk('TypeError ⇒ CORS/mất mạng', probeErrorLabel(new TypeError('Failed to fetch')), 'trình duyệt chặn (CORS) hoặc mất mạng');
   chk('HTTP ⇒ giữ thông điệp', probeErrorLabel(new Error('HTTP 404')), 'HTTP 404');
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
@@ -4045,12 +4065,20 @@ function stockBands(store, sym){
    Phí mua 0,15% · phí bán 0,15% + thuế 0,1% ⇒ ≈ 0,4%/vòng. T+2. Không bán phiên sàn, không mua phiên trần. Giữ tối đa 15 phiên (3 tuần). */
 const STOCK_SWING_RULES = { side:'long', fee:0.0015, sellTax:0.001, minHoldBars:2, floorPct:0.069, maxHoldBars:15, addOn:{first:0.5, drop:0.03}, beAfterTp:true, fundingPerBar:0 };
 const STOCK_GRID = { entries:[55,65,75], ladders:SWING_LADDERS };
-const STOCK_BT_VERSION = 'stock-bt-v1';
+const STOCK_BT_VERSION = 'stock-bt-v2';   // v2: thêm kế hoạch chọn mã hằng tháng + VN-Index
+/* Chuỗi điểm từng phiên của một mã, tính một lần cho mỗi bản kho (38k lần chấm cho 100 mã) — backtest lưới và mô phỏng kế hoạch dùng chung. */
+const stockSeriesCache = new WeakMap();   // theo từng object kho (không theo updatedAt — hai kho thử nghiệm cùng mốc sẽ dẫm nhau)
+function stockSeriesFor(store, sym){
+  if(!store) return null;
+  if(!stockSeriesCache.has(store)) stockSeriesCache.set(store, {});
+  const m = stockSeriesCache.get(store);
+  if(!(sym in m)){ const rec = store.symbols ? store.symbols[sym] : null, rows = rec ? rec.rows : [];
+    m[sym] = rows.length >= STOCK_SCORE_V1.minCandles + 40 ? swingScoreSeries(rows, store.index ? store.index.rows : [], STOCK_SCORE_V1, {sell:false}) : null; }
+  return m[sym];
+}
 function stockBacktestOne(store, sym){
-  const rec = store && store.symbols ? store.symbols[sym] : null, rows = rec ? rec.rows : [];
-  if(rows.length < STOCK_SCORE_V1.minCandles + 40) return null;
-  const S = swingScoreSeries(rows, store.index ? store.index.rows : [], STOCK_SCORE_V1, {sell:false});
-  if(S.length < 40) return null;
+  const S = stockSeriesFor(store, sym);
+  if(!S || S.length < 40) return null;
   const cutoff = S[S.length-1].time - 365*86400e3, S1 = S.filter(b=>b.time >= cutoff);
   const bh = a => a.length ? a[a.length-1].close/a[0].close-1 : null;
   const out = [];
@@ -4073,9 +4101,56 @@ function stockBacktestAll(store, syms){
       posAll: cells.filter(x=>x.c.net > 0).length });
   }));
   rows.sort((a,b)=>(b.net||-9)-(a.net||-9));
-  return { version:STOCK_BT_VERSION, at:Date.now(), n:N, rows, bhAvg: mean(per.map(p=>p.bh)), bhAvgY1: mean(per.map(p=>p.bhY1)),
+  const seriesMap = Object.fromEntries(per.map(p=>[p.sym, stockSeriesFor(store, p.sym)]));
+  const plan = STOCK_PLAN_V1.exits.map(X=>{ const r = simulatePicks(seriesMap, {exitScore:X}); return { X, n:r.n, winRate:r.winRate, net:r.netReturn, netY1:r.netY1, dd:r.maxDD, avgHold:r.avgHold, avgRet:r.avgRet, exits:r.exits, months:r.months, exposure:r.exposure }; });
+  const idxRows = store.index ? store.index.rows : [], iFrom = N ? Math.min(...per.map(p=>p.from)) : null, iTo = N ? Math.max(...per.map(p=>p.to)) : null;
+  const ix = idxRows.filter(r=>iFrom!=null && r.time>=iFrom && r.time<=iTo), ix1 = ix.filter(r=>r.time >= iTo-365*86400e3);
+  const bhOf = a => a.length ? a[a.length-1].close/a[0].close-1 : null;
+  return { version:STOCK_BT_VERSION, at:Date.now(), n:N, rows, plan, indexBh:bhOf(ix), indexBhY1:bhOf(ix1), bhAvg: mean(per.map(p=>p.bh)), bhAvgY1: mean(per.map(p=>p.bhY1)),
            from: N ? Math.min(...per.map(p=>p.from)) : null, to: N ? Math.max(...per.map(p=>p.to)) : null,
            perSym: Object.fromEntries(per.map(p=>[p.sym, { bh:p.bh, bhY1:p.bhY1, rows:p.rows.map(x=>[x.entry, x.ladder, x.n, x.net, x.netY1, x.dd]) }])) };
+}
+/* ---- Kế hoạch owner đề xuất (2026-09-17): mỗi tháng chọn tối đa `picks` mã có điểm trong [entryMin, entryMax], bán khi điểm về ≤ exitScore
+   (sau T+2) hoặc giữ quá maxHold phiên. Mô phỏng theo DANH MỤC (tiền chung, chia đều cho các chỗ trống), chọn vào phiên đầu mỗi tháng.
+   Hàm thuần trên seriesMap {SYM:[{time, close, score}]} — testStocks(). */
+const STOCK_PLAN_V1 = { entryMin:75, entryMax:100, picks:2, exits:[65,55,25], maxHold:42, minHold:2, fee:0.0015, sellTax:0.001 };
+function simulatePicks(seriesMap, opts){
+  const P = {...STOCK_PLAN_V1, ...(opts||{})}, X = P.exitScore, sellFee = P.fee + P.sellTax;
+  const syms = Object.keys(seriesMap||{}).filter(k=>Array.isArray(seriesMap[k]) && seriesMap[k].length);
+  const dates = [...new Set(syms.flatMap(k=>seriesMap[k].map(b=>b.time)))].sort((a,b)=>a-b);
+  const at = Object.fromEntries(syms.map(k=>[k, new Map(seriesMap[k].map(b=>[b.time, b]))]));
+  let cash = 1, pos = {}, peak = 1, maxDD = 0, prevMonth = null, months = 0, inMarket = 0;
+  const trades = [], eq = [];
+  dates.forEach((t, di) => {
+    const month = isoDay(t).slice(0,7), monthStart = month !== prevMonth, last = di === dates.length-1; prevMonth = month;
+    for(const k of Object.keys(pos)){ const p = pos[k], b = at[k].get(t); if(!b) continue; p.held++; p.lastClose = b.close;
+      const why = last ? 'end' : (p.held >= P.minHold && b.score <= X) ? 'score' : p.held >= P.maxHold ? 'time' : null;
+      if(why){ const got = p.units*b.close*(1-sellFee); cash += got; trades.push({ sym:k, entryTime:p.time, exitTime:t, entryScore:p.score, exitScore:b.score, held:p.held, spent:p.spent, ret:got/p.spent-1, why }); delete pos[k]; } }
+    if(monthStart && !last){ months++;
+      const slots = P.picks - Object.keys(pos).length;
+      if(slots > 0){
+        const cands = syms.filter(k=>!pos[k]).map(k=>({k, b:at[k].get(t)})).filter(x=>x.b && x.b.score >= P.entryMin && x.b.score <= P.entryMax).sort((a,b)=>b.b.score-a.b.score).slice(0, slots);
+        const per = cash/slots;
+        for(const x of cands){ const spend = Math.min(per, cash), units = spend*(1-P.fee)/x.b.close; cash -= spend; pos[x.k] = { time:t, score:x.b.score, units, spent:spend, held:0, lastClose:x.b.close }; } } }
+    const mtm = cash + Object.values(pos).reduce((a,p)=>a+p.units*p.lastClose, 0);
+    if(Object.keys(pos).length) inMarket++;
+    peak = Math.max(peak, mtm); maxDD = Math.max(maxDD, peak>0 ? 1-mtm/peak : 0); eq.push({time:t, eq:mtm});
+  });
+  const end = eq.length ? eq[eq.length-1].eq : 1, cutoff = dates.length ? dates[dates.length-1]-365*86400e3 : 0;
+  const base = eq.find(e=>e.time >= cutoff);
+  const wins = trades.filter(x=>x.ret>0).length, by = k => trades.filter(x=>x.why===k).length;
+  return { exitScore:X, n:trades.length, wins, winRate: trades.length ? wins/trades.length : null, netReturn:end-1, netY1: base ? end/base.eq-1 : null, maxDD,
+           avgHold: trades.length ? trades.reduce((a,x)=>a+x.held,0)/trades.length : null, avgRet: trades.length ? trades.reduce((a,x)=>a+x.ret,0)/trades.length : null,
+           exits:{ score:by('score'), time:by('time'), end:by('end') }, months, exposure: dates.length ? inMarket/dates.length : 0, trades, bars:dates.length };
+}
+/* Nếu mua hôm nay rồi bán đúng lúc điểm về ≤ X: giá bán ≈ giá cao nhất còn đạt X (stockBands), lãi sau phí. TĨNH — giả định MA200, đỉnh 1 năm, RSI, khối lượng đứng yên;
+   thực tế điểm còn tụt theo THỜI GIAN khi đỉnh cũ trôi khỏi cửa sổ 250 phiên dù giá không đổi. */
+function planWhatIf(store, sym, opts){
+  const P = {...STOCK_PLAN_V1, ...(opts||{})}, sc = stockScoreOf(store, sym); if(!sc || sc.score==null) return [];
+  const rec = store.symbols[sym], ref = store.index ? store.index.rows : [], o = {config:STOCK_SCORE_V1};
+  return P.exits.map(X=>{ const raw = priceForScore(rec.rows, ref, o, X, sc.price), p = raw==null ? null : Math.floor(raw/0.05)*0.05, reachable = sc.score > X;
+    const gross = p!=null && sc.price>0 ? p/sc.price-1 : null, net = p!=null && sc.price>0 ? (p*(1-P.fee-P.sellTax))/(sc.price*(1+P.fee))-1 : null;
+    return { X, price:p, gross, net, reachable, already: sc.score <= X }; });
 }
 const stockBtBest = ps => { if(!ps || !ps.rows || !ps.rows.length) return null; const best = ps.rows.slice().sort((a,b)=>b[3]-a[3])[0]; return { entry:best[0], ladder:best[1], n:best[2], net:best[3], netY1:best[4], dd:best[5], bh:ps.bh, bhY1:ps.bhY1 }; };
 const stockBtCache = () => { const c = D.prices && D.prices.stocks && D.prices.stocks.bt; return c && c.version===STOCK_BT_VERSION && c.perSym ? c : null; };
@@ -4111,6 +4186,13 @@ function openStockBacktest(rerun){
       <div class="scroll"><table class="tbl compact"><colgroup><col style="width:8%"><col style="width:14%"><col style="width:14%"><col style="width:9%"><col style="width:10%"><col style="width:12%"><col style="width:12%"><col style="width:10%"><col style="width:11%"></colgroup>
       <thead><tr><th class="first">Vào ≥</th><th>Chốt lời dần</th><th>Cắt lỗ dần</th><th class="n">Lệnh TB</th><th class="n">Thắng TB</th><th class="n">Toàn kỳ TB</th><th class="n">12 th TB</th><th class="n">Mã lãi</th><th class="n last">Thắng cả hai kỳ</th></tr></thead><tbody>${aggRows}</tbody></table></div>
       <div class="hint" style="padding:8px 0">${verdict} "Mã lãi" = số mã có lãi ròng toàn kỳ; "Thắng cả hai kỳ" = số mã bộ này thắng cả tiền mặt và mua-giữ ở toàn kỳ và 12 tháng gần. Kết quả quá khứ, khớp giá đóng cửa, chưa tính trượt giá — dùng để <b>loại bộ tệ</b>.</div>
+      <div class="colhead" style="padding:6px 0 4px"><h2>Kế hoạch chọn mã hằng tháng <small>đầu mỗi tháng mua tối đa ${STOCK_PLAN_V1.picks} mã điểm ${STOCK_PLAN_V1.entryMin}–${STOCK_PLAN_V1.entryMax} (chia đều tiền) · bán khi điểm về ≤ X sau T+2, hoặc quá ${STOCK_PLAN_V1.maxHold} phiên</small></h2></div>
+      ${bt.plan ? `<div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Bán khi điểm ≤</th><th class="n">Lệnh</th><th class="n">Thắng</th><th class="n">Lãi TB/lệnh</th><th class="n">Giữ TB</th><th class="n">Thoát vì điểm / hết hạn</th><th class="n">Toàn kỳ</th><th class="n">12 th gần</th><th class="n last">Sụt tối đa</th></tr></thead><tbody>${
+        bt.plan.map(r=>`<tr><td class="first"><b>${r.X}</b></td><td class="n">${r.n}</td><td class="n">${r.winRate==null?'—':fmtPct(r.winRate)}</td><td class="n">${pct(r.avgRet)}</td><td class="n">${r.avgHold==null?'—':fmtNum(r.avgHold,0)+' phiên'}</td><td class="n">${r.exits.score} / ${r.exits.time}</td><td class="n"><b>${pct(r.net)}</b></td><td class="n">${pct(r.netY1)}</td><td class="n last mute">${r.dd==null?'—':'−'+fmtPct(r.dd)}</td></tr>`).join('')
+      }<tr class="total"><td class="first">VN-Index mua-giữ</td><td></td><td></td><td></td><td></td><td></td><td class="n">${pct(bt.indexBh)}</td><td class="n">${pct(bt.indexBhY1)}</td><td class="last"></td></tr></tbody></table></div>
+      <div class="hint" style="padding:6px 0">Điểm đo độ rẻ so với chính mã đó một năm qua. Điểm về thấp có hai đường: giá lên (điều owner muốn) hoặc <b>đỉnh cũ trôi khỏi cửa sổ 250 phiên khi thời gian qua</b> — trường hợp sau bán ra mà giá không đổi, chỉ mất phí. Cột "Thoát vì điểm / hết hạn" cho biết bao nhiêu lệnh chờ tới ${STOCK_PLAN_V1.maxHold} phiên mà điểm vẫn chưa xuống.</div>` : ''}
+      ${(()=>{ const wi = r ? planWhatIf(stockStore, sym) : []; if(!wi.length) return ''; return `<div class="colhead" style="padding:6px 0 4px"><h2>Nếu mua ${esc(sym)} hôm nay <small>${fmtK(r.price,2)} · điểm ${r.score} · bán đúng lúc điểm về ngưỡng — tĩnh, mọi thứ khác đứng yên</small></h2></div>
+      <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm về ≤</th><th class="n">Giá lúc đó</th><th class="n">Lãi gộp</th><th class="n last">Lãi sau phí</th></tr></thead><tbody>${wi.map(w=>`<tr><td class="first"><b>${w.X}</b></td><td class="n">${w.already ? '<span class="mute">đang dưới ngưỡng này</span>' : w.price==null ? '<span class="mute">không tới được chỉ bằng giá</span>' : fmtK(w.price,2)}</td><td class="n">${w.already||w.price==null?'—':fmtPctS(w.gross)}</td><td class="n last ${w.net!=null&&w.net<0?'neg':''}">${w.already||w.price==null?'—':`<b>${fmtPctS(w.net)}</b>`}</td></tr>`).join('')}</tbody></table></div>`; })()}
       <div class="colhead" style="padding:6px 0 4px"><h2>${esc(sym)} <small>9 bộ trên chính mã này · mua-giữ ${pct(ps?ps.bh:null)} · 12 th ${pct(ps?ps.bhY1:null)}</small></h2></div>
       ${ps ? `<div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Vào ≥</th><th>Bậc</th><th class="n">Lệnh</th><th class="n">Toàn kỳ</th><th class="n">12 th gần</th><th class="n last">Sụt tối đa</th></tr></thead><tbody>${symRows}</tbody></table></div>` : '<div class="mute">Mã này chưa đủ nến để backtest.</div>'}
       ${sig ? `<div class="suggest one" style="margin:8px 0 0">${sig}</div>` : ''}`;
@@ -5495,7 +5577,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
-        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest},
+        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1},
   render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
   refreshDca, refreshTrade, refreshStocks, importStockHistory, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
