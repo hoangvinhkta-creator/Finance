@@ -341,6 +341,10 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
    Chỉ áp cho desktop; điện thoại giữ dòng chảy thường (không có chỗ cho 4 card cố định). */
 @media (min-width:821px){
   #view-dongtien.active{display:flex;flex-direction:column;height:calc(100vh - 52px)}   /* 52 = đệm trên + dưới của main */
+  #view-chungkhoan.active{display:flex;flex-direction:column;height:calc(100vh - 52px)}
+  #view-chungkhoan .vhead,#stockSrcCard{flex:none}
+  #stockListCard{flex:1;min-height:0;display:flex;flex-direction:column;margin-bottom:0}
+  #stockListCard .scroll{flex:1;min-height:0;overflow:auto}
   #view-dongtien .cashtop{flex:none}
   #view-dongtien .ledger4{flex:1;min-height:0;margin-bottom:0;align-items:stretch}
   #view-dongtien .ledger4 .col{display:flex;flex-direction:column;min-height:0}
@@ -368,7 +372,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   .stats.five{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stats{gap:8px}
   .stat{padding:12px 14px}.stat .val{font-size:20px}
-  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
+  .tabbar{display:grid;grid-template-columns:repeat(7,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
   .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--mute);padding:4px 0}
   .tabbar a.active{color:var(--ink);font-weight:600}
   .quick{grid-template-columns:1fr 1fr;padding:0 10px 10px}
@@ -419,6 +423,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
       <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
       <a href="#trade" data-view="trade"><svg class="ic" viewBox="0 0 18 18"><path d="M5 2.5v3M5 12.5v3M13 2v2.5M13 13.5v2.5"/><rect x="3.2" y="5.5" width="3.6" height="7" rx=".6"/><rect x="11.2" y="4.5" width="3.6" height="9" rx=".6"/></svg>Trading</a>
+      <a href="#chungkhoan" data-view="chungkhoan"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 13.5 6.5 8.5l3 2.5 5.5-7"/><path d="M2.5 15.5h13"/></svg>Chứng khoán</a>
     </nav>
     <div class="side-foot">
       <a href="#caidat" data-view="caidat"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 5.5h13M2.5 12.5h13"/><circle cx="7" cy="5.5" r="1.8" fill="#fff"/><circle cx="11" cy="12.5" r="1.8" fill="#fff"/></svg>Cài đặt</a>
@@ -700,6 +705,20 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       </section>
     </section>
 
+    <!-- ===== Chứng khoán (PR 1: dò nguồn dữ liệu + VN30) ===== -->
+    <section id="view-chungkhoan" class="view">
+      <header class="vhead"><h1>Chứng khoán</h1><div class="right"><small id="stockUpdated" class="mute"></small><button class="btn primary" id="stockRefresh">Cập nhật</button></div></header>
+      <section class="card pad" id="stockSrcCard" style="margin-bottom:14px">
+        <div class="colhead" style="padding:0 0 6px"><h2>Nguồn dữ liệu <small>thử 3 nguồn công khai ngay trong trình duyệt · nến ngày · FPT và VN-Index</small></h2><small class="mute" id="stockSrcPick"></small></div>
+        <div class="scroll"><table class="tbl compact" id="stockSrcTable"></table></div>
+        <div class="hint" id="stockSrcNote" style="padding:8px 0 0"></div>
+      </section>
+      <section class="card pad" id="stockListCard">
+        <div class="colhead" style="padding:0 0 6px"><h2>VN30 <small id="stockListSub"></small></h2><small class="mute" id="stockListMeta"></small></div>
+        <div class="scroll"><table class="tbl compact" id="stockTable"></table></div>
+      </section>
+    </section>
+
     <!-- ===== Cài đặt ===== -->
     <section id="view-caidat" class="view">
       <header class="vhead"><h1>Cài đặt</h1></header>
@@ -781,6 +800,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
   <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
   <a href="#trade" data-view="trade"><svg class="ic" viewBox="0 0 18 18"><path d="M5 2.5v3M5 12.5v3M13 2v2.5M13 13.5v2.5"/><rect x="3.2" y="5.5" width="3.6" height="7" rx=".6"/><rect x="11.2" y="4.5" width="3.6" height="9" rx=".6"/></svg>Trading</a>
+  <a href="#chungkhoan" data-view="chungkhoan"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 13.5 6.5 8.5l3 2.5 5.5-7"/><path d="M2.5 15.5h13"/></svg>Cổ phiếu</a>
   <a href="#caidat" data-view="caidat"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 5.5h13M2.5 12.5h13"/><circle cx="7" cy="5.5" r="1.8" fill="#fff"/><circle cx="11" cy="12.5" r="1.8" fill="#fff"/></svg>Cài đặt</a>
 </nav>
 
@@ -952,6 +972,42 @@ const SWING_SIZING_V1 = { riskTiers:[[20,2],[10,1.5],[0,1]], maxPosPct:40, maxOp
    Bật lại = đổi true; code, test, trường `rate` vẫn giữ. */
 const CAPITAL_CARD_ENABLED = false;
 const SWING_GRID = { entries:[45,55,65], exits:[{tp:0.06,sl:0.04},{tp:0.10,sl:0.05},{tp:0.15,sl:0.07}] };
+
+/* ---- Chứng khoán Việt Nam — PR 1 (owner yêu cầu 2026-09-17): dò nguồn dữ liệu + khung tab -------------
+   Không có API chính thức miễn phí. Ba nguồn công khai không chính thức, thử LẦN LƯỢT ngay trong trình duyệt và ghi rõ
+   nguồn nào trả về, nguồn nào bị chặn (CORS) — sandbox không ra được mạng nên phải đo trên Pages thật.
+   Giá quy về NGHÌN ĐỒNG như mọi con số trong app; VN-Index giữ nguyên điểm. Rổ VN30 đổi mỗi 6 tháng — sửa tay hằng số. */
+const VN30 = ['ACB','BCM','BID','BVH','CTG','FPT','GAS','GVR','HDB','HPG','LPB','MBB','MSN','MWG','PLX','SAB','SHB','SSB','SSI','STB','TCB','TPB','VCB','VHM','VIB','VIC','VJC','VNM','VPB','VRE'];
+const VN30_BASKET = 'kỳ 08/2024 → 01/2025';
+const VN_INDEX = 'VNINDEX';
+const STOCK_PROBE_SYMBOL = 'FPT';
+const STOCK_BARS = 600;             // ≈ 2,4 năm nến ngày: đủ MA200 + giảm từ đỉnh 250 phiên + backtest hai kỳ (PR 3)
+const isoDay = ms => new Date(ms).toISOString().slice(0,10);
+const STOCK_SOURCES = [
+  { key:'tcbs', label:'TCBS',
+    url:(sym, kind, fromMs, toMs, n) => `https://apipubaws.tcbs.com.vn/stock-insight/v2/stock/bars-long-term?ticker=${sym}&type=${kind==='index'?'index':'stock'}&resolution=D&to=${Math.floor(toMs/1000)}&countBack=${n}`,
+    parse: j => (j && Array.isArray(j.data) ? j.data : []).map(r=>({ time:Date.parse(r.tradingDate), open:+r.open, high:+r.high, low:+r.low, close:+r.close, volume:+(r.volume||0) })) },
+  { key:'ssi', label:'SSI iBoard',
+    url:(sym, kind, fromMs, toMs) => `https://iboard.ssi.com.vn/dchart/api/history?resolution=D&symbol=${sym}&from=${Math.floor(fromMs/1000)}&to=${Math.floor(toMs/1000)}`,
+    parse: j => (j && j.s==='ok' && Array.isArray(j.t)) ? j.t.map((t,i)=>({ time:t*1000, open:+j.o[i], high:+j.h[i], low:+j.l[i], close:+j.c[i], volume:+(j.v[i]||0) })) : [] },
+  { key:'vnd', label:'VNDirect', noIndex:true,
+    url:(sym, kind, fromMs, toMs, n) => `https://finfo-api.vndirect.com.vn/v4/stock_prices?sort=date&q=code:${sym}~date:gte:${isoDay(fromMs)}&size=${n}`,
+    parse: j => (j && Array.isArray(j.data) ? j.data : []).map(r=>({ time:Date.parse(r.date), open:+r.open, high:+r.high, low:+r.low, close:+r.close, volume:+(r.nmVolume||r.volume||0) })) },
+];
+/* Chuẩn hoá nến: bỏ dòng hỏng, xếp tăng theo thời gian, gộp trùng ngày, và quy đơn vị.
+   Cổ phiếu: nguồn trả VND (120500) hay nghìn đồng (120,5) không chắc ⇒ tự nhận: trung vị close > 1000 là VND, chia 1000.
+   Chỉ số: giữ nguyên điểm (VN-Index ~1.300 cũng > 1000 nên KHÔNG áp quy tắc trên cho kind 'index'). */
+function normalizeStockCandles(rows, kind){
+  const ok = (rows||[]).filter(r=>r && isFinite(r.time) && isFinite(r.close) && r.close>0).sort((a,b)=>a.time-b.time);
+  const byDay = new Map(); for(const r of ok) byDay.set(isoDay(r.time), r);
+  let out = [...byDay.values()].map(r=>({...r, time: Date.parse(isoDay(r.time))}));
+  if(kind!=='index' && out.length){
+    const med = out.map(r=>r.close).sort((a,b)=>a-b)[Math.floor(out.length/2)];
+    if(med > 1000) out = out.map(r=>({ ...r, open:r.open/1000, high:r.high/1000, low:r.low/1000, close:r.close/1000 }));
+  }
+  return out;
+}
+const probeErrorLabel = e => !e ? '' : e.name==='AbortError' ? 'quá 12 giây không trả lời' : (e instanceof TypeError) ? 'trình duyệt chặn (CORS) hoặc mất mạng' : String(e.message||e);
 
 /* Icon nhỏ cho các nút hành động trên từng dòng (tab Dòng tiền): sửa, xoá, đã nhận/tất toán, mở lại.
    Cùng phong cách nét mảnh với icon điều hướng (svg.ic), chỉ nhỏ hơn để nằm gọn cạnh tên khoản. */
@@ -2792,6 +2848,40 @@ function testSwing(){
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
 }
+function testStocks(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+  console.log('%c1 — rổ VN30 và ba nguồn khai báo đủ','font-weight:600');
+  chk('30 mã, không trùng, viết hoa', [VN30.length, new Set(VN30).size, VN30.every(s=>/^[A-Z]{3}$/.test(s))], [30, 30, true]);
+  chk('3 nguồn có url() và parse()', STOCK_SOURCES.map(s=>[s.key, typeof s.url, typeof s.parse]), [['tcbs','function','function'],['ssi','function','function'],['vnd','function','function']]);
+  const T0 = Date.UTC(2026,8,17);
+  chk('url chứa mã và không có ký tự lạ', STOCK_SOURCES.every(s=>{ const u=s.url('FPT','stock',T0-100*86400e3,T0,600); return u.includes('FPT') && u.startsWith('https://') && !/\s/.test(u); }), true);
+  chk('TCBS chỉ số dùng type=index', STOCK_SOURCES[0].url('VNINDEX','index',0,T0,600).includes('type=index'), true);
+  console.log('%c2 — parse ba định dạng về cùng một dạng nến','font-weight:600');
+  const a = STOCK_SOURCES[0].parse({data:[{tradingDate:'2026-09-15T00:00:00.000Z',open:120000,high:122000,low:119000,close:121500,volume:1000},{tradingDate:'2026-09-16T00:00:00.000Z',open:121500,high:123000,low:121000,close:122000,volume:900}]});
+  chk('TCBS: 2 nến, close cuối 122000', [a.length, a[1].close, a[1].time], [2, 122000, Date.UTC(2026,8,16)]);
+  const b = STOCK_SOURCES[1].parse({s:'ok', t:[1789344000,1789430400], o:[120,121.5], h:[122,123], l:[119,121], c:[121.5,122], v:[1000,900]});
+  chk('SSI: 2 nến, time nhân 1000', [b.length, b[0].time, b[1].close], [2, 1789344000000, 122]);
+  chk('SSI: s!="ok" ⇒ rỗng', STOCK_SOURCES[1].parse({s:'no_data'}).length, 0);
+  const c = STOCK_SOURCES[2].parse({data:[{date:'2026-09-16',open:121.5,high:123,low:121,close:122,nmVolume:900},{date:'2026-09-15',open:120,high:122,low:119,close:121.5,nmVolume:1000}]});
+  chk('VNDirect: 2 nến, volume từ nmVolume', [c.length, c[0].volume], [2, 900]);
+  console.log('%c3 — chuẩn hoá: quy VND về nghìn đồng, chỉ số giữ điểm, xếp thời gian, gộp trùng ngày, bỏ dòng hỏng','font-weight:600');
+  const na = normalizeStockCandles(a, 'stock');
+  chk('TCBS (VND) ⇒ 121,5k / 122k', na.map(r=>r.close), [121.5, 122]);
+  chk('open/high/low cũng chia 1000', [na[0].open, na[0].high, na[0].low], [120, 122, 119]);
+  const nc = normalizeStockCandles(c, 'stock');
+  chk('VNDirect (đã nghìn đồng) giữ nguyên, xếp lại tăng dần', nc.map(r=>r.close), [121.5, 122]);
+  chk('VN-Index 1.312 điểm không bị chia', normalizeStockCandles([{time:T0, close:1312.4, open:1300, high:1320, low:1299, volume:1}], 'index')[0].close, 1312.4);
+  chk('trùng ngày giữ bản sau, dòng close 0/NaN bị bỏ', normalizeStockCandles([{time:T0, close:100000},{time:T0+3600e3, close:101000},{time:T0+86400e3, close:0},{time:T0+2*86400e3, close:NaN}], 'stock').map(r=>r.close), [101]);
+  chk('time chuẩn về 0h UTC của ngày', normalizeStockCandles([{time:T0+5*3600e3, close:50000}], 'stock')[0].time, T0);
+  console.log('%c4 — nhãn lỗi cho bảng dò','font-weight:600');
+  chk('TypeError ⇒ CORS/mất mạng', probeErrorLabel(new TypeError('Failed to fetch')), 'trình duyệt chặn (CORS) hoặc mất mạng');
+  chk('AbortError ⇒ quá hạn', probeErrorLabel(Object.assign(new Error('x'),{name:'AbortError'})), 'quá 12 giây không trả lời');
+  chk('HTTP ⇒ giữ thông điệp', probeErrorLabel(new Error('HTTP 403')), 'HTTP 403');
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
 function testViews(){
   let ok=0, bad=0;
   const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
@@ -3306,7 +3396,7 @@ function openHolder(id, title){
 /* =====================================================================
    ROUTING + RENDER
    ===================================================================== */
-const VIEWS = ['tong','dongtien','taisan','dca','trade','caidat'];
+const VIEWS = ['tong','dongtien','taisan','dca','trade','chungkhoan','caidat'];
 const VIEW_ALIAS = {so:'dongtien', congno:'dongtien', lichsu:'tong'};   // các tab cũ đã gộp, giữ link cũ chạy được
 function route(){
   const raw = location.hash.replace('#','');
@@ -3322,7 +3412,7 @@ addEventListener('resize', ()=>{ clearTimeout(window.__rt); window.__rt=setTimeo
 
 function render(){
   fillStaticSelects();
-  ({tong:renderOverview, dongtien:renderCashflow, taisan:renderHoldings, dca:renderDca, trade:renderTrade, caidat:renderSettings})[state.view]();
+  ({tong:renderOverview, dongtien:renderCashflow, taisan:renderHoldings, dca:renderDca, trade:renderTrade, chungkhoan:renderStocks, caidat:renderSettings})[state.view]();
 }
 function fillStaticSelects(){
   setOptions(el('formChi').category, settings().expenseCats);
@@ -3822,6 +3912,83 @@ function renderHoldings(){
    Cùng "đổi coin không đổi hình" như DCA: bảng phân rã luôn 7 dòng, bảng backtest luôn 9 dòng (điền "—" khi chưa chạy). */
 const tradeCoinOf = k => DCA_SCORED.find(c=>c.key===k) || DCA_SCORED[0];
 /* Cache bản cũ (v1) có cấu trúc lưới khác ⇒ coi như chưa có, tab hiện trạng thái rỗng và nhắc bấm Cập nhật. */
+/* ---- Chứng khoán: tải nến, dò nguồn, giá VN30 ------------------------------------------------ */
+async function fetchStockCandles(src, sym, kind, n){
+  const to = Date.now(), from = to - Math.round(n*1.6)*86400e3;   // ×1,6 vì có cuối tuần và nghỉ lễ
+  const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), 12000), t0 = Date.now();
+  try{
+    const r = await fetch(src.url(sym, kind, from, to, n), {signal:ctl.signal, cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const rows = normalizeStockCandles(src.parse(await r.json()), kind);
+    if(!rows.length) throw new Error('trả về nhưng không đọc được nến');
+    return { rows, ms: Date.now()-t0 };
+  }finally{ clearTimeout(t); }
+}
+/* Dò từng nguồn với FPT (600 nến) rồi VN-Index. Kết quả là dữ kiện để chọn nguồn cho PR 2, không đoán trước. */
+async function probeStockSources(){
+  const out = [];
+  for(const src of STOCK_SOURCES){
+    const r = { key:src.key, label:src.label, ok:false, n:0, last:null, lastClose:null, ms:null, err:'', indexOk:null, indexN:0, indexErr:'' };
+    try{ const a = await fetchStockCandles(src, STOCK_PROBE_SYMBOL, 'stock', STOCK_BARS); r.ok = true; r.n = a.rows.length; r.last = a.rows[a.rows.length-1].time; r.lastClose = a.rows[a.rows.length-1].close; r.ms = a.ms; }
+    catch(e){ r.err = probeErrorLabel(e); }
+    if(src.noIndex){ r.indexOk = null; r.indexErr = 'nguồn này không có chỉ số'; }
+    else { try{ const b = await fetchStockCandles(src, VN_INDEX, 'index', STOCK_BARS); r.indexOk = true; r.indexN = b.rows.length; } catch(e){ r.indexOk = false; r.indexErr = probeErrorLabel(e); } }
+    out.push(r);
+  }
+  return out;
+}
+async function loadVn30Quotes(src){
+  const quotes = {}, queue = VN30.slice(); let errors = 0;
+  const worker = async () => { while(queue.length){ const sym = queue.shift();
+    try{ const a = await fetchStockCandles(src, sym, 'stock', 6); const rows = a.rows, L = rows[rows.length-1], P = rows[rows.length-2];
+      quotes[sym] = { close:L.close, prev: P ? P.close : null, time:L.time, n:rows.length }; }
+    catch(e){ errors++; quotes[sym] = { err: probeErrorLabel(e) }; } } };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  return { quotes, errors };
+}
+let stockBusy = false;
+async function refreshStocks(){
+  if(stockBusy) return;
+  stockBusy = true; renderStocks();
+  try{
+    const probe = await probeStockSources();
+    const first = probe.find(r=>r.ok);
+    const st = { probe, probedAt: Date.now(), source: first ? first.key : null, quotes:null, quotesAt:null, errors:0 };
+    if(first){ const q = await loadVn30Quotes(STOCK_SOURCES.find(s=>s.key===first.key)); st.quotes = q.quotes; st.errors = q.errors; st.quotesAt = Date.now(); }
+    D.prices.stocks = st;
+    render();
+    if(first) bg(store.set('prices','current', D.prices), `Nguồn ${first.label} chạy được · ${VN30.length - st.errors}/${VN30.length} mã có giá`);
+    else { bg(store.set('prices','current', D.prices)); toast('Cả 3 nguồn đều không gọi được từ trình duyệt — xem bảng để biết lý do từng nguồn.'); }
+  }catch(e){ console.error(e); toast('Lỗi khi dò nguồn: '+(e.message||e)); }
+  finally{ stockBusy = false; renderStocks(); }
+}
+function renderStocks(){
+  const st = D.prices && D.prices.stocks || null;
+  el('stockRefresh').disabled = stockBusy; el('stockRefresh').textContent = stockBusy ? 'Đang dò…' : 'Cập nhật';
+  el('stockUpdated').textContent = st && st.probedAt ? 'dò lúc '+fmtTime(st.probedAt) : '';
+  el('stockSrcPick').textContent = st && st.source ? 'đang dùng: '+(STOCK_SOURCES.find(s=>s.key===st.source)||{}).label : '';
+  const rows = STOCK_SOURCES.map(src => { const r = st && st.probe ? st.probe.find(x=>x.key===src.key) : null;
+    const status = !r ? '—' : r.ok ? '<span class="badge on">chạy được</span>' : `<span class="badge warn">${esc(r.err||'lỗi')}</span>`;
+    const idx = !r ? '—' : r.indexOk===null ? `<span class="mute">${esc(r.indexErr)}</span>` : r.indexOk ? `${fmtNum(r.indexN)} nến` : `<span class="mute">${esc(r.indexErr)}</span>`;
+    return `<tr><td class="first"><b>${esc(src.label)}</b></td><td>${status}</td><td class="n">${r&&r.ok?fmtNum(r.n):'—'}</td><td class="n">${r&&r.ok?fmtDayY(r.last)+' · '+fmtNum(r.lastClose,2)+'k':'—'}</td><td>${idx}</td><td class="n last mute">${r&&r.ms!=null?fmtNum(r.ms)+' ms':'—'}</td></tr>`; });
+  el('stockSrcTable').innerHTML = `<colgroup><col style="width:16%"><col style="width:28%"><col style="width:10%"><col style="width:20%"><col style="width:16%"><col style="width:10%"></colgroup>
+    <thead><tr><th class="first">Nguồn</th><th>Trạng thái</th><th class="n">Nến FPT</th><th class="n">Nến cuối</th><th>VN-Index</th><th class="n last">Thời gian</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+  el('stockSrcNote').innerHTML = !st
+    ? 'Chưa dò. Bấm <b>Cập nhật</b>: app gọi lần lượt TCBS, SSI iBoard, VNDirect từ chính trình duyệt này để xem nguồn nào cho GitHub Pages lấy dữ liệu. Chụp màn hình bảng trên gửi lại — đó là dữ kiện để chọn nguồn cho bước sau (Buy Score nến ngày cho VN30).'
+    : st.source ? `Nguồn đầu tiên chạy được dùng cho bảng VN30 bên dưới. Cần cả <b>VN-Index</b> để chấm thành phần "so với thị trường" (thay cho ETH/BTC ở coin). Kết quả dò là của chính thiết bị này — trên điện thoại có thể khác, dò lại ở đó một lần.`
+    : `<b>Không nguồn nào gọi được từ trình duyệt.</b> "Trình duyệt chặn (CORS)" nghĩa là máy chủ không cho trang web khác gọi thẳng — cần một proxy nhỏ (Cloudflare Worker, đường đã dựng một lần cho Binance). Chụp bảng này gửi lại để chốt.`;
+  /* Bảng VN30: luôn đủ 30 dòng, có giá thì điền, chưa thì "—". */
+  const q = st && st.quotes || {};
+  el('stockListSub').textContent = `rổ ${VN30_BASKET} · giá nghìn đồng`;
+  el('stockListMeta').textContent = st && st.quotesAt ? `${VN30.length - (st.errors||0)}/${VN30.length} mã có giá · ${fmtTime(st.quotesAt)}` : '';
+  const chg = x => x==null ? '—' : `<span class="${x<0?'neg':''}">${fmtPctS(x)}</span>`;
+  el('stockTable').innerHTML = `<colgroup><col style="width:14%"><col style="width:20%"><col style="width:18%"><col style="width:22%"><col style="width:26%"></colgroup>
+    <thead><tr><th class="first">Mã</th><th class="n">Giá</th><th class="n">Hôm nay</th><th class="n">Phiên</th><th class="last">Ghi chú</th></tr></thead><tbody>`+
+    VN30.map(sym => { const r = q[sym]; const ok = r && r.close!=null;
+      return `<tr><td class="first"><b>${sym}</b></td><td class="n">${ok?fmtNum(r.close,2)+'k':'—'}</td><td class="n">${ok&&r.prev?chg(r.close/r.prev-1):'—'}</td><td class="n mute">${ok?fmtDayY(r.time):'—'}</td><td class="last mute">${r&&r.err?esc(r.err):ok?'':'—'}</td></tr>`; }).join('')+`</tbody>`;
+}
+el('stockRefresh').onclick = ()=>refreshStocks();
+
 function tradeCache(k){ const t = D.prices && D.prices.trade; const c = t && t.coins ? (t.coins[k]||null) : null; return c && c.version===SWING_SCORE_V1.version ? c : null; }
 const fmtDay = ms => ms ? new Date(ms).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'}) : '—';
 const fmtDayY = ms => ms ? new Date(ms).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';   // mốc cách nhau > 1 năm phải có năm
@@ -5011,9 +5178,10 @@ window.FinTrace = { state, data:D,
         SWING_SCORE_V1, SWING_RULES_V1, SWING_RULES_V2, SWING_GRID, SWING_GRID_V2, SWING_LADDERS, SWING_SIZING_V1, FUTURES_V1, TRADE_MODES, swingScoreSeries, simulateSwing, simulateLadder, backtestGrid, backtestGrid2, tradePlan, invertCandles, sellScore, holdReturn, tradeBench,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
-        dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS},
-  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing,
-  refreshDca, refreshTrade, makeCandles,
+        dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
+        VN30, STOCK_SOURCES, normalizeStockCandles, probeErrorLabel},
+  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
+  refreshDca, refreshTrade, refreshStocks, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
 boot();
