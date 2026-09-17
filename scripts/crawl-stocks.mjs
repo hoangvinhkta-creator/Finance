@@ -114,7 +114,12 @@ try{ prev = JSON.parse(readFileSync(process.env.CRAWL_IN || OUT,'utf8')); }catch
 
 const out = { updatedAt: Date.now(), basket: VN30_BASKET, bars: BARS, symbols:{}, index:null, errors:{} };
 let okCount = 0, miss = 0, streak = 0, pauses = 0, stopped = '';
-const ALL = [...VN100, ...EXTRA, INDEX];
+/* Thứ tự: VN-Index trước (mọi mã chấm điểm so với nó), rồi mã LÂU NHẤT CHƯA LÀM MỚI trước.
+   Nguồn chặn tốc độ giữa chừng là chuyện thường (17/09: 45/103 mã), nếu giữ thứ tự cố định thì
+   mã cuối danh sách không bao giờ được làm mới. Xếp theo `fetchedAt` để lượt sau bù cho lượt trước. */
+const freshAt = sym => { const r = (prev.symbols||{})[sym]; return (r && r.fetchedAt) || 0; };
+const ALL = [INDEX, ...[...VN100, ...EXTRA].sort((a,b)=>freshAt(a)-freshAt(b))];
+if(process.env.CRAWL_DRY){ console.log('Thứ tự:', ALL.slice(0,8).join(' '), '…', ALL.slice(-4).join(' ')); process.exit(0); }
 for(const sym of ALL){
   const kind = sym===INDEX ? 'index' : 'stock';
   const old = sym===INDEX ? (prev.index||null) : (prev.symbols||{})[sym];
