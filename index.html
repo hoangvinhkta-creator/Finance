@@ -1007,6 +1007,19 @@ function normalizeStockCandles(rows, kind){
   }
   return out;
 }
+/* Kho dữ liệu do GitHub Actions cào mỗi ngày (scripts/crawl-stocks.mjs) và commit vào data/vn30.json — cùng origin với Pages nên
+   trình duyệt đọc được không cần CORS. Đây là nguồn CHÍNH; 3 nguồn gọi thẳng chỉ còn là dự phòng/chẩn đoán khi kho không tải được. */
+const STOCK_STORE_URL = 'data/vn30.json';
+const STOCK_STORE_STALE_H = 30;   // kho cũ hơn 30 giờ (qua một phiên không cào) ⇒ nhãn "cũ"
+function parseStockStore(j){
+  if(!j || typeof j!=='object' || !j.symbols || typeof j.symbols!=='object') throw new Error('kho không đúng định dạng');
+  const unpack = arr => (Array.isArray(arr) ? arr : []).filter(a=>Array.isArray(a) && a.length>=5 && isFinite(a[0]) && a[4]>0)
+    .map(a=>({ time:a[0], open:+a[1], high:+a[2], low:+a[3], close:+a[4], volume:+(a[5]||0) }));
+  const symbols = {};
+  for(const [k,v] of Object.entries(j.symbols)) symbols[k] = { source: v && v.source || null, fetchedAt: v && v.fetchedAt || null, rows: unpack(v && v.rows) };
+  return { updatedAt: Number(j.updatedAt)||null, basket: j.basket||'', symbols,
+           index: j.index ? { source:j.index.source||null, rows: unpack(j.index.rows) } : null, errors: j.errors && typeof j.errors==='object' ? j.errors : {} };
+}
 const probeErrorLabel = e => !e ? '' : e.name==='AbortError' ? 'quá 12 giây không trả lời' : (e instanceof TypeError) ? 'trình duyệt chặn (CORS) hoặc mất mạng' : String(e.message||e);
 
 /* Icon nhỏ cho các nút hành động trên từng dòng (tab Dòng tiền): sửa, xoá, đã nhận/tất toán, mở lại.
@@ -2875,7 +2888,14 @@ function testStocks(){
   chk('VN-Index 1.312 điểm không bị chia', normalizeStockCandles([{time:T0, close:1312.4, open:1300, high:1320, low:1299, volume:1}], 'index')[0].close, 1312.4);
   chk('trùng ngày giữ bản sau, dòng close 0/NaN bị bỏ', normalizeStockCandles([{time:T0, close:100000},{time:T0+3600e3, close:101000},{time:T0+86400e3, close:0},{time:T0+2*86400e3, close:NaN}], 'stock').map(r=>r.close), [101]);
   chk('time chuẩn về 0h UTC của ngày', normalizeStockCandles([{time:T0+5*3600e3, close:50000}], 'stock')[0].time, T0);
-  console.log('%c4 — nhãn lỗi cho bảng dò','font-weight:600');
+  console.log('%c4 — kho data/vn30.json: đọc định dạng nén, mã thiếu, chỉ số','font-weight:600');
+  const store = parseStockStore({ updatedAt: T0, basket:'x', symbols:{ FPT:{ source:'tcbs', rows:[[T0-86400e3,120,122,119,121.5,1000],[T0,121.5,123,121,122,900]] }, ACB:{ source:null, rows:[] } }, index:{ source:'tcbs', rows:[[T0,1300,1320,1299,1312.4,1]] }, errors:{ ACB:'tcbs: HTTP 500 · ssi: quá 20 s' } });
+  chk('FPT 2 nến, close cuối 122, VN-Index 1 nến', [store.symbols.FPT.rows.length, store.symbols.FPT.rows[1].close, store.index.rows[0].close], [2, 122, 1312.4]);
+  const qs = quotesFromStore(store);
+  chk('quotes: FPT có giá và giá hôm trước; ACB ghi lý do từ kho; 29 mã thiếu', [qs.quotes.FPT.close, qs.quotes.FPT.prev, qs.quotes.ACB.err.startsWith('kho không lấy được'), qs.errors], [122, 121.5, true, 29]);
+  let bad1 = false; try{ parseStockStore({}); }catch(e){ bad1 = true; } chk('kho sai định dạng ⇒ ném lỗi', bad1, true);
+  chk('dòng nén thiếu cột hoặc close 0 bị bỏ', parseStockStore({symbols:{X:{rows:[[T0,1,2],[T0,1,2,3,0,1],[T0,1,2,3,4,5]]}}}).symbols.X.rows.length, 1);
+  console.log('%c5 — nhãn lỗi cho bảng dò','font-weight:600');
   chk('TypeError ⇒ CORS/mất mạng', probeErrorLabel(new TypeError('Failed to fetch')), 'trình duyệt chặn (CORS) hoặc mất mạng');
   chk('AbortError ⇒ quá hạn', probeErrorLabel(Object.assign(new Error('x'),{name:'AbortError'})), 'quá 12 giây không trả lời');
   chk('HTTP ⇒ giữ thông điệp', probeErrorLabel(new Error('HTTP 403')), 'HTTP 403');
@@ -3947,36 +3967,70 @@ async function loadVn30Quotes(src){
   return { quotes, errors };
 }
 let stockBusy = false;
+async function loadStockStore(){
+  const t0 = Date.now(), ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), 12000);
+  try{
+    const r = await fetch(STOCK_STORE_URL+'?t='+Date.now(), {signal:ctl.signal, cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status+(r.status===404?' — kho chưa được tạo (Actions chưa chạy lần nào)':''));
+    return { store: parseStockStore(await r.json()), ms: Date.now()-t0 };
+  }finally{ clearTimeout(t); }
+}
+/* Giá VN30 từ kho: 2 nến cuối của mỗi mã. Mã thiếu ⇒ ghi lý do từ errors của kho. */
+function quotesFromStore(store){
+  const quotes = {}; let errors = 0;
+  for(const sym of VN30){
+    const rec = store.symbols[sym], rows = rec ? rec.rows : [];
+    if(rows.length){ const L = rows[rows.length-1], P = rows[rows.length-2]; quotes[sym] = { close:L.close, prev: P ? P.close : null, time:L.time, n:rows.length, source:rec.source }; }
+    else { errors++; quotes[sym] = { err: store.errors[sym] ? 'kho không lấy được: '+String(store.errors[sym]).slice(0,60) : 'kho chưa có mã này' }; }
+  }
+  return { quotes, errors };
+}
+let stockStore = null;   // nến đầy đủ của kho, giữ trong RAM (không ghi Firestore — 31 × 600 nến vượt 1 MB/document)
 async function refreshStocks(){
   if(stockBusy) return;
   stockBusy = true; renderStocks();
   try{
-    const probe = await probeStockSources();
-    const first = probe.find(r=>r.ok);
-    const st = { probe, probedAt: Date.now(), source: first ? first.key : null, quotes:null, quotesAt:null, errors:0 };
-    if(first){ const q = await loadVn30Quotes(STOCK_SOURCES.find(s=>s.key===first.key)); st.quotes = q.quotes; st.errors = q.errors; st.quotesAt = Date.now(); }
+    const st = { probe:[], probedAt: Date.now(), source:null, storeAt:null, storeMs:null, storeErr:'', quotes:null, quotesAt:null, errors:0 };
+    try{ const k = await loadStockStore(); stockStore = k.store; st.storeAt = k.store.updatedAt; st.storeMs = k.ms; st.source = 'pages'; }
+    catch(e){ st.storeErr = probeErrorLabel(e); }
+    if(st.source==='pages'){
+      const q = quotesFromStore(stockStore); st.quotes = q.quotes; st.errors = q.errors; st.quotesAt = Date.now();
+      st.probe = STOCK_SOURCES.map(s=>({ key:s.key, label:s.label, skipped:true }));
+    } else {
+      st.probe = await probeStockSources();
+      const first = st.probe.find(r=>r.ok);
+      if(first){ st.source = first.key; const q = await loadVn30Quotes(STOCK_SOURCES.find(s=>s.key===first.key)); st.quotes = q.quotes; st.errors = q.errors; st.quotesAt = Date.now(); }
+    }
     D.prices.stocks = st;
     render();
-    if(first) bg(store.set('prices','current', D.prices), `Nguồn ${first.label} chạy được · ${VN30.length - st.errors}/${VN30.length} mã có giá`);
-    else { bg(store.set('prices','current', D.prices)); toast('Cả 3 nguồn đều không gọi được từ trình duyệt — xem bảng để biết lý do từng nguồn.'); }
-  }catch(e){ console.error(e); toast('Lỗi khi dò nguồn: '+(e.message||e)); }
+    if(st.source==='pages') bg(store.set('prices','current', D.prices), `Đọc kho trên Pages · ${VN30.length - st.errors}/${VN30.length} mã có giá · kho cập nhật ${fmtTime(st.storeAt)}`);
+    else if(st.source) bg(store.set('prices','current', D.prices), `Kho không tải được, dùng ${STOCK_SOURCES.find(s=>s.key===st.source).label} · ${VN30.length - st.errors}/${VN30.length} mã có giá`);
+    else { bg(store.set('prices','current', D.prices)); toast('Kho trên Pages chưa có và cả 3 nguồn trực tiếp đều bị chặn — xem bảng.'); }
+  }catch(e){ console.error(e); toast('Lỗi khi lấy dữ liệu chứng khoán: '+(e.message||e)); }
   finally{ stockBusy = false; renderStocks(); }
 }
 function renderStocks(){
   const st = D.prices && D.prices.stocks || null;
   el('stockRefresh').disabled = stockBusy; el('stockRefresh').textContent = stockBusy ? 'Đang dò…' : 'Cập nhật';
   el('stockUpdated').textContent = st && st.probedAt ? 'dò lúc '+fmtTime(st.probedAt) : '';
-  el('stockSrcPick').textContent = st && st.source ? 'đang dùng: '+(STOCK_SOURCES.find(s=>s.key===st.source)||{}).label : '';
-  const rows = STOCK_SOURCES.map(src => { const r = st && st.probe ? st.probe.find(x=>x.key===src.key) : null;
-    const status = !r ? '—' : r.ok ? '<span class="badge on">chạy được</span>' : `<span class="badge warn">${esc(r.err||'lỗi')}</span>`;
-    const idx = !r ? '—' : r.indexOk===null ? `<span class="mute">${esc(r.indexErr)}</span>` : r.indexOk ? `${fmtNum(r.indexN)} nến` : `<span class="mute">${esc(r.indexErr)}</span>`;
-    return `<tr><td class="first"><b>${esc(src.label)}</b></td><td>${status}</td><td class="n">${r&&r.ok?fmtNum(r.n):'—'}</td><td class="n">${r&&r.ok?fmtDayY(r.last)+' · '+fmtNum(r.lastClose,2)+'k':'—'}</td><td>${idx}</td><td class="n last mute">${r&&r.ms!=null?fmtNum(r.ms)+' ms':'—'}</td></tr>`; });
+  el('stockSrcPick').textContent = st && st.source ? 'đang dùng: '+(st.source==='pages' ? 'kho trên Pages' : (STOCK_SOURCES.find(s=>s.key===st.source)||{}).label) : '';
+  /* Hàng đầu = kho data/vn30.json do Actions cào; ba hàng sau = nguồn gọi thẳng (chỉ dò khi kho không tải được). */
+  const storeStale = st && st.storeAt && (Date.now()-st.storeAt)/3600e3 > STOCK_STORE_STALE_H;
+  const kRows = stockStore && stockStore.symbols[STOCK_PROBE_SYMBOL] ? stockStore.symbols[STOCK_PROBE_SYMBOL].rows : [];
+  const kIdx = stockStore && stockStore.index ? stockStore.index.rows.length : 0;
+  const storeRow = `<tr><td class="first"><b>Kho trên Pages</b><div class="mute" style="font-size:11px">Actions cào mỗi ngày 15:40</div></td><td>${!st ? '—' : st.source==='pages' ? `<span class="badge on">đọc được</span>${storeStale?' <span class="badge warn">cũ</span>':''} <span class="mute">cập nhật ${fmtTime(st.storeAt)}</span>` : `<span class="badge warn">${esc(st.storeErr||'không tải được')}</span>`}</td><td class="n">${kRows.length?fmtNum(kRows.length):'—'}</td><td class="n">${kRows.length?fmtDayY(kRows[kRows.length-1].time)+' · '+fmtNum(kRows[kRows.length-1].close,2)+'k':'—'}</td><td>${kIdx?fmtNum(kIdx)+' nến':'—'}</td><td class="n last mute">${st&&st.storeMs!=null?fmtNum(st.storeMs)+' ms':'—'}</td></tr>`;
+  const rows = [storeRow, ...STOCK_SOURCES.map(src => { const r = st && st.probe ? st.probe.find(x=>x.key===src.key) : null;
+    const status = !r ? '—' : r.skipped ? '<span class="mute">bỏ qua — đã có kho</span>' : r.ok ? '<span class="badge on">chạy được</span>' : `<span class="badge warn">${esc(r.err||'lỗi')}</span>`;
+    const idx = !r || r.skipped ? '—' : r.indexOk===null ? `<span class="mute">${esc(r.indexErr)}</span>` : r.indexOk ? `${fmtNum(r.indexN)} nến` : `<span class="mute">${esc(r.indexErr)}</span>`;
+    return `<tr><td class="first"><b>${esc(src.label)}</b></td><td>${status}</td><td class="n">${r&&r.ok?fmtNum(r.n):'—'}</td><td class="n">${r&&r.ok?fmtDayY(r.last)+' · '+fmtNum(r.lastClose,2)+'k':'—'}</td><td>${idx}</td><td class="n last mute">${r&&r.ms!=null?fmtNum(r.ms)+' ms':'—'}</td></tr>`; })];
   el('stockSrcTable').innerHTML = `<colgroup><col style="width:16%"><col style="width:28%"><col style="width:10%"><col style="width:20%"><col style="width:16%"><col style="width:10%"></colgroup>
     <thead><tr><th class="first">Nguồn</th><th>Trạng thái</th><th class="n">Nến FPT</th><th class="n">Nến cuối</th><th>VN-Index</th><th class="n last">Thời gian</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+  const srcCount = stockStore ? Object.values(stockStore.symbols).reduce((m,r)=>{ if(r.source){ const k=String(r.source).replace(' (cũ)',''); m[k]=(m[k]||0)+1; } return m; }, {}) : null;
   el('stockSrcNote').innerHTML = !st
-    ? 'Chưa dò. Bấm <b>Cập nhật</b>: app gọi lần lượt TCBS, SSI iBoard, VNDirect từ chính trình duyệt này để xem nguồn nào cho GitHub Pages lấy dữ liệu. Chụp màn hình bảng trên gửi lại — đó là dữ kiện để chọn nguồn cho bước sau (Buy Score nến ngày cho VN30).'
-    : st.source ? `Nguồn đầu tiên chạy được dùng cho bảng VN30 bên dưới. Cần cả <b>VN-Index</b> để chấm thành phần "so với thị trường" (thay cho ETH/BTC ở coin). Kết quả dò là của chính thiết bị này — trên điện thoại có thể khác, dò lại ở đó một lần.`
-    : `<b>Không nguồn nào gọi được từ trình duyệt.</b> "Trình duyệt chặn (CORS)" nghĩa là máy chủ không cho trang web khác gọi thẳng — cần một proxy nhỏ (Cloudflare Worker, đường đã dựng một lần cho Binance). Chụp bảng này gửi lại để chốt.`;
+    ? 'Chưa tải. Bấm <b>Cập nhật</b>: app đọc kho <code>data/vn30.json</code> do GitHub Actions cào mỗi ngày sau phiên (cùng origin với trang này nên không bị CORS). Kho không có thì mới thử 3 nguồn gọi thẳng.'
+    : st.source==='pages' ? `Kho cập nhật <b>${fmtTime(st.storeAt)}</b>${storeStale?' — <b>đã cũ</b>, Actions có thể không chạy (GitHub tắt lịch sau 60 ngày repo không có commit; vào tab Actions bấm Run workflow)':''}. Nguồn mà máy cào lấy được: ${srcCount && Object.keys(srcCount).length ? Object.entries(srcCount).map(([k,n])=>`${esc(k)} ${n} mã`).join(' · ') : '—'}. Kho có VN-Index ⇒ chấm được thành phần "so với thị trường" ở bước sau.`
+    : st.source ? `Kho trên Pages không tải được (${esc(st.storeErr)}), tạm dùng nguồn gọi thẳng ${esc((STOCK_SOURCES.find(s=>s.key===st.source)||{}).label)}.`
+    : `<b>Kho chưa có và không nguồn nào gọi được từ trình duyệt.</b> Vào GitHub → tab Actions → "Cập nhật giá VN30" → Run workflow, chờ 1–2 phút rồi bấm Cập nhật lại.`;
   /* Bảng VN30: luôn đủ 30 dòng, có giá thì điền, chưa thì "—". */
   const q = st && st.quotes || {};
   el('stockListSub').textContent = `rổ ${VN30_BASKET} · giá nghìn đồng`;
@@ -5179,7 +5233,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
-        VN30, STOCK_SOURCES, normalizeStockCandles, probeErrorLabel},
+        VN30, STOCK_SOURCES, normalizeStockCandles, probeErrorLabel, parseStockStore, quotesFromStore},
   render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
   refreshDca, refreshTrade, refreshStocks, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };

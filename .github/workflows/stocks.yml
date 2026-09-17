@@ -1,0 +1,36 @@
+name: Cập nhật giá VN30
+
+# Cào nến ngày VN30 + VN-Index sau phiên ATC (14:45 giờ VN) rồi commit data/vn30.json để GitHub Pages phục vụ cùng origin.
+# 08:40 UTC = 15:40 giờ Việt Nam, thứ Hai → thứ Sáu. Bấm "Run workflow" để chạy tay bất kỳ lúc nào.
+on:
+  schedule:
+    - cron: '40 8 * * 1-5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stocks-data
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Cào dữ liệu
+        run: node scripts/crawl-stocks.mjs
+      - name: Commit nếu có thay đổi
+        run: |
+          git config user.name "fintrace-bot"
+          git config user.email "fintrace-bot@users.noreply.github.com"
+          git add data/vn30.json
+          if git diff --cached --quiet; then echo "Không có thay đổi."; else
+            git commit -m "data: giá VN30 $(TZ=Asia/Ho_Chi_Minh date +%Y-%m-%d\ %H:%M)"
+            git push
+          fi
