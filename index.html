@@ -277,6 +277,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .goal .g b{color:var(--ink)}
 .tagx{font-style:normal;font-size:10px;color:var(--ink2);border:1px solid var(--faint);border-radius:3px;padding:0 4px;margin-left:6px;white-space:nowrap;vertical-align:1px}
 .tbl tr.hot td{font-weight:600}
+.tbl tr.best td{background:var(--tint);font-weight:600}
 .tbl tr.hot td.first{position:relative}
 .quick.xfer{grid-template-columns:minmax(0,1.1fr) minmax(0,.85fr) 14px minmax(0,1.1fr) minmax(0,.85fr) minmax(0,1fr) auto}
 .quick.xfer .arrow{text-align:center;color:var(--mute)}
@@ -363,7 +364,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   .stats.five{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stats{gap:8px}
   .stat{padding:12px 14px}.stat .val{font-size:20px}
-  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
+  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
   .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--mute);padding:4px 0}
   .tabbar a.active{color:var(--ink);font-weight:600}
   .quick{grid-template-columns:1fr 1fr;padding:0 10px 10px}
@@ -413,6 +414,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       <a href="#dongtien" data-view="dongtien"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Dòng tiền</a>
       <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
       <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
+      <a href="#trade" data-view="trade"><svg class="ic" viewBox="0 0 18 18"><path d="M5 2.5v3M5 12.5v3M13 2v2.5M13 13.5v2.5"/><rect x="3.2" y="5.5" width="3.6" height="7" rx=".6"/><rect x="11.2" y="4.5" width="3.6" height="9" rx=".6"/></svg>Trading</a>
     </nav>
     <div class="side-foot">
       <a href="#caidat" data-view="caidat"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 5.5h13M2.5 12.5h13"/><circle cx="7" cy="5.5" r="1.8" fill="#fff"/><circle cx="11" cy="12.5" r="1.8" fill="#fff"/></svg>Cài đặt</a>
@@ -666,6 +668,34 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
       </div>
     </section>
 
+    <!-- ===== Trading (swing H4): backtest + paper — mở 2026-09-17 ===== -->
+    <section id="view-trade" class="view">
+      <header class="vhead"><h1>Trading</h1><div class="right"><small id="tradeUpdated" class="mute"></small><button class="btn primary" id="tradeRefresh">Cập nhật backtest</button></div></header>
+      <div class="grid2 eq" style="margin-bottom:14px">
+        <section class="card pad" id="tradeScoreCard">
+          <div class="colhead" style="padding:0 0 10px"><h2>Điểm swing <small>nến H4 · cửa sổ 1–30 ngày</small></h2><div class="seg" id="tradeCoinPick"></div></div>
+          <div class="hero">
+            <div><div class="lbl mute" id="tradeHeroLbl" style="font-size:12px;margin-bottom:6px">Giá ETH</div><div class="big" id="tradeHeroPrice">—</div></div>
+            <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Swing Score</div><div class="big" id="tradeHeroScore">—</div></div>
+            <div class="vs" id="tradeHeroState"></div>
+          </div>
+          <div class="split one" id="tradeHeroMeta"></div>
+          <div class="warnline" id="tradeWarn" hidden></div>
+          <div class="colhead" style="padding:10px 0 4px"><h2>Phân rã điểm <small>7 thành phần, cùng khung Buy Score</small></h2><small class="mute" id="tradeAlgo"></small></div>
+          <div class="scroll"><table class="tbl compact" id="tradeScoreTable"></table></div>
+        </section>
+        <section class="card pad" id="tradeBtCard">
+          <div class="colhead" style="padding:0 0 6px"><h2>Backtest <small>9 bộ quy tắc · phí 0,1% mỗi chiều · ra khi điểm ≤ 25 hoặc quá 14 ngày</small></h2><small class="mute" id="tradeBtSpan"></small></div>
+          <div class="scroll"><table class="tbl compact" id="tradeBtTable"></table></div>
+          <div class="hint" id="tradeBtNote" style="padding:8px 0 0"></div>
+        </section>
+      </div>
+      <section class="card pad" id="tradeSignalCard">
+        <div class="colhead" style="padding:0 0 6px"><h2>Tín hiệu hôm nay <small>theo bộ quy tắc tốt nhất trong backtest</small></h2><small class="mute">chưa ghi lệnh thật — sổ lệnh giả sẽ thêm ở PR sau</small></div>
+        <div id="tradeSignal"></div>
+      </section>
+    </section>
+
     <!-- ===== Cài đặt ===== -->
     <section id="view-caidat" class="view">
       <header class="vhead"><h1>Cài đặt</h1></header>
@@ -741,6 +771,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   <a href="#dongtien" data-view="dongtien"><svg class="ic" viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg>Dòng tiền</a>
   <a href="#taisan" data-view="taisan"><svg class="ic" viewBox="0 0 18 18"><path d="M9 2.5l6.5 3.25L9 9 2.5 5.75z"/><path d="M2.5 9.25L9 12.5l6.5-3.25"/><path d="M2.5 12.75L9 16l6.5-3.25"/></svg>Tài sản</a>
   <a href="#dca" data-view="dca"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 4.5v9M6.3 6.6c0-1.1 1.2-1.6 2.7-1.6 1.7 0 2.7.7 2.7 1.7 0 2.4-5.4 1-5.4 3.4 0 1 1 1.7 2.7 1.7 1.5 0 2.7-.5 2.7-1.6"/></svg>DCA</a>
+  <a href="#trade" data-view="trade"><svg class="ic" viewBox="0 0 18 18"><path d="M5 2.5v3M5 12.5v3M13 2v2.5M13 13.5v2.5"/><rect x="3.2" y="5.5" width="3.6" height="7" rx=".6"/><rect x="11.2" y="4.5" width="3.6" height="9" rx=".6"/></svg>Trading</a>
   <a href="#caidat" data-view="caidat"><svg class="ic" viewBox="0 0 18 18"><path d="M2.5 5.5h13M2.5 12.5h13"/><circle cx="7" cy="5.5" r="1.8" fill="#fff"/><circle cx="11" cy="12.5" r="1.8" fill="#fff"/></svg>Cài đặt</a>
 </nav>
 
@@ -854,6 +885,27 @@ const DCA_PLAN_V1 = {
 const DEFAULT_DCA = { budget:0, split:{base:50, smart:30, opp:20}, baseDays:[3,13,23], baseWeights:[40,30,30],
                       startMonth:'', oppCapMonths:6 };   // startMonth rỗng ⇒ normalizeSettings điền tháng hiện tại
 const priceLabel = k => (PRICE_KEYS.find(p=>p.key===k)||{label:k}).label;
+
+/* ---- Trading swing (mở 2026-09-17, owner chốt: backtest + paper trading trước, khung giữ lệnh 3–14 ngày) ----
+   CÙNG 7 thành phần và cùng hàm buyScore() của DCA, chỉ đổi nến D1 → H4 và thu hẹp mọi cửa sổ.
+   Các ngưỡng dưới đây là ĐIỂM XUẤT PHÁT để backtest, không phải kết luận: backtestGrid() đo thật trên nến. */
+const SWING_SCORE_V1 = {
+  version:'swing-h4-v1', interval:'4h', barsPerDay:6, klineLimit:1000,      // 1.000 nến H4 ≈ 166 ngày
+  minCandles:200, fullCandles:540, staleHours:8,
+  windows:{ year:180, month:42, volShort:6, volLong:180, rsi:14, ma:50, ethbtc:42 },   // 30 ngày · 7 ngày · 24 giờ · 30 ngày · RSI14 · MA50 · 7 ngày
+  drawdown365:{ max:25, label:'Giảm từ đỉnh 30 ngày', fmt:'pct', dir:'atLeast', tiers:[[0.30,25],[0.22,22],[0.16,18],[0.11,14],[0.07,9],[0.03,4],[0,0]] },
+  ma200:{ max:20, label:'Lệch so với MA50 (H4)', fmt:'pct', dir:'atMost', tiers:[[-0.12,20],[-0.08,17],[-0.05,13],[-0.02,9],[0,5],[0.04,2],[Infinity,0]] },
+  rsi14:{ max:15, label:'RSI14 (H4)', fmt:'num', dir:'atMost', tiers:[[20,15],[25,13],[30,11],[35,8],[45,5],[55,2],[Infinity,0]] },
+  drawdownMonth:{ max:15, label:'Giảm từ đỉnh 7 ngày', fmt:'pct', dir:'atLeast', tiers:[[0.12,15],[0.09,12],[0.06,9],[0.04,6],[0.02,3],[0,0]] },
+  percentile365:{ max:10, label:'Percentile giá trong 30 ngày', fmt:'pct', dir:'atMost', tiers:[[0.05,10],[0.10,8],[0.20,6],[0.35,4],[0.50,2],[Infinity,0]] },
+  capitulation:{ max:10, label:'Bán tháo (24 giờ + khối lượng)', fmt:'pct', ret:[[-0.10,6],[-0.07,5],[-0.045,3],[-0.025,2],[Infinity,0]], vol:[[2.00,4],[1.60,3],[1.30,2],[1.10,1],[0,0]] },
+  ethbtc30:{ max:5, label:'ETH/BTC 7 ngày', fmt:'pct', dir:'atMost', tiers:[[-0.08,5],[-0.05,4],[-0.025,3],[0,2],[0.04,1],[Infinity,0]] },
+  states: BUY_SCORE_V1.states, confLabel: BUY_SCORE_V1.confLabel,
+};
+/* Quy tắc lệnh: vào khi điểm ≥ entry; ra khi lãi ≥ tp, lỗ ≥ sl, điểm ≤ exit, hoặc giữ quá maxHoldBars (84 nến H4 = 14 ngày).
+   Phí Binance spot 0,1% mỗi chiều. Backtest chạy lưới entry × (tp, sl) để loại bộ tệ, không để "tin" bộ tốt. */
+const SWING_RULES_V1 = { fee:0.001, entry:55, exit:25, tp:0.08, sl:0.05, maxHoldBars:84 };
+const SWING_GRID = { entries:[45,55,65], exits:[{tp:0.06,sl:0.04},{tp:0.10,sl:0.05},{tp:0.15,sl:0.07}] };
 
 /* Icon nhỏ cho các nút hành động trên từng dòng (tab Dòng tiền): sửa, xoá, đã nhận/tất toán, mở lại.
    Cùng phong cách nét mảnh với icon điều hướng (svg.ic), chỉ nhỏ hơn để nằm gọn cạnh tên khoản. */
@@ -988,7 +1040,7 @@ let store = null;
 const state = {
   uid:null, email:null, mode:'local',
   data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, snaps:{}, settings:{}},
-  month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth',
+  month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth', tradeCoin:'eth',
   edit:{chi:null, thu:null, receivable:null, payable:null},
   period:'m0', exUnusual:false, scn:{prices:{}, name:'', key:null, cryptoPct:0}, holdOpen:{},
 };
@@ -1365,13 +1417,13 @@ function pctRank(vals, x){ if(!vals || !vals.length) return null; let below=0; f
    opts.ageHours   — tuổi dữ liệu tính bằng giờ, dùng cho Confidence; mặc định 0.
    opts.ratioLabel — nhãn thành phần thứ 7, ví dụ "BTC/ETH 30 ngày". */
 function buyScore(ethCandles, btcCandles, opts){
-  const C = BUY_SCORE_V1, o = opts||{};
+  const o = opts||{}, C = o.config || BUY_SCORE_V1;     // opts.config = SWING_SCORE_V1 ⇒ cùng thuật toán, cửa sổ ngắn hơn
   const eth = (ethCandles||[]).filter(c=>c && isFinite(Number(c.close)) && Number(c.close)>0);
   const btc = (btcCandles||[]).filter(c=>c && isFinite(Number(c.close)) && Number(c.close)>0);
   const n = eth.length;
   if(n < C.minCandles)
     return { score:null, components:[], marketState:null, confidence:'LOW', candles:n, btcCandles:btc.length,
-             reason:`Cần ít nhất ${C.minCandles} nến ngày để tính, mới có ${n}` };
+             reason:`Cần ít nhất ${C.minCandles} nến để tính, mới có ${n}` };
 
   const cl = eth.map(c=>Number(c.close));
   const vol = eth.map(c=>Number(c.volume)||0);
@@ -1388,7 +1440,7 @@ function buyScore(ethCandles, btcCandles, opts){
   // 2 — vị trí so với MA200 /20
   const ma = sma(cl, C.windows.ma);
   const devMa = ma ? priceNow/ma-1 : 0;
-  add('ma200', C.ma200, ma ? tierOf(C.ma200, devMa) : 0, ma ? devMa : null, ma ? 'MA200 '+Math.round(ma) : 'chưa đủ 200 phiên');
+  add('ma200', C.ma200, ma ? tierOf(C.ma200, devMa) : 0, ma ? devMa : null, ma ? 'MA'+C.windows.ma+' '+Math.round(ma) : 'chưa đủ '+C.windows.ma+' phiên');
 
   // 3 — RSI14 Wilder /15
   const rsi = rsiWilder(cl, C.windows.rsi);
@@ -1429,7 +1481,7 @@ function buyScore(ethCandles, btcCandles, opts){
   const ageH = Number(o.ageHours)||0;
   let confidence = 'HIGH';
   if(n < C.fullCandles || pairs.length <= C.windows.ethbtc || ma==null) confidence = 'MEDIUM';
-  if(n < 250 || ageH > C.staleHours) confidence = 'LOW';
+  if(n < C.minCandles*1.25 || ageH > C.staleHours) confidence = 'LOW';
 
   return { score, components:comps, marketState:{key:st[1], label:st[2]}, confidence,
            priceUsd:priceNow, candles:n, btcCandles:btc.length, version:C.version, reason:'' };
@@ -1463,6 +1515,60 @@ function scoreBands(candles, refCandles, opts){
     return { min, key, label, price: p, gap: p==null || !(now>0) ? null : p/now-1,
              smartPct: unlockPct(DCA_PLAN_V1.smartUnlock, min), oppPct: unlockPct(DCA_PLAN_V1.oppUnlock, min) };
   });
+}
+
+/* ---- Backtest swing: ba hàm thuần, testSwing() ----------------------------------------------
+   swingScoreSeries: điểm tại TỪNG nến, chỉ dùng dữ liệu tới nến đó (không nhìn trước).
+   simulateSwing:    mô phỏng một bộ quy tắc trên chuỗi điểm — mua/bán tại giá đóng nến, phí hai chiều,
+                     tối đa một lệnh, toàn bộ vốn; không mở lệnh ở nến cuối và không mở lại ngay nến vừa đóng.
+   backtestGrid:     chạy lưới SWING_GRID, xếp theo lãi ròng, kèm mua-giữ cùng kỳ để so. */
+function swingScoreSeries(candles, refCandles, cfg){
+  const C = cfg || SWING_SCORE_V1, out = [];
+  const cs = (candles||[]).filter(c=>c && Number(c.close)>0), rs = (refCandles||[]).filter(c=>c && Number(c.close)>0);
+  let j = 0;
+  for(let i=C.minCandles-1; i<cs.length; i++){
+    while(j<rs.length && rs[j].time<=cs[i].time) j++;
+    const r = buyScore(cs.slice(0,i+1), rs.slice(0,j), {config:C});
+    out.push({ time:cs[i].time, close:Number(cs[i].close), score:r.score==null ? 0 : r.score });
+  }
+  return out;
+}
+function simulateSwing(series, rules){
+  const R = {...SWING_RULES_V1, ...(rules||{})}, S = series||[], trades = [];
+  let pos = null, eq = 1, peak = 1, maxDD = 0, barsIn = 0;
+  for(let i=0;i<S.length;i++){
+    const b = S[i], last = i===S.length-1; let exited = false;
+    if(pos){
+      barsIn++;
+      const gross = b.close/pos.price - 1, held = i - pos.i;
+      const why = gross>=R.tp ? 'tp' : gross<=-R.sl ? 'sl' : b.score<=R.exit ? 'score' : held>=R.maxHoldBars ? 'time' : last ? 'end' : null;
+      if(why){
+        const net = (b.close*(1-R.fee))/(pos.price*(1+R.fee)) - 1;
+        trades.push({ entryTime:pos.time, exitTime:b.time, entry:pos.price, exit:b.close, bars:held, gross, net, why });
+        eq *= 1+net; pos = null; exited = true;
+      }
+    }
+    if(!pos && !exited && !last && b.score >= R.entry) pos = { i, time:b.time, price:b.close };
+    const mtm = pos ? eq*(b.close/pos.price) : eq;
+    peak = Math.max(peak, mtm); maxDD = Math.max(maxDD, peak>0 ? 1-mtm/peak : 0);
+  }
+  const wins = trades.filter(t=>t.net>0).length;
+  return { rules:R, trades, n:trades.length, wins, winRate: trades.length ? wins/trades.length : null,
+           netReturn: eq-1, avgNet: trades.length ? mean(trades.map(t=>t.net)) : null, maxDD,
+           buyHold: S.length ? S[S.length-1].close/S[0].close-1 : null, exposure: S.length ? barsIn/S.length : 0,
+           avgBars: trades.length ? mean(trades.map(t=>t.bars)) : null, bars:S.length,
+           from: S.length ? S[0].time : null, to: S.length ? S[S.length-1].time : null };
+}
+function backtestGrid(series, grid){
+  const G = grid || SWING_GRID, rows = [];
+  for(const entry of G.entries) for(const x of G.exits){
+    const r = simulateSwing(series, {entry, tp:x.tp, sl:x.sl});
+    rows.push({ entry, exit:r.rules.exit, tp:x.tp, sl:x.sl, n:r.n, winRate:r.winRate, netReturn:r.netReturn, maxDD:r.maxDD, avgBars:r.avgBars, exposure:r.exposure });
+  }
+  rows.sort((a,b)=>b.netReturn-a.netReturn);
+  const S = series||[];
+  return { rows, buyHold: S.length ? S[S.length-1].close/S[0].close-1 : null, bars:S.length,
+           from: S.length ? S[0].time : null, to: S.length ? S[S.length-1].time : null };
 }
 
 function pace(m, t){
@@ -2384,6 +2490,52 @@ function testCapital(){
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
 }
+/* Trading swing — testSwing(): mô phỏng trên chuỗi điểm dựng tay, backtest lưới, chấm điểm bản swing. */
+function testSwing(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.0005)=>{ const p = typeof want==='number' && typeof got==='number' ? Math.abs(got-want)<=tol : JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+  const S = (...pairs) => pairs.map(([close,score],i)=>({time:i*4*3600e3, close, score}));
+  const R = {entry:55, exit:25, tp:0.08, sl:0.05, maxHoldBars:84, fee:0.001};
+
+  console.log('%c1 — chốt lời: vào 100 khi điểm 60, ra 109 (+9% ≥ 8%), phí hai chiều trừ đúng','font-weight:600');
+  { const r = simulateSwing(S([100,60],[104,50],[109,40],[100,10]), R);
+    chk('1 lệnh, lý do tp', [r.n, r.trades[0].why], [1,'tp']);
+    chk('lãi gộp 9%', r.trades[0].gross, 0.09);
+    chk('lãi ròng = 109×0,999/(100×1,001) − 1', r.trades[0].net, 109*0.999/(100*1.001)-1);
+    chk('lãi ròng < lãi gộp (có phí)', r.trades[0].net < r.trades[0].gross, true);
+    chk('không mở lệnh mới ở nến điểm 10', r.trades.length, 1);
+    chk('mua-giữ cùng kỳ = 0%', r.buyHold, 0); }
+  console.log('%c2 — cắt lỗ: rớt 6% ≥ 5% ⇒ ra; nến cuối không mở lệnh mới dù điểm cao','font-weight:600');
+  { const r = simulateSwing(S([100,60],[97,60],[94,60],[93,60]), R);
+    chk('1 lệnh sl tại 94', [r.n, r.trades[0].why, r.trades[0].exit], [1,'sl',94]);
+    chk('lãi ròng âm quanh −6,2%', r.trades[0].net, 94*0.999/(100*1.001)-1);
+    chk('sụt tối đa ghi nhận ≥ 6%', r.maxDD >= 0.06, true); }
+  console.log('%c3 — ra vì điểm ≤ 25, ra vì quá hạn, ra vì hết dữ liệu','font-weight:600');
+  { chk('điểm rớt xuống 20 ⇒ ra "score"', simulateSwing(S([100,60],[101,20],[101,20]), R).trades[0].why, 'score');
+    const t = simulateSwing(S([100,60],[100,60],[100,60],[100,60]), {...R, maxHoldBars:2});
+    chk('giữ 2 nến ⇒ ra "time", không mở lại ngay nến vừa đóng', [t.n, t.trades[0].why, t.trades[0].bars], [1,'time',2]);
+    chk('hết dữ liệu ⇒ ra "end"', simulateSwing(S([100,60],[100,60]), R).trades[0].why, 'end'); }
+  console.log('%c4 — không có nến nào đạt ngưỡng vào ⇒ 0 lệnh, lãi 0, tỉ lệ thắng null','font-weight:600');
+  { const r = simulateSwing(S([100,10],[90,20],[80,30]), R);
+    chk('0 lệnh', [r.n, r.netReturn, r.winRate, r.exposure], [0,0,null,0]); }
+  console.log('%c5 — lưới 9 bộ, xếp theo lãi ròng giảm dần, kèm mua-giữ','font-weight:600');
+  { const g = backtestGrid(S([100,70],[104,60],[112,30],[100,10],[100,70],[90,70],[85,70],[85,5]));
+    chk('9 dòng', g.rows.length, 9);
+    chk('xếp giảm dần', g.rows.every((r,i)=>i===0 || r.netReturn<=g.rows[i-1].netReturn), true);
+    chk('mua-giữ = 85/100 − 1', g.buyHold, -0.15); }
+  console.log('%c6 — bản swing dùng chung buyScore(): thiếu nến ⇒ null; đủ nến ⇒ có điểm; chuỗi điểm dài đúng n − minCandles + 1','font-weight:600');
+  { const flat = flatCandles(300, 100);
+    chk('150 nến < 200 ⇒ null', buyScore(flatCandles(150,100), flatCandles(150,3000), {config:SWING_SCORE_V1}).score, null);
+    const r = buyScore(flat, flatCandles(300,3000), {config:SWING_SCORE_V1});
+    chk('đủ nến ⇒ có điểm, nhãn theo bản swing', [r.score!=null, r.components[1].label], [true,'Lệch so với MA50 (H4)']);
+    const ser = swingScoreSeries(flat, flatCandles(300,3000), SWING_SCORE_V1);
+    chk('chuỗi 101 điểm (300 − 200 + 1)', ser.length, 101);
+    chk('điểm nến cuối trong chuỗi = điểm chấm cả mảng', ser[ser.length-1].score, r.score);
+    chk('bản D1 không đổi: 250 nến vẫn LOW như cũ', buyScore(flatCandles(240,100), flatCandles(240,3000), {}).confidence, 'LOW'); }
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
 function testViews(){
   let ok=0, bad=0;
   const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
@@ -2652,8 +2804,8 @@ async function fetchJson(url, ms=15000){
 }
 /* Nến Binance: [openTime, open, high, low, close, volume, closeTime, ...] */
 const parseKlines = rows => (rows||[]).map(k=>({time:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]}));
-const fetchKlines = async (symbol, limit=DCA_KLINE_LIMIT) =>
-  parseKlines(await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=1d&limit=${limit}`));
+const fetchKlines = async (symbol, limit=DCA_KLINE_LIMIT, interval='1d') =>
+  parseKlines(await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
 /* Hỏi từng mã một thay vì gộp một lệnh: Binance trả lỗi cho cả lô nếu chỉ một mã không tồn tại.
    Mã nào hỏng thì bỏ mã đó, phần còn lại vẫn về.
    Dùng TRUNG BÌNH GIÁ MUA/BÁN (bookTicker) chứ không phải giá khớp lệnh gần nhất (ticker/price):
@@ -2759,6 +2911,36 @@ async function refreshDca(opts={}){
     dcaBusy = false; renderDca();
   }
 }
+/* Trading: lấy 1.000 nến H4 của ETH và BTC, chấm điểm từng nến, chạy lưới backtest, cache vào prices/current.trade.
+   Không tự chạy lúc mở app (hai lệnh gọi nặng hơn DCA) — chỉ khi bấm nút. */
+let tradeBusy = false;
+async function refreshTrade(){
+  if(tradeBusy) return;
+  tradeBusy = true; renderTrade();
+  try{
+    const C = SWING_SCORE_V1;
+    const [ethK, btcK] = await Promise.all([fetchKlines(DCA_SYMBOLS.eth, C.klineLimit, C.interval), fetchKlines(DCA_SYMBOLS.btc, C.klineLimit, C.interval)]);
+    if(ethK.length < C.minCandles || btcK.length < C.minCandles) throw new Error(`Binance trả về không đủ nến ${C.interval}`);
+    const kl = {eth:ethK, btc:btcK}, now = Date.now(), dataTime = ethK[ethK.length-1].time, ageHours = (now-dataTime)/3600e3, coins = {};
+    for(const c of DCA_SCORED){
+      const series = swingScoreSeries(kl[c.key], kl[c.ref], C);
+      const last = buyScore(kl[c.key], kl[c.ref], {config:C, ageHours, ratioLabel:String(c.ratioLabel||'').replace(/\d+ ngày/, Math.round(C.windows.ethbtc/C.barsPerDay)+' ngày')});
+      const g = backtestGrid(series);
+      coins[c.key] = { score:last.score, components:last.components, marketState:last.marketState, confidence:last.confidence,
+        priceUsd:last.priceUsd, candles:last.candles, grid:g.rows, buyHold:g.buyHold, bars:g.bars, from:g.from, to:g.to,
+        dataTime, updatedAt:now, source:'binance', version:C.version };
+    }
+    D.prices.trade = { coins, interval:C.interval, dataTime, updatedAt:now, version:C.version };
+    render();
+    bg(store.set('prices','current', D.prices),
+       DCA_SCORED.map(c=>`${c.label}: điểm ${coins[c.key].score}, bộ tốt nhất ${fmtPctS(coins[c.key].grid[0].netReturn)} vs mua-giữ ${fmtPctS(coins[c.key].buyHold)}`).join(' · '));
+  }catch(e){
+    console.error(e);
+    toast('Không lấy được nến H4 từ Binance: '+(e.message||e)+'. Giữ số liệu cũ.');
+  }finally{
+    tradeBusy = false; renderTrade();
+  }
+}
 function saveSettings(patch){ Object.assign(D.settings, patch); render(); bg(store.set('settings','main',D.settings)); }
 /* =====================================================================
    ẢNH CHỤP HẰNG NGÀY (owner yêu cầu 2026-09-13: "tự tính mỗi ngày khi mở app thay vì phải bấm chốt tháng")
@@ -2853,7 +3035,7 @@ function openHolder(id, title){
 /* =====================================================================
    ROUTING + RENDER
    ===================================================================== */
-const VIEWS = ['tong','dongtien','taisan','dca','caidat'];
+const VIEWS = ['tong','dongtien','taisan','dca','trade','caidat'];
 const VIEW_ALIAS = {so:'dongtien', congno:'dongtien', lichsu:'tong'};   // các tab cũ đã gộp, giữ link cũ chạy được
 function route(){
   const raw = location.hash.replace('#','');
@@ -2869,7 +3051,7 @@ addEventListener('resize', ()=>{ clearTimeout(window.__rt); window.__rt=setTimeo
 
 function render(){
   fillStaticSelects();
-  ({tong:renderOverview, dongtien:renderCashflow, taisan:renderHoldings, dca:renderDca, caidat:renderSettings})[state.view]();
+  ({tong:renderOverview, dongtien:renderCashflow, taisan:renderHoldings, dca:renderDca, trade:renderTrade, caidat:renderSettings})[state.view]();
 }
 function fillStaticSelects(){
   setOptions(el('formChi').category, settings().expenseCats);
@@ -3365,6 +3547,58 @@ function renderHoldings(){
   renderCapital();
 }
 
+/* ---- Tab Trading (swing H4) ---------------------------------------------------------------
+   Cùng "đổi coin không đổi hình" như DCA: bảng phân rã luôn 7 dòng, bảng backtest luôn 9 dòng (điền "—" khi chưa chạy). */
+const tradeCoinOf = k => DCA_SCORED.find(c=>c.key===k) || DCA_SCORED[0];
+function tradeCache(k){ const t = D.prices && D.prices.trade; return t && t.coins ? (t.coins[k]||null) : null; }
+const fmtDay = ms => ms ? new Date(ms).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'}) : '—';
+function renderTrade(){
+  const coin = tradeCoinOf(state.tradeCoin), c = tradeCache(coin.key), C = SWING_SCORE_V1;
+  const stale = !!(c && (Date.now()-c.dataTime)/3600e3 > C.staleHours);
+  renderCoinPick('tradeCoinPick', DCA_SCORED, coin.key);
+  el('tradeRefresh').disabled = tradeBusy; el('tradeRefresh').textContent = tradeBusy ? 'Đang tính…' : 'Cập nhật backtest';
+  el('tradeUpdated').textContent = c ? 'cập nhật '+fmtTime(c.updatedAt) : '';
+  el('tradeHeroLbl').textContent = 'Giá '+coin.label;
+  el('tradeHeroPrice').innerHTML = c && c.priceUsd ? fmtUsd(c.priceUsd) : '—';
+  el('tradeHeroScore').innerHTML = c && c.score!=null ? String(c.score)+'<span class="unit"> /100</span>' : '—';
+  el('tradeHeroState').innerHTML = c && c.marketState
+    ? `<span class="badge on">${esc(c.marketState.label)}</span> <span class="badge">Độ tin cậy: ${esc(C.confLabel[c.confidence]||c.confidence||'—')}</span>${stale?' <span class="badge warn">dữ liệu cũ</span>':''}`
+    : '<span class="mute">chưa có dữ liệu</span>';
+  const dcaScore = (dcaCache(coin.key)||{}).score;
+  el('tradeHeroMeta').innerHTML = c ? [
+    `<span>dữ liệu <b>${c.candles}</b><span class="u"> nến H4 ≈ ${Math.round(c.candles/C.barsPerDay)} ngày</span></span>`,
+    `<span>nến cuối <b>${fmtTime(c.dataTime)}</b></span>`,
+    `<span>Buy Score DCA <b>${dcaScore==null?'—':dcaScore}</b><span class="u"> (khung 1 năm, để đối chiếu)</span></span>`,
+  ].join('') : `<span class="u">Bấm "Cập nhật backtest" — ${fmtNum(C.klineLimit)} nến H4 (≈ ${Math.round(C.klineLimit/C.barsPerDay)} ngày) cho ETH và BTC.</span>`;
+  el('tradeWarn').hidden = !stale; el('tradeWarn').textContent = stale ? `Dữ liệu quá ${C.staleHours} giờ — điểm bên trên là của lần cập nhật trước, bấm "Cập nhật backtest".` : '';
+  el('tradeAlgo').textContent = c ? c.version+' · nguồn '+(c.source||'—') : '';
+  el('tradeScoreTable').innerHTML = scoreTableHtml(c ? c.components : null, c ? c.score : null, 'chưa chấm — bấm "Cập nhật backtest"', C);
+
+  /* Bảng backtest: luôn đúng 9 dòng theo lưới, kể cả chưa chạy. */
+  const combos = []; for(const e of SWING_GRID.entries) for(const x of SWING_GRID.exits) combos.push({entry:e, tp:x.tp, sl:x.sl});
+  const rows = c ? c.grid : combos;
+  const pct = x => x==null ? '—' : Math.abs(x)<0.0005 ? '0%' : fmtPctS(x);
+  el('tradeBtSpan').textContent = c ? `${fmtDay(c.from)} → ${fmtDay(c.to)} · ${c.bars} nến có điểm` : '';
+  el('tradeBtTable').innerHTML = `<colgroup><col style="width:14%"><col style="width:18%"><col style="width:12%"><col style="width:14%"><col style="width:16%"><col style="width:14%"><col style="width:12%"></colgroup>
+    <thead><tr><th class="first">Vào khi ≥</th><th>Chốt lời / cắt lỗ</th><th class="n">Lệnh</th><th class="n">Thắng</th><th class="n">Lãi ròng</th><th class="n">Sụt tối đa</th><th class="n last">Giữ TB</th></tr></thead><tbody>`+
+    rows.map((r,i)=>`<tr class="${c&&i===0&&r.netReturn>0?'best':''}"><td class="first">${r.entry}</td><td>+${fmtNum(r.tp*100,0)}% / −${fmtNum(r.sl*100,0)}%</td><td class="n">${c?r.n:'—'}</td><td class="n">${c?(r.winRate==null?'—':fmtPct(r.winRate)):'—'}</td><td class="n"><b>${c?pct(r.netReturn):'—'}</b></td><td class="n mute">${c?(r.maxDD!=null?(r.maxDD<0.0005?'0%':'−'+fmtPct(r.maxDD)):'—'):'—'}</td><td class="n last mute">${c?(r.avgBars==null?'—':fmtNum(r.avgBars/C.barsPerDay,1)+' ng'):'—'}</td></tr>`).join('')+`</tbody>`;
+  el('tradeBtNote').innerHTML = c
+    ? `Mua-giữ ${esc(coin.label)} cùng kỳ: <b>${pct(c.buyHold)}</b>. ${c.grid[0].netReturn > Math.max(0, c.buyHold||0) ? `Bộ tốt nhất thắng mua-giữ <b>${pct(c.grid[0].netReturn-(c.buyHold||0))}</b>.` : '<b>Không bộ nào thắng mua-giữ</b> trong kỳ này ⇒ chưa đáng trade, tiếp tục DCA.'} Kết quả quá khứ, một kỳ ~6 tháng, chưa tính trượt giá — dùng để <b>loại bộ tệ</b>, không để tin bộ tốt.`
+    : 'Chưa chạy backtest. Kết quả sẽ là lãi ròng sau phí của từng bộ quy tắc trên ~6 tháng nến H4, so với mua-giữ cùng kỳ.';
+
+  /* Tín hiệu: so điểm hiện tại với ngưỡng vào của bộ tốt nhất. Chỉ là chữ, chưa có lệnh. */
+  if(!c){ el('tradeSignal').innerHTML = '<div class="mute">Chưa có dữ liệu — bấm "Cập nhật backtest".</div>'; return; }
+  const best = c.grid[0], worth = best.netReturn > Math.max(0, c.buyHold||0), p = c.priceUsd;
+  const days = Math.round(SWING_RULES_V1.maxHoldBars/C.barsPerDay);
+  const rule = `Bộ tốt nhất: vào khi điểm ≥ <b>${best.entry}</b>, chốt lời <b>+${fmtNum(best.tp*100,0)}%</b>, cắt lỗ <b>−${fmtNum(best.sl*100,0)}%</b>, ra khi điểm ≤ ${best.exit} hoặc quá ${days} ngày.`;
+  const sig = c.score >= best.entry
+    ? `<div class="suggest" style="margin:0"><b>VÀO</b> — điểm ${c.score} ≥ ${best.entry}. Nếu vào tại ${fmtUsd(p)}: chốt lời ${fmtUsd(p*(1+best.tp))} · cắt lỗ ${fmtUsd(p*(1-best.sl))} · hạn ${fmtDay(Date.now()+days*86400e3)}.${worth?'':' <b>Nhưng</b> bộ này chưa thắng mua-giữ trong backtest — chỉ ghi giả, không tiền thật.'}</div>`
+    : `<div class="suggest one" style="margin:0"><b>CHỜ</b> — điểm ${c.score}, còn thiếu ${best.entry-c.score} điểm mới tới ngưỡng vào ${best.entry}.${worth?'':' Bộ tốt nhất cũng chưa thắng mua-giữ trong backtest.'}</div>`;
+  el('tradeSignal').innerHTML = `<div class="hint" style="padding:0 0 8px">${rule}</div>${sig}`;
+}
+el('tradeCoinPick').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.tradeCoin) return; state.tradeCoin=b.dataset.coin; renderTrade(); });
+el('tradeRefresh').onclick = ()=>refreshTrade();
+
 /* ---- Chi phí vốn (owner chốt 2026-09-17) ---------------------------------------
    Lãi đang trả / đang thu mỗi tháng theo từng khoản nợ CÓ GHI LÃI (%/năm), so với tài sản đang nằm không
    (tiền & ngân hàng + USDT). Khoản không ghi lãi thì không đoán — chỉ đếm và nhắc điền.
@@ -3478,9 +3712,9 @@ function renderDcaScore(){
 /* Bảng phân rã LUÔN 7 dòng + dòng tổng, kể cả khi chưa có điểm hay coin không chấm (điền "—"):
    cùng số dòng ⇒ card cao như nhau ở mọi coin, mọi độ rộng, không cần đệm pixel. */
 const SCORE_PARTS = ['drawdown365','ma200','rsi14','drawdownMonth','percentile365','capitulation','ethbtc30'];
-function scoreTableHtml(comps, score, emptyNote){
-  const byKey = Object.fromEntries((comps||[]).map(r=>[r.key, r]));
-  const rows = SCORE_PARTS.map(k=>{ const r = byKey[k], cfg = BUY_SCORE_V1[k];
+function scoreTableHtml(comps, score, emptyNote, config){
+  const CF = config || BUY_SCORE_V1, byKey = Object.fromEntries((comps||[]).map(r=>[r.key, r]));
+  const rows = SCORE_PARTS.map(k=>{ const r = byKey[k], cfg = CF[k];
     return r
       ? `<tr><td class="first cut" title="${esc(r.label)}">${esc(r.label)}</td><td class="meas cut">${esc(fmtCompVal(r))}${r.note?` <small class="mute">${esc(r.note)}</small>`:''}</td><td class="pt">${fmtNum(r.points,1)}<span class="mute">/${r.max}</span></td><td class="last bcol"><span class="sbar"><i style="width:${r.max?Math.round(100*r.points/r.max):0}%"></i></span></td></tr>`
       : `<tr><td class="first cut mute" title="${esc(cfg.label)}">${esc(cfg.label)}</td><td class="meas mute">—</td><td class="pt mute">—<span class="mute">/${cfg.max}</span></td><td class="last bcol"><span class="sbar"><i style="width:0"></i></span></td></tr>`; }).join('');
@@ -4431,6 +4665,7 @@ window.testViews = testViews;
 window.testScenario = testScenario;
 window.testSnaps = testSnaps;
 window.testCapital = testCapital;
+window.testSwing = testSwing;
 window.testRecovery = testRecovery;
 window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
@@ -4441,11 +4676,12 @@ window.FinTrace = { state, data:D,
         ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, scoreBands, priceForScore, BUY_SCORE_V1,
+        SWING_SCORE_V1, SWING_RULES_V1, SWING_GRID, swingScoreSeries, simulateSwing, backtestGrid,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS},
-  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital,
-  refreshDca, makeCandles,
+  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing,
+  refreshDca, refreshTrade, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
 boot();
