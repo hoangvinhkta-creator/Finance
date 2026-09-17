@@ -685,13 +685,13 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="scroll"><table class="tbl compact" id="tradeScoreTable"></table></div>
         </section>
         <section class="card pad" id="tradeBtCard">
-          <div class="colhead" style="padding:0 0 6px"><h2>Backtest <small>9 bộ quy tắc · phí 0,1% mỗi chiều · ra khi điểm ≤ 25 hoặc quá 14 ngày</small></h2><small class="mute" id="tradeBtSpan"></small></div>
+          <div class="colhead" style="padding:0 0 6px"><h2>Backtest <small>9 bộ · vào 2 nhịp · chốt lời 2 bậc · cắt lỗ 2 bậc · phí 0,1% mỗi chiều</small></h2><small class="mute" id="tradeBtSpan"></small></div>
           <div class="scroll"><table class="tbl compact" id="tradeBtTable"></table></div>
           <div class="hint" id="tradeBtNote" style="padding:8px 0 0"></div>
         </section>
       </div>
       <section class="card pad" id="tradeSignalCard">
-        <div class="colhead" style="padding:0 0 6px"><h2>Tín hiệu hôm nay <small>theo bộ quy tắc tốt nhất trong backtest</small></h2><small class="mute">chưa ghi lệnh thật — sổ lệnh giả sẽ thêm ở PR sau</small></div>
+        <div class="colhead" style="padding:0 0 6px"><h2>Tín hiệu hôm nay <small>theo bộ tốt nhất trong backtest</small></h2><small class="mute">chưa ghi lệnh thật</small></div>
         <div id="tradeSignal"></div>
       </section>
     </section>
@@ -895,7 +895,8 @@ const priceLabel = k => (PRICE_KEYS.find(p=>p.key===k)||{label:k}).label;
    CÙNG 7 thành phần và cùng hàm buyScore() của DCA, chỉ đổi nến D1 → H4 và thu hẹp mọi cửa sổ.
    Các ngưỡng dưới đây là ĐIỂM XUẤT PHÁT để backtest, không phải kết luận: backtestGrid() đo thật trên nến. */
 const SWING_SCORE_V1 = {
-  version:'swing-h4-v1', interval:'4h', barsPerDay:6, klineLimit:1000,      // 1.000 nến H4 ≈ 166 ngày
+  version:'swing-h4-v2', interval:'4h', barsPerDay:6, klineLimit:1000, klineTotal:5400,   // 1.000 nến/lượt gọi · 5.400 nến H4 ≈ 900 ngày ≈ 2,5 năm
+  seriesWindow:400,      // chấm điểm từng nến chỉ nhìn 400 nến trước đó (cửa sổ dài nhất 180 + RSI hội tụ) — 2,5 năm mới chạy nổi trong trình duyệt
   minCandles:200, fullCandles:540, staleHours:8,
   windows:{ year:180, month:42, volShort:6, volLong:180, rsi:14, ma:50, ethbtc:42 },   // 30 ngày · 7 ngày · 24 giờ · 30 ngày · RSI14 · MA50 · 7 ngày
   drawdown365:{ max:25, label:'Giảm từ đỉnh 30 ngày', fmt:'pct', dir:'atLeast', tiers:[[0.30,25],[0.22,22],[0.16,18],[0.11,14],[0.07,9],[0.03,4],[0,0]] },
@@ -909,7 +910,20 @@ const SWING_SCORE_V1 = {
 };
 /* Quy tắc lệnh: vào khi điểm ≥ entry; ra khi lãi ≥ tp, lỗ ≥ sl, điểm ≤ exit, hoặc giữ quá maxHoldBars (84 nến H4 = 14 ngày).
    Phí Binance spot 0,1% mỗi chiều. Backtest chạy lưới entry × (tp, sl) để loại bộ tệ, không để "tin" bộ tốt. */
-const SWING_RULES_V1 = { fee:0.001, entry:55, exit:25, tp:0.08, sl:0.05, maxHoldBars:84 };
+const SWING_RULES_V1 = { fee:0.001, entry:55, exit:25, tp:0.08, sl:0.05, maxHoldBars:84 };   // cách cũ: ra một lần, có cửa ra theo điểm — giữ làm đối chứng
+/* Cách chơi v2 (owner yêu cầu 2026-09-17 "linh động theo tinh thần DCA: cắt lỗ dần, chốt lời dần"):
+   - Vào 2 nhịp: `addOn.first` (50%) ngay khi điểm ≥ entry; 50% còn lại chỉ khi giá rớt thêm `addOn.drop` mà điểm vẫn ≥ entry.
+   - Chốt lời dần `tp[]` và cắt lỗ dần `sl[]`: mỗi bậc bán `sell` phần CÒN LẠI; bậc cuối luôn bán hết. Mức % tính trên GIÁ VỐN TRUNG BÌNH.
+   - `beAfterTp`: sau bậc chốt lời đầu, phần còn lại không để lỗ — về ≤ giá vốn là bán ("be" = hoà vốn).
+   - KHÔNG còn cửa ra theo điểm (điểm đo độ rẻ: giá vừa hồi là điểm tụt ⇒ cửa cũ bán ngay khi mới có lãi). Còn cửa quá hạn `maxHoldBars`. */
+const SWING_RULES_V2 = { fee:0.001, entry:65, maxHoldBars:84, addOn:{first:0.5, drop:0.03},
+  tp:[{at:0.06, sell:0.5},{at:0.12, sell:1}], sl:[{at:-0.04, sell:0.5},{at:-0.08, sell:1}], beAfterTp:true };
+const SWING_LADDERS = [
+  { key:'L1', tp:[{at:0.05,sell:0.5},{at:0.10,sell:1}], sl:[{at:-0.03,sell:0.5},{at:-0.06,sell:1}] },
+  { key:'L2', tp:[{at:0.08,sell:0.5},{at:0.15,sell:1}], sl:[{at:-0.04,sell:0.5},{at:-0.08,sell:1}] },
+  { key:'L3', tp:[{at:0.10,sell:0.5},{at:0.20,sell:1}], sl:[{at:-0.05,sell:0.5},{at:-0.10,sell:1}] },
+];
+const SWING_GRID_V2 = { entries:[55,65,75], ladders:SWING_LADDERS };
 /* Khối lượng lệnh theo rủi ro (owner yêu cầu 2026-09-17 "vào bao nhiêu, điểm cao hơn thì sao"):
    rủi ro mỗi lệnh = % vốn trade mất nếu chạm cắt lỗ ⇒ khối lượng = rủi ro% / cắt lỗ%. Điểm vượt ngưỡng vào
    càng xa thì rủi ro cho phép càng cao, nhưng khối lượng một lệnh không quá maxPosPct và tối đa maxOpen lệnh.
@@ -1542,9 +1556,11 @@ function swingScoreSeries(candles, refCandles, cfg){
   const C = cfg || SWING_SCORE_V1, out = [];
   const cs = (candles||[]).filter(c=>c && Number(c.close)>0), rs = (refCandles||[]).filter(c=>c && Number(c.close)>0);
   let j = 0;
+  const W = C.seriesWindow || Infinity;
   for(let i=C.minCandles-1; i<cs.length; i++){
     while(j<rs.length && rs[j].time<=cs[i].time) j++;
-    const r = buyScore(cs.slice(0,i+1), rs.slice(0,j), {config:C});
+    const a = Math.max(0, i+1-W), b = Math.max(0, j-W);
+    const r = buyScore(cs.slice(a,i+1), rs.slice(b,j), {config:C});
     out.push({ time:cs[i].time, close:Number(cs[i].close), score:r.score==null ? 0 : r.score });
   }
   return out;
@@ -1578,17 +1594,86 @@ function simulateSwing(series, rules){
 /* Kế hoạch một lệnh cụ thể từ điểm hiện tại + bộ quy tắc + vốn trade. Hàm thuần — testSwing().
    score < entry ⇒ không có lệnh (chỉ trả tier null). sleeveK = 0 ⇒ có tỷ lệ % nhưng không có số tiền. */
 function tradePlan(score, priceUsd, rules, sleeveK, usdtRate, sizing){
-  const R = {...SWING_RULES_V1, ...(rules||{})}, Z = sizing || SWING_SIZING_V1;
-  if(score==null || score < R.entry) return { enter:false, entry:R.entry, gap:R.entry-(score==null?0:score) };
+  const R = {...SWING_RULES_V2, ...(rules||{})}, Z = sizing || SWING_SIZING_V1;
+  /* Lỗ tối đa trên toàn khối lượng = Σ (phần bán ở bậc đó × |mức|); bậc sau bán phần còn lại. Ví dụ −4% 50% rồi −8% hết ⇒ 2% + 4% = 6%. */
+  let rem = 1, maxLoss = 0; for(const x of R.sl){ const f = Math.min(1, x.sell)*rem; maxLoss += f*Math.abs(x.at); rem -= f; }
+  if(score==null || score < R.entry) return { enter:false, entry:R.entry, gap:R.entry-(score==null?0:score), maxLossPct: maxLoss*100 };
   const over = score - R.entry;
-  const riskPct = tierAtLeast(Z.riskTiers, over);                       // % vốn trade chấp nhận mất nếu chạm cắt lỗ
-  const sizePct = Math.min(Z.maxPosPct, riskPct / (R.sl*100) * 100);   // khối lượng = rủi ro / cắt lỗ
+  const riskPct = tierAtLeast(Z.riskTiers, over);                       // % vốn trade chấp nhận mất nếu chạm HẾT các bậc cắt lỗ
+  const sizePct = Math.min(Z.maxPosPct, riskPct / (maxLoss*100) * 100);
   const sizeK = sleeveK>0 ? sleeveK*sizePct/100 : null;
   const sizeUsd = sizeK!=null && usdtRate>0 ? sizeK/usdtRate : null;
-  return { enter:true, entry:R.entry, over, riskPct, sizePct, sizeK, sizeUsd, riskK: sleeveK>0 ? sleeveK*riskPct/100 : null,
-           qty: sizeUsd!=null && priceUsd>0 ? sizeUsd/priceUsd : null,
-           slPrice: priceUsd>0 ? priceUsd*(1-R.sl) : null, tpPrice: priceUsd>0 ? priceUsd*(1+R.tp) : null,
-           exitScore: R.exit, maxHoldBars: R.maxHoldBars };
+  const first = R.addOn ? R.addOn.first : 1, p = priceUsd>0 ? priceUsd : null;
+  return { enter:true, entry:R.entry, over, riskPct, sizePct, sizeK, sizeUsd, maxLossPct: maxLoss*100,
+           riskK: sleeveK>0 ? sleeveK*riskPct/100 : null,
+           qty: sizeUsd!=null && p ? sizeUsd/p : null,
+           lots: [ { frac:first, k: sizeK!=null ? sizeK*first : null, price:p },
+                   ...(R.addOn ? [{ frac:1-first, k: sizeK!=null ? sizeK*(1-first) : null, price: p ? p*(1-R.addOn.drop) : null, drop:R.addOn.drop }] : []) ],
+           tpLevels: R.tp.map(t=>({at:t.at, sell:t.sell, price: p ? p*(1+t.at) : null})),
+           slLevels: R.sl.map(x=>({at:x.at, sell:x.sell, price: p ? p*(1+x.at) : null})),
+           beAfterTp: !!R.beAfterTp, maxHoldBars: R.maxHoldBars };
+}
+/* Mô phỏng cách chơi v2 trên chuỗi điểm. Tiền mặt bắt đầu = 1; nhịp 1 tiêu `addOn.first` phần tiền, nhịp 2 tiêu hết phần còn lại.
+   Giá vốn TB = tổng tiền bỏ ra / tổng coin (giá thuần, phí trừ riêng ở tiền mặt). Mỗi bậc bán `sell` phần coin còn lại. */
+function simulateLadder(series, rules){
+  const R = {...SWING_RULES_V2, ...(rules||{})}, S = series||[], trades = [];
+  let cash = 1, pos = null, peak = 1, maxDD = 0, barsIn = 0;
+  for(let i=0;i<S.length;i++){
+    const b = S[i], last = i===S.length-1; let closed = false;
+    if(pos){
+      barsIn++;
+      if(R.addOn && !pos.added && cash>0 && b.close <= pos.firstPrice*(1-R.addOn.drop) && b.score >= R.entry){
+        const spend = cash, coins = spend*(1-R.fee)/b.close;
+        pos.coins += coins; pos.spent += spend; pos.coinsGross += spend/b.close; pos.avg = pos.spent/pos.coinsGross; cash = 0; pos.added = true;
+        pos.legs.push({time:b.time, price:b.close, why:'add'});
+      }
+      const pnl = b.close/pos.avg - 1, held = i - pos.i;
+      const sellPart = (f, why) => { const coins = pos.coins*f, got = coins*b.close*(1-R.fee); cash += got; pos.coins -= coins; pos.got += got; pos.legs.push({time:b.time, price:b.close, frac:f, why}); };
+      if(pnl > 0){
+        for(let k=pos.tpIdx; k<R.tp.length && pos.coins>1e-12; k++){ if(pnl >= R.tp[k].at - 1e-9){ sellPart(k===R.tp.length-1 ? 1 : R.tp[k].sell, 'tp'+(k+1)); pos.tpIdx = k+1; if(R.beAfterTp) pos.be = true; } else break; }
+      } else if(pos.be){ sellPart(1, 'be'); }
+      else {
+        for(let k=pos.slIdx; k<R.sl.length && pos.coins>1e-12; k++){ if(pnl <= R.sl[k].at + 1e-9){ sellPart(k===R.sl.length-1 ? 1 : R.sl[k].sell, 'sl'+(k+1)); pos.slIdx = k+1; } else break; }
+      }
+      if(pos.coins > 1e-12 && held >= R.maxHoldBars) sellPart(1, 'time');
+      if(pos.coins > 1e-12 && last) sellPart(1, 'end');
+      if(pos.coins <= 1e-12){
+        trades.push({ entryTime:pos.time, exitTime:b.time, avg:pos.avg, spent:pos.spent, got:pos.got, net:pos.got/pos.spent-1, bars:held, added:pos.added, legs:pos.legs });
+        pos = null; closed = true;
+      }
+    }
+    if(!pos && !closed && !last && cash>0 && b.score >= R.entry){
+      const spend = cash*(R.addOn ? R.addOn.first : 1), coins = spend*(1-R.fee)/b.close;
+      pos = { i, time:b.time, firstPrice:b.close, coins, coinsGross:spend/b.close, spent:spend, got:0, avg:b.close,
+              legs:[{time:b.time, price:b.close, why:'in'}], tpIdx:0, slIdx:0, be:false, added:false };
+      cash -= spend;
+    }
+    const mtm = cash + (pos ? pos.coins*b.close : 0);
+    peak = Math.max(peak, mtm); maxDD = Math.max(maxDD, peak>0 ? 1-mtm/peak : 0);
+  }
+  const wins = trades.filter(t=>t.net>0).length;
+  return { rules:R, trades, n:trades.length, wins, winRate: trades.length ? wins/trades.length : null,
+           netReturn: cash-1, avgNet: trades.length ? mean(trades.map(t=>t.net)) : null, maxDD,
+           buyHold: S.length ? S[S.length-1].close/S[0].close-1 : null, exposure: S.length ? barsIn/S.length : 0,
+           avgBars: trades.length ? mean(trades.map(t=>t.bars)) : null, bars:S.length,
+           from: S.length ? S[0].time : null, to: S.length ? S[S.length-1].time : null };
+}
+/* Lưới v2: mỗi bộ đo cả TOÀN KỲ và 12 THÁNG GẦN — thắng toàn kỳ mà thua 12 tháng gần là "lợi thế phụ thuộc trạng thái thị trường".
+   Kèm bộ tốt nhất của cách cũ (v1) để so xem đổi cửa ra có ăn thua gì không. */
+function backtestGrid2(series, grid){
+  const G = grid || SWING_GRID_V2, S = series||[], rows = [];
+  const cutoff = (S.length ? S[S.length-1].time : 0) - 365*86400e3;
+  const S1 = S.filter(b=>b.time >= cutoff);
+  const bh = a => a.length ? a[a.length-1].close/a[0].close-1 : null;
+  for(const entry of G.entries) for(const L of G.ladders){
+    const r = simulateLadder(S, {entry, tp:L.tp, sl:L.sl}), r1 = simulateLadder(S1, {entry, tp:L.tp, sl:L.sl});
+    rows.push({ entry, ladder:L.key, tp:L.tp, sl:L.sl, n:r.n, winRate:r.winRate, netReturn:r.netReturn, maxDD:r.maxDD, avgBars:r.avgBars, exposure:r.exposure,
+                nY1:r1.n, netY1:r1.netReturn, maxDDY1:r1.maxDD });
+  }
+  rows.sort((a,b)=>b.netReturn-a.netReturn);
+  const v1 = backtestGrid(S).rows[0], v1y = backtestGrid(S1).rows[0];
+  return { rows, buyHold:bh(S), buyHoldY1:bh(S1), v1Best: v1 ? v1.netReturn : null, v1BestY1: v1y ? v1y.netReturn : null,
+           bars:S.length, barsY1:S1.length, from: S.length ? S[0].time : null, to: S.length ? S[S.length-1].time : null, fromY1: S1.length ? S1[0].time : null };
 }
 function backtestGrid(series, grid){
   const G = grid || SWING_GRID, rows = [];
@@ -2555,17 +2640,47 @@ function testSwing(){
     chk('9 dòng', g.rows.length, 9);
     chk('xếp giảm dần', g.rows.every((r,i)=>i===0 || r.netReturn<=g.rows[i-1].netReturn), true);
     chk('mua-giữ = 85/100 − 1', g.buyHold, -0.15); }
-  console.log('%c7 — tradePlan: khối lượng = rủi ro / cắt lỗ, điểm cao hơn ⇒ rủi ro cao hơn, kẹp 40%, giá cắt lỗ/chốt lời đúng','font-weight:600');
-  { const R = {entry:65, exit:25, tp:0.15, sl:0.07};
+  console.log('%c7 — tradePlan v2: lỗ tối đa = Σ bậc cắt lỗ, khối lượng = rủi ro / lỗ tối đa, 2 nhịp vào, giá từng bậc','font-weight:600');
+  { const R = {entry:65, tp:[{at:0.08,sell:0.5},{at:0.15,sell:1}], sl:[{at:-0.04,sell:0.5},{at:-0.08,sell:1}]};
     chk('điểm 60 < 65 ⇒ không vào, thiếu 5', [tradePlan(60, 2500, R, 20000, 25).enter, tradePlan(60, 2500, R, 20000, 25).gap], [false,5]);
     const a = tradePlan(65, 2500, R, 20000, 25);
-    chk('điểm 65 ⇒ rủi ro 1%, khối lượng 1/7 ≈ 14,3% = 2.857k', [a.riskPct, Math.round(a.sizePct*10)/10, Math.round(a.sizeK)], [1, 14.3, 2857]);
-    chk('mất tối đa 200k nếu chạm cắt lỗ', Math.round(a.riskK), 200);
-    chk('cắt lỗ 2.325 · chốt lời 2.875', [a.slPrice, a.tpPrice], [2325, 2875]);
-    chk('quy ra USD và số coin', [Math.round(a.sizeUsd*100)/100, Math.round(a.qty*10000)/10000], [114.29, 0.0457]);
-    chk('điểm 75 ⇒ rủi ro 1,5%; điểm 85 ⇒ 2%', [tradePlan(75,2500,R,20000,25).riskPct, tradePlan(85,2500,R,20000,25).riskPct], [1.5, 2]);
-    chk('cắt lỗ 4% với rủi ro 2% ⇒ 50% nhưng kẹp 40%', tradePlan(85,2500,{...R, sl:0.04},20000,25).sizePct, 40);
-    chk('vốn trade 0 ⇒ có % nhưng không có tiền', [tradePlan(65,2500,R,0,25).sizePct>0, tradePlan(65,2500,R,0,25).sizeK], [true, null]); }
+    chk('lỗ tối đa = 50%×4% + 50%×8% = 6%', a.maxLossPct, 6);
+    chk('điểm 65 ⇒ rủi ro 1% ⇒ khối lượng 1/6 ≈ 16,7% = 3.333k', [a.riskPct, Math.round(a.sizePct*10)/10, Math.round(a.sizeK)], [1, 16.7, 3333]);
+    chk('mất tối đa 200k', Math.round(a.riskK), 200);
+    chk('nhịp 1 = 50% tại 2.500, nhịp 2 = 50% khi giá ≤ 2.425', [a.lots[0].frac, a.lots[0].price, a.lots[1].frac, a.lots[1].price], [0.5, 2500, 0.5, 2425]);
+    chk('bậc chốt lời 2.700 / 2.875 · bậc cắt lỗ 2.400 / 2.300', [a.tpLevels[0].price, a.tpLevels[1].price, a.slLevels[0].price, a.slLevels[1].price], [2700, 2875, 2400, 2300]);
+    chk('điểm 75 ⇒ 1,5% · điểm 85 ⇒ 2%', [tradePlan(75,2500,R,20000,25).riskPct, tradePlan(85,2500,R,20000,25).riskPct], [1.5, 2]);
+    chk('vốn trade 0 ⇒ có % không có tiền', [tradePlan(65,2500,R,0,25).sizePct>0, tradePlan(65,2500,R,0,25).sizeK], [true, null]); }
+  console.log('%c8 — simulateLadder: chốt lời dần, cắt lỗ dần, về hoà vốn sau bậc đầu, vào nhịp 2, không còn ra theo điểm','font-weight:600');
+  { const L = {entry:65, tp:[{at:0.06,sell:0.5},{at:0.12,sell:1}], sl:[{at:-0.04,sell:0.5},{at:-0.08,sell:1}], maxHoldBars:84, fee:0, addOn:null, beAfterTp:true};
+    const r1 = simulateLadder(S([100,70],[103,50],[106,40],[112,30],[100,10]), L);
+    chk('chốt lời: 2 bậc tp1 rồi tp2, một lệnh', [r1.n, r1.trades[0].legs.filter(l=>l.frac).map(l=>l.why)], [1, ['tp1','tp2']]);
+    chk('lãi ròng = 50%×6% + 50%×12% = 9%', r1.netReturn, 0.09);
+    chk('điểm rớt xuống 50/40 mà giá chưa chạm bậc ⇒ vẫn giữ (không còn ra theo điểm)', r1.trades[0].exitTime, 3*4*3600e3);
+    const r2 = simulateLadder(S([100,70],[97,70],[96,70],[92,70],[92,70]), L);
+    chk('cắt lỗ dần: sl1 tại 96 (50%), sl2 tại 92 (hết)', r2.trades[0].legs.filter(l=>l.frac).map(l=>[l.why,l.price]), [['sl1',96],['sl2',92]]);
+    chk('lỗ = 50%×4% + 50%×8% = 6%', r2.netReturn, -0.06);
+    const r3 = simulateLadder(S([100,70],[106,70],[99,70],[99,70]), L);
+    chk('sau tp1, giá về dưới vốn ⇒ bán phần còn lại "be" tại 99', r3.trades[0].legs.filter(l=>l.frac).map(l=>[l.why,l.price]), [['tp1',106],['be',99]]);
+    chk('lãi = 50%×6% + 50%×(−1%) = 2,5%', r3.netReturn, 0.025);
+    const LA = {...L, addOn:{first:0.5, drop:0.03}};
+    const r4 = simulateLadder(S([100,70],[97,70],[97,70],[102.82,70],[102.82,70]), LA);
+    chk('nhịp 2 tại 97 ⇒ giá vốn TB 98,48 (bình quân theo tiền)', Math.round(r4.trades[0].avg*100)/100, 98.48);
+    chk('nhịp 1 chỉ tiêu 50% tiền, nhịp 2 tiêu hết', [r4.trades[0].spent, r4.trades[0].added], [1, true]);
+    chk('+6% trên giá vốn TB = 104,41 ⇒ 102,82 chưa chạm, ra "end"', r4.trades[0].legs.filter(l=>l.frac).map(l=>l.why), ['end']);
+    const r5 = simulateLadder(S([100,70],[97,20],[97,20],[97,20]), LA);
+    chk('điểm tụt dưới ngưỡng ⇒ KHÔNG vào nhịp 2, nửa tiền vẫn nằm không', [r5.trades[0].added, r5.trades[0].spent], [false, 0.5]);
+    chk('quá hạn 2 nến ⇒ "time"', simulateLadder(S([100,70],[100,70],[100,70],[100,70]), {...L, maxHoldBars:2}).trades[0].legs.filter(l=>l.frac)[0].why, 'time');
+    const rf = simulateLadder(S([100,70],[106,40],[112,30]), {...L, fee:0.001});
+    chk('có phí ⇒ lãi ròng nhỏ hơn 9%', rf.netReturn < 0.09 && rf.netReturn > 0.085, true); }
+  console.log('%c9 — backtestGrid2: 9 dòng xếp theo toàn kỳ, có cột 12 tháng gần và đối chứng cách cũ','font-weight:600');
+  { const n = 2400, ser = []; for(let i=0;i<n;i++){ const price = 100 + 10*Math.sin(i/25); ser.push({time:i*4*3600e3, close:price, score: price<95 ? 80 : 20}); }
+    const g = backtestGrid2(ser);
+    chk('9 dòng', g.rows.length, 9);
+    chk('xếp giảm dần theo toàn kỳ', g.rows.every((r,i)=>i===0 || r.netReturn<=g.rows[i-1].netReturn), true);
+    chk('12 tháng gần = 365 ngày × 6 nến + nến mốc = 2.191 nến', g.barsY1, 2191);
+    chk('có mua-giữ hai kỳ và đối chứng cách cũ', [g.buyHold!=null, g.buyHoldY1!=null, typeof g.v1Best==='number'], [true,true,true]);
+    chk('thị trường dao động biên: bộ mua-nhúng có lãi', g.rows[0].netReturn > 0, true); }
   console.log('%c6 — bản swing dùng chung buyScore(): thiếu nến ⇒ null; đủ nến ⇒ có điểm; chuỗi điểm dài đúng n − minCandles + 1','font-weight:600');
   { const flat = flatCandles(300, 100);
     chk('150 nến < 200 ⇒ null', buyScore(flatCandles(150,100), flatCandles(150,3000), {config:SWING_SCORE_V1}).score, null);
@@ -2848,6 +2963,18 @@ async function fetchJson(url, ms=15000){
 const parseKlines = rows => (rows||[]).map(k=>({time:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]}));
 const fetchKlines = async (symbol, limit=DCA_KLINE_LIMIT, interval='1d') =>
   parseKlines(await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
+/* Kéo nhiều hơn 1.000 nến: gọi lùi từng đợt bằng endTime = nến cũ nhất − 1 cho tới khi đủ `total` hoặc Binance hết dữ liệu. */
+async function fetchKlinesDeep(symbol, interval, total, page=1000){
+  let all = [], end = null;
+  while(all.length < total){
+    const lim = Math.min(page, total-all.length);
+    const rows = parseKlines(await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${lim}`+(end?`&endTime=${end}`:'')));
+    if(!rows.length) break;
+    all = rows.concat(all); end = rows[0].time - 1;
+    if(rows.length < lim) break;
+  }
+  const seen = new Set(); return all.filter(c=>{ if(seen.has(c.time)) return false; seen.add(c.time); return true; }).sort((a,b)=>a.time-b.time);
+}
 /* Hỏi từng mã một thay vì gộp một lệnh: Binance trả lỗi cho cả lô nếu chỉ một mã không tồn tại.
    Mã nào hỏng thì bỏ mã đó, phần còn lại vẫn về.
    Dùng TRUNG BÌNH GIÁ MUA/BÁN (bookTicker) chứ không phải giá khớp lệnh gần nhất (ticker/price):
@@ -2961,21 +3088,22 @@ async function refreshTrade(){
   tradeBusy = true; renderTrade();
   try{
     const C = SWING_SCORE_V1;
-    const [ethK, btcK] = await Promise.all([fetchKlines(DCA_SYMBOLS.eth, C.klineLimit, C.interval), fetchKlines(DCA_SYMBOLS.btc, C.klineLimit, C.interval)]);
+    const [ethK, btcK] = await Promise.all([fetchKlinesDeep(DCA_SYMBOLS.eth, C.interval, C.klineTotal, C.klineLimit), fetchKlinesDeep(DCA_SYMBOLS.btc, C.interval, C.klineTotal, C.klineLimit)]);
     if(ethK.length < C.minCandles || btcK.length < C.minCandles) throw new Error(`Binance trả về không đủ nến ${C.interval}`);
     const kl = {eth:ethK, btc:btcK}, now = Date.now(), dataTime = ethK[ethK.length-1].time, ageHours = (now-dataTime)/3600e3, coins = {};
     for(const c of DCA_SCORED){
       const series = swingScoreSeries(kl[c.key], kl[c.ref], C);
       const last = buyScore(kl[c.key], kl[c.ref], {config:C, ageHours, ratioLabel:String(c.ratioLabel||'').replace(/\d+ ngày/, Math.round(C.windows.ethbtc/C.barsPerDay)+' ngày')});
-      const g = backtestGrid(series);
+      const g = backtestGrid2(series);
       coins[c.key] = { score:last.score, components:last.components, marketState:last.marketState, confidence:last.confidence,
-        priceUsd:last.priceUsd, candles:last.candles, grid:g.rows, buyHold:g.buyHold, bars:g.bars, from:g.from, to:g.to,
+        priceUsd:last.priceUsd, candles:last.candles, grid:g.rows, buyHold:g.buyHold, buyHoldY1:g.buyHoldY1, v1Best:g.v1Best, v1BestY1:g.v1BestY1,
+        bars:g.bars, barsY1:g.barsY1, from:g.from, fromY1:g.fromY1, to:g.to,
         dataTime, updatedAt:now, source:'binance', version:C.version };
     }
     D.prices.trade = { coins, interval:C.interval, dataTime, updatedAt:now, version:C.version };
     render();
     bg(store.set('prices','current', D.prices),
-       DCA_SCORED.map(c=>`${c.label}: điểm ${coins[c.key].score}, bộ tốt nhất ${fmtPctS(coins[c.key].grid[0].netReturn)} vs mua-giữ ${fmtPctS(coins[c.key].buyHold)}`).join(' · '));
+       DCA_SCORED.map(c=>`${c.label}: điểm ${coins[c.key].score}, bộ tốt nhất ${fmtPctS(coins[c.key].grid[0].netReturn)} vs mua-giữ ${fmtPctS(coins[c.key].buyHold)} (2,5 năm)`).join(' · '));
   }catch(e){
     console.error(e);
     toast('Không lấy được nến H4 từ Binance: '+(e.message||e)+'. Giữ số liệu cũ.');
@@ -3592,7 +3720,8 @@ function renderHoldings(){
 /* ---- Tab Trading (swing H4) ---------------------------------------------------------------
    Cùng "đổi coin không đổi hình" như DCA: bảng phân rã luôn 7 dòng, bảng backtest luôn 9 dòng (điền "—" khi chưa chạy). */
 const tradeCoinOf = k => DCA_SCORED.find(c=>c.key===k) || DCA_SCORED[0];
-function tradeCache(k){ const t = D.prices && D.prices.trade; return t && t.coins ? (t.coins[k]||null) : null; }
+/* Cache bản cũ (v1) có cấu trúc lưới khác ⇒ coi như chưa có, tab hiện trạng thái rỗng và nhắc bấm Cập nhật. */
+function tradeCache(k){ const t = D.prices && D.prices.trade; const c = t && t.coins ? (t.coins[k]||null) : null; return c && c.version===SWING_SCORE_V1.version ? c : null; }
 const fmtDay = ms => ms ? new Date(ms).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'}) : '—';
 function renderTrade(){
   const coin = tradeCoinOf(state.tradeCoin), c = tradeCache(coin.key), C = SWING_SCORE_V1;
@@ -3611,43 +3740,57 @@ function renderTrade(){
     `<span>dữ liệu <b>${c.candles}</b><span class="u"> nến H4 ≈ ${Math.round(c.candles/C.barsPerDay)} ngày</span></span>`,
     `<span>nến cuối <b>${fmtTime(c.dataTime)}</b></span>`,
     `<span>Buy Score DCA <b>${dcaScore==null?'—':dcaScore}</b><span class="u"> (khung 1 năm, để đối chiếu)</span></span>`,
-  ].join('') : `<span class="u">Bấm "Cập nhật backtest" — ${fmtNum(C.klineLimit)} nến H4 (≈ ${Math.round(C.klineLimit/C.barsPerDay)} ngày) cho ETH và BTC.</span>`;
+  ].join('') : `<span class="u">Bấm "Cập nhật backtest" — ${fmtNum(C.klineTotal)} nến H4 (≈ ${(C.klineTotal/C.barsPerDay/365).toFixed(1).replace('.',',')} năm) cho ETH và BTC, mất vài giây.</span>`;
   el('tradeWarn').hidden = !stale; el('tradeWarn').textContent = stale ? `Dữ liệu quá ${C.staleHours} giờ — điểm bên trên là của lần cập nhật trước, bấm "Cập nhật backtest".` : '';
   el('tradeAlgo').textContent = c ? c.version+' · nguồn '+(c.source||'—') : '';
   el('tradeScoreTable').innerHTML = scoreTableHtml(c ? c.components : null, c ? c.score : null, 'chưa chấm — bấm "Cập nhật backtest"', C);
 
-  /* Bảng backtest: luôn đúng 9 dòng theo lưới, kể cả chưa chạy. */
-  const combos = []; for(const e of SWING_GRID.entries) for(const x of SWING_GRID.exits) combos.push({entry:e, tp:x.tp, sl:x.sl});
+  /* Bảng backtest: luôn đúng 9 dòng theo lưới v2, kể cả chưa chạy. Hai cột lãi: toàn kỳ và 12 tháng gần. */
+  const combos = []; for(const e of SWING_GRID_V2.entries) for(const L of SWING_GRID_V2.ladders) combos.push({entry:e, ladder:L.key, tp:L.tp, sl:L.sl});
   const rows = c ? c.grid : combos;
   const pct = x => x==null ? '—' : Math.abs(x)<0.0005 ? '0%' : fmtPctS(x);
-  el('tradeBtSpan').textContent = c ? `${fmtDay(c.from)} → ${fmtDay(c.to)} · ${c.bars} nến có điểm` : '';
-  el('tradeBtTable').innerHTML = `<colgroup><col style="width:14%"><col style="width:18%"><col style="width:12%"><col style="width:14%"><col style="width:16%"><col style="width:14%"><col style="width:12%"></colgroup>
-    <thead><tr><th class="first">Vào khi ≥</th><th>Chốt lời / cắt lỗ</th><th class="n">Lệnh</th><th class="n">Thắng</th><th class="n">Lãi ròng</th><th class="n">Sụt tối đa</th><th class="n last">Giữ TB</th></tr></thead><tbody>`+
-    rows.map((r,i)=>`<tr class="${c&&i===0&&r.netReturn>0?'best':''}"><td class="first">${r.entry}</td><td>+${fmtNum(r.tp*100,0)}% / −${fmtNum(r.sl*100,0)}%</td><td class="n">${c?r.n:'—'}</td><td class="n">${c?(r.winRate==null?'—':fmtPct(r.winRate)):'—'}</td><td class="n"><b>${c?pct(r.netReturn):'—'}</b></td><td class="n mute">${c?(r.maxDD!=null?(r.maxDD<0.0005?'0%':'−'+fmtPct(r.maxDD)):'—'):'—'}</td><td class="n last mute">${c?(r.avgBars==null?'—':fmtNum(r.avgBars/C.barsPerDay,1)+' ng'):'—'}</td></tr>`).join('')+`</tbody>`;
+  const dd = x => x==null ? '—' : x<0.0005 ? '0%' : '−'+fmtPct(x);
+  const lad = arr => arr.map(x=>`${x.at>0?'+':'−'}${fmtNum(Math.abs(x.at)*100,0)}%`).join(' → ');
+  el('tradeBtSpan').textContent = c ? `${fmtDay(c.from)} → ${fmtDay(c.to)} · ${fmtNum(c.bars)} nến · 12 th gần từ ${fmtDay(c.fromY1)}` : '';
+  el('tradeBtTable').innerHTML = `<colgroup><col style="width:9%"><col style="width:15%"><col style="width:15%"><col style="width:9%"><col style="width:11%"><col style="width:14%"><col style="width:14%"><col style="width:13%"></colgroup>
+    <thead><tr><th class="first">Vào ≥</th><th>Chốt lời dần</th><th>Cắt lỗ dần</th><th class="n">Lệnh</th><th class="n">Thắng</th><th class="n">Toàn kỳ</th><th class="n">12 th gần</th><th class="n last">Sụt tối đa</th></tr></thead><tbody>`+
+    rows.map((r,i)=>`<tr class="${c&&i===0&&r.netReturn>0?'best':''}"><td class="first">${r.entry}</td><td>${lad(r.tp)}</td><td>${lad(r.sl)}</td><td class="n">${c?r.n:'—'}</td><td class="n">${c?(r.winRate==null?'—':fmtPct(r.winRate)):'—'}</td><td class="n"><b>${c?pct(r.netReturn):'—'}</b></td><td class="n">${c?pct(r.netY1):'—'}</td><td class="n last mute">${c?dd(r.maxDD):'—'}</td></tr>`).join('')+`</tbody>`;
+  let verdict = '';
+  if(c){
+    const best = c.grid[0], wAll = best.netReturn > Math.max(0, c.buyHold||0), wY1 = best.netY1 > Math.max(0, c.buyHoldY1||0);
+    verdict = wAll && wY1 ? `<b>Bộ tốt nhất thắng mua-giữ ở cả toàn kỳ và 12 tháng gần</b> ⇒ lợi thế có vẻ ổn định qua nhiều trạng thái thị trường.`
+      : wAll && !wY1 ? `Bộ tốt nhất thắng mua-giữ <b>toàn kỳ</b> nhưng <b>thua 12 tháng gần</b> ⇒ lợi thế phụ thuộc trạng thái thị trường — dạo này không hợp, <b>chờ</b>.`
+      : !wAll && wY1 ? `Bộ tốt nhất thắng mua-giữ <b>12 tháng gần</b> nhưng <b>thua toàn kỳ</b> ⇒ có thể là may mắn ngắn hạn, chưa đủ tin.`
+      : `<b>Không bộ nào thắng mua-giữ</b> ở cả hai kỳ ⇒ chưa đáng trade, tiếp tục DCA.`;
+  }
   el('tradeBtNote').innerHTML = c
-    ? `Mua-giữ ${esc(coin.label)} cùng kỳ: <b>${pct(c.buyHold)}</b>. ${c.grid[0].netReturn > Math.max(0, c.buyHold||0) ? `Bộ tốt nhất thắng mua-giữ <b>${pct(c.grid[0].netReturn-(c.buyHold||0))}</b>.` : '<b>Không bộ nào thắng mua-giữ</b> trong kỳ này ⇒ chưa đáng trade, tiếp tục DCA.'} Kết quả quá khứ, một kỳ ~6 tháng, chưa tính trượt giá — dùng để <b>loại bộ tệ</b>, không để tin bộ tốt.`
-    : 'Chưa chạy backtest. Kết quả sẽ là lãi ròng sau phí của từng bộ quy tắc trên ~6 tháng nến H4, so với mua-giữ cùng kỳ.';
+    ? `Mua-giữ ${esc(coin.label)}: toàn kỳ <b>${pct(c.buyHold)}</b> · 12 th gần <b>${pct(c.buyHoldY1)}</b>. Cách cũ (ra một lần + ra theo điểm) tốt nhất: ${pct(c.v1Best)} · ${pct(c.v1BestY1)}. ${verdict} Kết quả quá khứ, chưa tính trượt giá — dùng để <b>loại bộ tệ</b>, không để tin bộ tốt.`
+    : 'Chưa chạy backtest. Mỗi bộ: vào 2 nhịp (50% ngay, 50% nếu giá rớt thêm 3% mà điểm vẫn đạt), chốt lời 2 bậc, cắt lỗ 2 bậc, sau bậc chốt lời đầu thì phần còn lại về ≤ giá vốn là bán, quá 14 ngày thì đóng. Đo cả ~2,5 năm và 12 tháng gần, so với mua-giữ và với cách cũ.';
 
-  /* Kế hoạch lệnh: bộ tốt nhất + điểm hiện tại + vốn trade ⇒ số cụ thể (khối lượng, cắt lỗ, chốt lời, hạn). Chỉ là chữ, chưa có lệnh. */
+  /* Kế hoạch lệnh theo bộ tốt nhất: vào 2 nhịp, chốt lời/cắt lỗ theo bậc, khối lượng theo rủi ro. Chỉ là chữ, chưa có lệnh. */
   if(!c){ el('tradeSignal').innerHTML = '<div class="mute">Chưa có dữ liệu — bấm "Cập nhật backtest".</div>'; return; }
-  const best = c.grid[0], worth = best.netReturn > Math.max(0, c.buyHold||0), p = c.priceUsd, Z = SWING_SIZING_V1;
+  const best = c.grid[0], worth = best.netReturn > Math.max(0, c.buyHold||0) && best.netY1 > Math.max(0, c.buyHoldY1||0), p = c.priceUsd, Z = SWING_SIZING_V1;
   const sleeve = (settings().trade||{}).sleeve||0, u = price('usdt');
-  const days = Math.round(SWING_RULES_V1.maxHoldBars/C.barsPerDay);
-  const plan = tradePlan(c.score, p, best, sleeve, u);
+  const days = Math.round(SWING_RULES_V2.maxHoldBars/C.barsPerDay);
+  const plan = tradePlan(c.score, p, {entry:best.entry, tp:best.tp, sl:best.sl}, sleeve, u);
   const k = x => fmtK(Math.round(x));
-  const rule = `Bộ tốt nhất: vào khi điểm ≥ <b>${best.entry}</b> · chốt lời <b>+${fmtNum(best.tp*100,0)}%</b> · cắt lỗ <b>−${fmtNum(best.sl*100,0)}%</b> · ra khi điểm ≤ ${best.exit} hoặc quá ${days} ngày.
-    Khối lượng theo rủi ro: ${Z.riskTiers.slice().reverse().map(([o,r])=>`điểm ≥ ${best.entry+o} ⇒ rủi ro ${fmtNum(r,1)}% (= ${fmtNum(Math.min(Z.maxPosPct, r/(best.sl*100)*100),0)}% vốn trade)`).join(' · ')} · tối đa ${Z.maxOpen} lệnh mở · vốn trade sụt ${Z.monthlyStopPct}% trong tháng ⇒ dừng.`;
-  const warn = worth ? '' : ` <b>Nhưng</b> bộ này chưa thắng mua-giữ trong backtest — chỉ ghi lệnh giả, không tiền thật.`;
+  const rule = `Bộ tốt nhất: vào khi điểm ≥ <b>${best.entry}</b>, hai nhịp 50/50 (nhịp 2 chỉ khi giá rớt thêm ${fmtNum(SWING_RULES_V2.addOn.drop*100,0)}% mà điểm vẫn đạt) · chốt lời dần <b>${lad(best.tp)}</b> (bán 50% rồi hết) · cắt lỗ dần <b>${lad(best.sl)}</b> (bán 50% rồi hết) · sau bậc chốt lời đầu, phần còn lại về ≤ giá vốn là bán · quá ${days} ngày thì đóng.
+    Khối lượng theo rủi ro: lỗ tối đa của bộ này là ${fmtNum(plan.maxLossPct||0,1)}% khối lượng; ${Z.riskTiers.slice().reverse().map(([o,r])=>`điểm ≥ ${best.entry+o} ⇒ rủi ro ${fmtNum(r,1)}% vốn trade`).join(' · ')} · tối đa ${Z.maxOpen} lệnh mở · vốn trade sụt ${Z.monthlyStopPct}% trong tháng ⇒ dừng.`;
+  const warn = worth ? '' : ` <b>Nhưng</b> bộ này chưa thắng mua-giữ ở cả hai kỳ — chỉ ghi lệnh giả, không tiền thật.`;
   let sig;
   if(!plan.enter){
     sig = `<div class="suggest one" style="margin:0"><b>CHỜ</b> — điểm ${c.score}, còn thiếu ${plan.gap} điểm mới tới ngưỡng vào ${plan.entry}.${warn}</div>`;
   } else {
+    const [l1, l2] = plan.lots;
     const money = plan.sizeK!=null
-      ? `Khối lượng <b>${k(plan.sizeK)}</b>${plan.sizeUsd!=null?` (≈ ${fmtUsd(plan.sizeUsd)}${plan.qty!=null?` = ${fmtNum(plan.qty, plan.qty>=1?4:6)} ${esc(coin.label)}`:''})`:''} · nếu chạm cắt lỗ mất <b>${k(plan.riskK)}</b> (${fmtNum(plan.riskPct,1)}% vốn trade ${k(sleeve)})`
-      : `Khối lượng <b>${fmtNum(plan.sizePct,0)}% vốn trade</b> (rủi ro ${fmtNum(plan.riskPct,1)}%) — đặt vốn trade ở Cài đặt để ra số tiền.`;
-    sig = `<div class="suggest" style="margin:0"><b>VÀO</b> — điểm ${c.score} ≥ ${plan.entry}${plan.over>=10?` (vượt ${plan.over} điểm ⇒ tăng rủi ro lên ${fmtNum(plan.riskPct,1)}%)`:''}.<br>
+      ? `Tổng khối lượng <b>${k(plan.sizeK)}</b>${plan.sizeUsd!=null?` (≈ ${fmtUsd(plan.sizeUsd)}${plan.qty!=null?` = ${fmtNum(plan.qty, plan.qty>=1?4:6)} ${esc(coin.label)}`:''})`:''} · nếu chạm hết các bậc cắt lỗ mất <b>${k(plan.riskK)}</b> (${fmtNum(plan.riskPct,1)}% vốn trade ${k(sleeve)})`
+      : `Tổng khối lượng <b>${fmtNum(plan.sizePct,0)}% vốn trade</b> (rủi ro ${fmtNum(plan.riskPct,1)}%) — đặt vốn trade ở Cài đặt để ra số tiền.`;
+    sig = `<div class="suggest" style="margin:0"><b>VÀO</b> — điểm ${c.score} ≥ ${plan.entry}${plan.over>=10?` (vượt ${plan.over} điểm ⇒ rủi ro ${fmtNum(plan.riskPct,1)}%)`:''}.<br>
       ${money}<br>
-      Vào tại <b>${fmtUsd(p)}</b> · đặt ngay OCO trên Binance: chốt lời <b>${fmtUsd(plan.tpPrice)}</b> · cắt lỗ <b>${fmtUsd(plan.slPrice)}</b> · nếu chưa chạm thì đóng khi điểm ≤ ${plan.exitScore} hoặc tới ${fmtDay(Date.now()+days*86400e3)}.${warn}</div>`;
+      <b>Nhịp 1:</b> mua ${fmtNum(l1.frac*100,0)}%${l1.k!=null?` = ${k(l1.k)}`:''} tại <b>${fmtUsd(p)}</b>.${l2?` <b>Nhịp 2:</b> ${fmtNum(l2.frac*100,0)}% còn lại${l2.k!=null?` = ${k(l2.k)}`:''} chỉ khi giá về <b>≤ ${fmtUsd(l2.price)}</b> và điểm vẫn ≥ ${plan.entry}; khi đó các mốc dưới tính lại theo giá vốn trung bình.`:''}<br>
+      <b>Chốt lời dần:</b> bán 50% tại <b>${fmtUsd(plan.tpLevels[0].price)}</b>, phần còn lại tại <b>${fmtUsd(plan.tpLevels[1].price)}</b>${plan.beAfterTp?' — sau bậc đầu, dời cắt lỗ phần còn lại về giá vốn':''}.
+      <b>Cắt lỗ dần:</b> bán 50% tại <b>${fmtUsd(plan.slLevels[0].price)}</b>, hết tại <b>${fmtUsd(plan.slLevels[1].price)}</b>. Hạn <b>${fmtDay(Date.now()+days*86400e3)}</b>.<br>
+      Trên Binance: đặt <b>2 lệnh OCO</b>, mỗi lệnh 50% số coin — OCO A: chốt ${fmtUsd(plan.tpLevels[0].price)} / cắt ${fmtUsd(plan.slLevels[0].price)}; OCO B: chốt ${fmtUsd(plan.tpLevels[1].price)} / cắt ${fmtUsd(plan.slLevels[1].price)}. Khi A khớp chốt lời, sửa cắt lỗ của B lên <b>${fmtUsd(p)}</b>.${warn}</div>`;
   }
   el('tradeSignal').innerHTML = `<div class="hint" style="padding:0 0 8px">${rule}</div>${sig}`;
 }
@@ -4737,7 +4880,7 @@ window.FinTrace = { state, data:D,
         ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, scoreBands, priceForScore, BUY_SCORE_V1,
-        SWING_SCORE_V1, SWING_RULES_V1, SWING_GRID, SWING_SIZING_V1, swingScoreSeries, simulateSwing, backtestGrid, tradePlan,
+        SWING_SCORE_V1, SWING_RULES_V1, SWING_RULES_V2, SWING_GRID, SWING_GRID_V2, SWING_LADDERS, SWING_SIZING_V1, swingScoreSeries, simulateSwing, simulateLadder, backtestGrid, backtestGrid2, tradePlan,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS},
