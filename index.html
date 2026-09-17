@@ -3082,8 +3082,30 @@ function testStocks(){
     chk('ứng viên mua = điểm ≥75 chưa giữ, theo thứ tự điểm (CII đang giữ ⇒ loại)', pl.candidates.map(c=>c.sym), ['KDH','PDR']);
     chk('đang giữ 3 mã; về ≤65 chỉ TCB', [pl.held.length, pl.sellDue.map(h=>h.sym)], [3, ['TCB']]);
     chk('lệnh cổ phiếu tháng 9: 0 mua, 1 bán (FPT 100@77), đã chốt +700k; lệnh coin không tính', [pl.buysM, pl.sellsM, Math.round(pl.realizedM)], [0, 1, 700]);
-    chk('gợi ý một dòng nêu điểm, ứng viên và ngưỡng bán', stockSuggestion(pl, 'VIX', 70), 'Score 70 VIX · đủ điều kiện mua: KDH 87, PDR 78 · 1 mã đang giữ đã về ≤ 65');
+    chk('gợi ý một dòng nêu điểm, ứng viên (chưa có dấu hồi) và ngưỡng bán', stockSuggestion(pl, 'VIX', 70), 'Score 70 VIX · đủ điều kiện mua: KDH 87, PDR 78 (chưa mã nào có dấu hồi) · 1 mã đang giữ đã về ≤ 65');
     chk('không kho, không giữ ⇒ rỗng không lỗi', [stockPlanNow([], [], [], '2026-09').candidates.length, stockPlanNow(null, null, null, '2026-09').held.length], [0, 0]); }
+  console.log('%c7c — xác nhận hồi (tách khỏi điểm) và nghiên cứu sự kiện','font-weight:600');
+  { const mkc = (fn, vf) => Array.from({length:60},(_,i)=>({ time:T0+i*86400e3, close:fn(i), volume: vf ? vf(i) : 1000 }));
+    const up = mkc(i=> i<40 ? 100-i : 60+(i-40)*1.5, i=> i>=40 ? 3000 : 1000);      // rớt 40 phiên rồi hồi 20 phiên kèm khối lượng
+    const dn = mkc(i=> 100-i, i=>1000);                                            // rớt đều
+    const cu = confirmSignal(up), cd = confirmSignal(dn);
+    chk('mã đang hồi: đủ 3/3 dấu (MA20 lên, đáy cao hơn, khối lượng phiên tăng)', [cu.ok, cu.count, cu.ma, cu.low, cu.vol], [true, 3, true, true, true]);
+    chk('mã rớt đều: 0/3, không xác nhận', [cd.ok, cd.count], [false, 0]);
+    chk('chưa đủ nến ⇒ không xác nhận, không lỗi', confirmSignal(up.slice(0,10)).ok, false);
+    chk('tại nến giữa đợt rớt (i=30) cũng không xác nhận', confirmSignal(up, 30).ok, false);
+    /* Sự kiện: điểm vượt 80 ở k=5, tụt về 60 ở k=40 rồi lại vượt 80 ở k=45 ⇒ 2 sự kiện (rearm 10). */
+    const S = Array.from({length:100},(_,k)=>({ time:T0+k*86400e3, close: k<50 ? 100-k*0.5 : 75+(k-50)*0.8, score: (k>=5 && k<40) ? 85 : (k>=45 && k<70) ? 82 : 60 }));
+    const cs = S.map(b=>({ time:b.time, close:b.close, volume: b.close>75.5 && b.time>T0+50*86400e3 ? 2000 : 1000 }));
+    const evNow = eventStudyOne(S, cs, 80, 'now');
+    chk('2 sự kiện chạm 80; sự kiện 1 (k=5, giá còn rớt tới 75 ở k=50) rớt thêm tối đa −23,1%; sự kiện 2 (k=45) lợi suất 21 phiên dương', [evNow.length, Math.round(evNow[0].dd*1000)/1000, evNow[1].fw[21] > 0, evNow[0].wait], [2, -0.231, true, 0]);
+    chk('sự kiện quá gần cuối chuỗi (không đủ 21 phiên) bị bỏ', eventStudyOne(S.slice(0,20), cs.slice(0,20), 80, 'now').length, 0);
+    const evC = eventStudyOne(S, cs, 80, 'confirm');
+    chk('chờ xác nhận: sự kiện 1 không có dấu hồi trong 21 phiên ⇒ bỏ; sự kiện 2 vào sau khi có dấu (wait > 0), rớt thêm ≈ 0', [evC.length, evC.length ? evC[0].wait > 0 : null, evC.length ? evC[0].dd > -0.02 : null], [1, true, true]);
+    const st2 = { symbols:{ A:{ rows: big.symbols.FPT.rows }, B:{ rows: big.symbols.VCB.rows } }, index: big.index };
+    const es = eventStudyAll(st2, ['A','B']);
+    chk('eventStudyAll: 3 ngưỡng × 2 cách vào = 6 dòng, mỗi dòng có 3 mốc phiên', [es.length, es.map(e=>e.T+e.mode).join(','), Object.keys(es[0].h).map(Number)], [6, '75now,75confirm,80now,80confirm,85now,85confirm', [21,42,63]]);
+    chk('quantile: trung vị và p10', [quantile([5,1,3,2,4], 0.5), quantile([10,20,30,40,50,60,70,80,90,100], 0.1), quantile([], 0.5)], [3, 20, null]);
+    chk('stockScoreOf trả kèm confirm', typeof stockScoreOf(big, 'FPT').confirm.ok, 'boolean'); }
   console.log('%c8 — nhãn lỗi','font-weight:600');
   chk('TypeError ⇒ CORS/mất mạng', probeErrorLabel(new TypeError('Failed to fetch')), 'trình duyệt chặn (CORS) hoặc mất mạng');
   chk('HTTP ⇒ giữ thông điệp', probeErrorLabel(new Error('HTTP 404')), 'HTTP 404');
@@ -4127,7 +4149,8 @@ function stockScoreOf(store, sym){
   const L = rows[rows.length-1], P = rows[rows.length-2];
   const dd = (r.components||[]).find(c=>c.key==='drawdown365');
   return { sym, score:r.score, marketState:r.marketState, confidence:r.confidence, components:r.components, candles:r.candles, reason:r.reason||'',
-           price:L.close, prev: P ? P.close : null, chg: P && P.close>0 ? L.close/P.close-1 : null, time:L.time, n:rows.length, source:rec.source, dd365: dd ? dd.value : null };
+           price:L.close, prev: P ? P.close : null, chg: P && P.close>0 ? L.close/P.close-1 : null, time:L.time, n:rows.length, source:rec.source, dd365: dd ? dd.value : null,
+           confirm: confirmSignal(rows) };
 }
 function stockScores(store, syms){
   return (syms || STOCK_ALL).map(sym=>stockScoreOf(store, sym)).filter(Boolean).sort((a,b)=>((b.score==null?-1:b.score)-(a.score==null?-1:a.score)) || a.sym.localeCompare(b.sym));
@@ -4148,7 +4171,67 @@ function stockBands(store, sym){
    Phí mua 0,15% · phí bán 0,15% + thuế 0,1% ⇒ ≈ 0,4%/vòng. T+2. Không bán phiên sàn, không mua phiên trần. Giữ tối đa 15 phiên (3 tuần). */
 const STOCK_SWING_RULES = { side:'long', fee:0.0015, sellTax:0.001, minHoldBars:2, floorPct:0.069, maxHoldBars:15, addOn:{first:0.5, drop:0.03}, beAfterTp:true, fundingPerBar:0 };
 const STOCK_GRID = { entries:[55,65,75], ladders:SWING_LADDERS };
-const STOCK_BT_VERSION = 'stock-bt-v2';   // v2: thêm kế hoạch chọn mã hằng tháng + VN-Index
+/* ---- Xác nhận hồi — TÁCH KHỎI Buy Score (owner hỏi 2026-09-17: điểm chỉ đo độ rẻ, không biết đáy; giá hồi thì điểm tụt).
+   Buy Score trả lời "đủ rẻ chưa", cột này trả lời "đã ngừng rớt chưa". Ba dấu độc lập với điểm, mỗi dấu 1 điểm, ok khi đủ `need`:
+   (1) đóng cửa trên MA20 và MA20 đang lên; (2) đáy 10 phiên gần cao hơn đáy 10 phiên trước đó; (3) 5 phiên gần tăng và khối lượng phiên tăng > phiên giảm. Hàm thuần. */
+const CONFIRM_V1 = { ma:20, slope:3, lowWin:10, volWin:5, need:2, waitBars:21 };
+function confirmSignal(candles, i, cfg){
+  const C = cfg || CONFIRM_V1, cs = candles||[], n = i==null ? cs.length-1 : i;
+  if(n < C.ma + C.slope || n < 2*C.lowWin) return { ok:false, count:0, ma:false, low:false, vol:false };
+  const cl = k => Number(cs[k].close), vol = k => Number(cs[k].volume)||0;
+  const ma = k => { let t=0; for(let q=k-C.ma+1;q<=k;q++) t+=cl(q); return t/C.ma; };
+  const m0 = ma(n), maOk = cl(n) > m0 && m0 > ma(n-C.slope);
+  let lo1 = Infinity, lo0 = Infinity;
+  for(let q=n-C.lowWin+1;q<=n;q++) lo1 = Math.min(lo1, cl(q));
+  for(let q=n-2*C.lowWin+1;q<=n-C.lowWin;q++) lo0 = Math.min(lo0, cl(q));
+  const lowOk = lo1 > lo0;
+  let up = 0, dn = 0; for(let q=n-C.volWin+1;q<=n;q++){ if(cl(q) > cl(q-1)) up += vol(q); else dn += vol(q); }
+  const volOk = cl(n) > cl(n-C.volWin) && up > dn;
+  const count = (maOk?1:0) + (lowOk?1:0) + (volOk?1:0);
+  return { ok: count >= C.need, count, ma:maOk, low:lowOk, vol:volOk };
+}
+/* Nghiên cứu sự kiện: "khi điểm chạm mốc T thì sau đó xảy ra gì". Sự kiện = điểm vượt lên ≥ T (phải tụt dưới T−rearm rồi mới tính lần mới).
+   Mỗi sự kiện đo lợi suất sau các mốc phiên và RỚT THÊM TỐI ĐA trong 63 phiên (câu trả lời có phân phối cho "bắt dao rơi").
+   mode 'now' = vào ngay tại sự kiện; 'confirm' = chờ tới phiên đầu có confirmSignal trong waitBars phiên (điểm còn ≥ T−rearm), không có ⇒ bỏ qua. Hàm thuần. */
+const EVENT_V1 = { thresholds:[75,80,85], horizons:[21,42,63], rearm:10, waitBars:CONFIRM_V1.waitBars };
+function eventStudyOne(series, candles, T, mode, cfg){
+  const E = {...EVENT_V1, ...(cfg||{})}, S = series||[], cs = candles||[], idx = new Map(cs.map((c,i)=>[c.time,i]));
+  const H = Math.max(...E.horizons), out = []; let armed = true;
+  for(let k=0;k<S.length;k++){
+    const sc = S[k].score;
+    if(!armed){ if(sc < T - E.rearm) armed = true; continue; }
+    if(sc < T) continue;
+    armed = false;
+    let entry = k;
+    if(mode==='confirm'){
+      entry = -1;
+      for(let j=k; j<=Math.min(S.length-1, k+E.waitBars); j++){
+        if(S[j].score < T - E.rearm) break;
+        const ci = idx.get(S[j].time); if(ci!=null && confirmSignal(cs, ci).ok){ entry = j; break; }
+      }
+      if(entry<0) continue;
+    }
+    if(entry + E.horizons[0] >= S.length) continue;              // chưa đủ phiên để đánh giá mốc ngắn nhất ⇒ bỏ
+    const p0 = S[entry].close, fw = {};
+    for(const h of E.horizons) fw[h] = entry+h < S.length ? S[entry+h].close/p0 - 1 : null;
+    let dd = 0; for(let j=entry+1; j<=Math.min(S.length-1, entry+H); j++) dd = Math.min(dd, S[j].close/p0 - 1);
+    out.push({ time:S[entry].time, score:S[entry].score, fw, dd, wait: entry-k });
+  }
+  return out;
+}
+const quantile = (a, p) => { if(!a || !a.length) return null; const t = a.slice().sort((x,y)=>x-y); return t[Math.min(t.length-1, Math.floor(p*t.length))]; };
+function eventStudyAll(store, syms, opts){
+  const E = {...EVENT_V1, ...(opts||{})}, rows = [];
+  for(const T of E.thresholds) for(const mode of ['now','confirm']){
+    const ev = [];
+    for(const sym of (syms||[])){ const S = stockSeriesFor(store, sym), rec = store.symbols ? store.symbols[sym] : null; if(!S || !rec) continue; ev.push(...eventStudyOne(S, rec.rows, T, mode, E)); }
+    const row = { T, mode, n:ev.length, ddMed:quantile(ev.map(e=>e.dd), 0.5), ddP10:quantile(ev.map(e=>e.dd), 0.1), waitAvg: ev.length ? ev.reduce((a,e)=>a+e.wait,0)/ev.length : null, h:{} };
+    for(const h of E.horizons){ const v = ev.map(e=>e.fw[h]).filter(x=>x!=null); row.h[h] = { n:v.length, hit: v.length ? v.filter(x=>x>0).length/v.length : null, med:quantile(v, 0.5) }; }
+    rows.push(row);
+  }
+  return rows;
+}
+const STOCK_BT_VERSION = 'stock-bt-v3';   // v3: thêm nghiên cứu sự kiện (điểm chạm mốc ⇒ rớt thêm / lợi suất sau); v2: kế hoạch chọn mã + VN-Index
 /* Chuỗi điểm từng phiên của một mã, tính một lần cho mỗi bản kho (38k lần chấm cho 100 mã) — backtest lưới và mô phỏng kế hoạch dùng chung. */
 const stockSeriesCache = new WeakMap();   // theo từng object kho (không theo updatedAt — hai kho thử nghiệm cùng mốc sẽ dẫm nhau)
 function stockSeriesFor(store, sym){
@@ -4189,7 +4272,8 @@ function stockBacktestAll(store, syms){
   const idxRows = store.index ? store.index.rows : [], iFrom = N ? Math.min(...per.map(p=>p.from)) : null, iTo = N ? Math.max(...per.map(p=>p.to)) : null;
   const ix = idxRows.filter(r=>iFrom!=null && r.time>=iFrom && r.time<=iTo), ix1 = ix.filter(r=>r.time >= iTo-365*86400e3);
   const bhOf = a => a.length ? a[a.length-1].close/a[0].close-1 : null;
-  return { version:STOCK_BT_VERSION, at:Date.now(), n:N, rows, plan, indexBh:bhOf(ix), indexBhY1:bhOf(ix1), bhAvg: mean(per.map(p=>p.bh)), bhAvgY1: mean(per.map(p=>p.bhY1)),
+  const events = eventStudyAll(store, per.map(p=>p.sym));
+  return { version:STOCK_BT_VERSION, at:Date.now(), n:N, rows, plan, events, indexBh:bhOf(ix), indexBhY1:bhOf(ix1), bhAvg: mean(per.map(p=>p.bh)), bhAvgY1: mean(per.map(p=>p.bhY1)),
            from: N ? Math.min(...per.map(p=>p.from)) : null, to: N ? Math.max(...per.map(p=>p.to)) : null,
            perSym: Object.fromEntries(per.map(p=>[p.sym, { bh:p.bh, bhY1:p.bhY1, rows:p.rows.map(x=>[x.entry, x.ladder, x.n, x.net, x.netY1, x.dd]) }])) };
 }
@@ -4452,6 +4536,11 @@ function openBacktest(M, rerun){
       <div class="hint" style="padding:6px 0">Điểm đo độ rẻ so với chính mã đó một năm qua. Điểm về thấp có hai đường: giá lên (điều owner muốn) hoặc <b>đỉnh cũ trôi khỏi cửa sổ khi thời gian qua</b> — trường hợp sau bán ra mà giá không đổi, chỉ mất phí. Popup Tính PnL có dòng "giá đứng yên" đo đúng phần này.</div>` : ''}
       ${wi.length ? `<div class="colhead" style="padding:6px 0 4px"><h2>Nếu mua ${esc(sym)} hôm nay <small>${fmtPx(M, r.price)} · điểm ${r.score} · bán đúng lúc điểm về ngưỡng — tĩnh, mọi thứ khác đứng yên</small></h2></div>
       <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm về ≤</th><th class="n">Giá lúc đó</th><th class="n">Lãi gộp</th><th class="n last">Lãi sau phí</th></tr></thead><tbody>${wi.map(w=>`<tr><td class="first"><b>${w.X}</b></td><td class="n">${w.already ? '<span class="mute">đang dưới ngưỡng này</span>' : w.price==null ? '<span class="mute">không tới được chỉ bằng giá</span>' : fmtPx(M, w.price)}</td><td class="n">${w.already||w.price==null?'—':fmtPctS(w.gross)}</td><td class="n last ${w.net!=null&&w.net<0?'neg':''}">${w.already||w.price==null?'—':`<b>${fmtPctS(w.net)}</b>`}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${bt.events ? `<div class="colhead" style="padding:6px 0 4px"><h2>Sau khi điểm chạm mốc <small>mỗi sự kiện = điểm vượt lên ≥ T · "chờ xác nhận" = vào ở phiên đầu có ≥ 2/3 dấu hồi trong ${EVENT_V1.waitBars} phiên</small></h2></div>
+      <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm ≥</th><th>Cách vào</th><th class="n">Sự kiện</th><th class="n">Rớt thêm trung vị</th><th class="n">Rớt thêm xấu (10%)</th>${EVENT_V1.horizons.map(h=>`<th class="n">${h} phiên: dương · trung vị</th>`).join('')}<th class="last"></th></tr></thead><tbody>${
+        bt.events.map(e=>`<tr class="${e.mode==='confirm'?'':''}"><td class="first"><b>${e.T}</b></td><td>${e.mode==='now'?'ngay khi chạm':`chờ xác nhận <span class="mute">· TB ${e.waitAvg==null?'—':fmtNum(e.waitAvg,1)} phiên</span>`}</td><td class="n">${e.n}</td><td class="n neg">${e.ddMed==null?'—':fmtPctS(e.ddMed)}</td><td class="n neg">${e.ddP10==null?'—':fmtPctS(e.ddP10)}</td>${EVENT_V1.horizons.map(h=>{ const x = e.h[h]; return `<td class="n">${x.n?`<b>${fmtPct(x.hit)}</b> · <span class="${x.med<0?'neg':''}">${pct(x.med)}</span>`:'—'}</td>`; }).join('')}<td class="last"></td></tr>`).join('')
+      }</tbody></table></div>
+      <div class="hint" style="padding:6px 0">"Rớt thêm" = giá thấp nhất trong 63 phiên sau khi vào so với giá vào — phân phối thật của việc bắt dao rơi. Nếu hàng "chờ xác nhận" có rớt thêm nhỏ hơn và tỉ lệ dương cao hơn hàng "ngay khi chạm" thì xác nhận hồi có ích; nếu trung vị lợi suất thấp hơn thì đó là giá phải trả. Chưa tính phí, chưa tính T+2.</div>` : ''}
       <div class="colhead" style="padding:6px 0 4px"><h2>${esc(sym)} <small>9 bộ trên chính mã này · mua-giữ ${pct(ps?ps.bh:null)} · 12 th ${pct(ps?ps.bhY1:null)}</small></h2></div>
       ${ps ? `<div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Vào ≥</th><th>Bậc</th><th class="n">Lệnh</th><th class="n">Toàn kỳ</th><th class="n">12 th gần</th><th class="n last">Sụt tối đa</th></tr></thead><tbody>${symRows}</tbody></table></div>` : '<div class="mute">Mã này chưa đủ nến để backtest.</div>'}
       ${sig ? `<div class="suggest one" style="margin:8px 0 0">${sig}</div>` : ''}`;
@@ -4670,7 +4759,7 @@ function bandTableHtml(M, st, sym, r){
 function stockPlanNow(ranks, mine, transfers, month, P){
   P = P || STOCK_PLAN_V1;
   const held = (mine||[]).map(s=>{ const r = (ranks||[]).find(x=>x.sym===s); return { sym:s, score: r && r.score!=null ? r.score : null }; });
-  const candidates = (ranks||[]).filter(x=>x.score!=null && x.score>=P.entryMin && x.score<=P.entryMax && !(mine||[]).includes(x.sym)).map(x=>({sym:x.sym, score:x.score}));
+  const candidates = (ranks||[]).filter(x=>x.score!=null && x.score>=P.entryMin && x.score<=P.entryMax && !(mine||[]).includes(x.sym)).map(x=>({sym:x.sym, score:x.score, confirmed: !!(x.confirm && x.confirm.ok)}));
   const sellDue = held.filter(h=>h.score!=null && h.score<=P.exits[0]);
   const T = (transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock' && String(t.date||'').slice(0,7)===month);
   const L = tradeLedger((transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock')), closedM = L.closed.filter(c=>String(c.date||'').slice(0,7)===month);
@@ -4679,7 +4768,7 @@ function stockPlanNow(ranks, mine, transfers, month, P){
 }
 function stockSuggestion(p, sym, score){
   const bits = [score==null ? 'Chưa có điểm' : `Score ${score} ${sym}`];
-  bits.push(p.candidates.length ? `đủ điều kiện mua: ${p.candidates.slice(0,p.picks).map(c=>`${c.sym} ${c.score}`).join(', ')}` : `chưa mã nào ≥ ${p.entryMin}`);
+  bits.push(p.candidates.length ? `đủ điều kiện mua: ${p.candidates.slice(0,p.picks).map(c=>`${c.sym} ${c.score}${c.confirmed?' ✓':''}`).join(', ')}${p.candidates.some(c=>c.confirmed)?'':' (chưa mã nào có dấu hồi)'}` : `chưa mã nào ≥ ${p.entryMin}`);
   bits.push(p.sellDue.length ? `${p.sellDue.length} mã đang giữ đã về ≤ ${p.exit}` : 'chưa mã nào tới ngưỡng bán');
   return bits.join(' · ');
 }
@@ -4743,7 +4832,7 @@ function renderStocks(){
   const row = (name, badge, mid, note) => `<tr><td class="first"><b>${name}</b>${badge?` <span class="badge">${badge}</span>`:''}</td><td class="cut" title="${esc(mid.replace(/<[^>]+>/g,''))}">${mid}</td><td class="last cut" title="${esc(note.replace(/<[^>]+>/g,''))}">${note}</td></tr>`;
   el('stockPlanBody').innerHTML = `<div class="suggest one" title="${esc(stockSuggestion(p, sym, r ? r.score : null))}">${esc(stockSuggestion(p, sym, r ? r.score : null))}</div>
     <div class="scroll"><table class="tbl compact"><colgroup><col style="width:20%"><col style="width:44%"><col style="width:36%"></colgroup><thead><tr><th class="first">Bước</th><th>Tháng này</th><th class="last">Ghi chú</th></tr></thead><tbody>${
-      row('Mua mới', `${p.buysM}/${p.picks}`, cands.length ? cands.map(c=>`<b>${esc(c.sym)}</b> <span class="mute">${c.score}</span>`).join(' · ') : `<span class="mute">chưa mã nào điểm ≥ ${p.entryMin}</span>`, `đã mua ${p.buysM} lệnh tháng này${stockStore?'':' · chưa có kho'}`)+
+      row('Mua mới', `${p.buysM}/${p.picks}`, cands.length ? cands.map(c=>`<b>${esc(c.sym)}</b> <span class="mute">${c.score}</span>${c.confirmed?' ✓':''}`).join(' · ') : `<span class="mute">chưa mã nào điểm ≥ ${p.entryMin}</span>`, `đã mua ${p.buysM} lệnh tháng này${stockStore?'':' · chưa có kho'}`)+
       row('Đang giữ', String(p.held.length), p.held.length ? `${p.held.length} mã · điểm ${heldScores.length?Math.min(...heldScores)+'–'+Math.max(...heldScores):'—'}` : '<span class="mute">chưa giữ mã nào</span>', p.sellDue.length ? `về ≤ ${p.exit}: ${p.sellDue.map(h=>`<b>${esc(h.sym)}</b> ${h.score}`).join(', ')}` : 'chưa mã nào tới ngưỡng bán')+
       row('Đã bán', String(p.sellsM), p.sellsM ? `${p.sellsM} lệnh · đã chốt <b class="${p.realizedM<0?'neg':''}">${signed(Math.round(p.realizedM), fmtK)}</b>` : '<span class="mute">chưa bán lệnh nào tháng này</span>', 'lệnh Mua nhanh / Mua-Bán ở Trading ghi vào đây')
     }</tbody></table></div>`;
@@ -4798,12 +4887,13 @@ function renderTrade(){
   /* Danh sách theo điểm — bấm dòng để chọn, bấm lại để tính PnL. */
   el('tdListSub').textContent = st && st.basket ? st.basket : (M.key==='coin' ? `top ${COIN_TOP_N} Binance theo khối lượng 24h` : `${VN30_BASKET} · giá nghìn đồng`);
   const setRanks = ranks.filter(x=>setSyms.includes(x.sym));
-  el('tdListMeta').textContent = st ? `${setRanks.length}/${setSyms.length} mã có điểm · bấm dòng để xem, bấm lại để tính PnL${mine.length?` · ● = đang giữ`:''}` : (set.key==='MINE' && !mine.length ? 'Chưa có vị thế nào — bấm "Mua / Bán"' : '');
+  el('tdListMeta').textContent = st ? `${setRanks.length}/${setSyms.length} mã có điểm · bấm dòng để xem, bấm lại để tính PnL · cột Hồi = dấu xác nhận đã ngừng rớt${mine.length?` · ● = đang giữ`:''}` : (set.key==='MINE' && !mine.length ? 'Chưa có vị thế nào — bấm "Mua / Bán"' : '');
   const list = setRanks.length ? setRanks.concat(setSyms.filter(x=>!setRanks.some(y=>y.sym===x)).map(x=>({sym:x}))) : setSyms.map(x=>({sym:x}));
   const chg = x => x==null ? '—' : `<span class="${x<0?'neg':''}">${fmtPctS(x)}</span>`;
-  el('tdTable').innerHTML = `<colgroup><col style="width:12%"><col style="width:6%"><col style="width:17%"><col style="width:14%"><col style="width:12%"><col style="width:22%"><col style="width:17%"></colgroup>
-    <thead><tr><th class="first">Mã</th><th class="n">#</th><th class="n">Giá</th><th class="n">Hôm nay</th><th class="n">Điểm</th><th>Vùng</th><th class="n last">Đỉnh 1 năm</th></tr></thead><tbody>`+
-    list.map((x,i)=>`<tr data-sym="${x.sym}" class="${x.sym===sym?'best':''}${mine.includes(x.sym)?' mine':''}"><td class="first"><b>${x.sym}</b></td><td class="n mute">${x.score!=null?i+1:'—'}</td><td class="n">${x.price!=null?fmtPx(M, x.price):'—'}</td><td class="n">${chg(x.chg)}</td><td class="n"><b>${x.score!=null?x.score:'—'}</b></td><td>${x.marketState?esc(x.marketState.label):'<span class="mute">—</span>'}</td><td class="n last mute">${x.dd365!=null?'−'+fmtPct(x.dd365):'—'}</td></tr>`).join('')+`</tbody>`;
+  const cf = x => !x.confirm ? '<span class="mute">—</span>' : x.confirm.ok ? `<b>✓ ${x.confirm.count}/3</b>` : `<span class="mute">${x.confirm.count}/3</span>`;
+  el('tdTable').innerHTML = `<colgroup><col style="width:11%"><col style="width:5%"><col style="width:15%"><col style="width:12%"><col style="width:10%"><col style="width:19%"><col style="width:12%"><col style="width:16%"></colgroup>
+    <thead><tr><th class="first">Mã</th><th class="n">#</th><th class="n">Giá</th><th class="n">Hôm nay</th><th class="n">Điểm</th><th>Vùng</th><th class="n" title="Xác nhận hồi: đóng cửa trên MA20 đang lên · đáy sau cao hơn · 5 phiên tăng kèm khối lượng">Hồi</th><th class="n last">Đỉnh 1 năm</th></tr></thead><tbody>`+
+    list.map((x,i)=>`<tr data-sym="${x.sym}" class="${x.sym===sym?'best':''}${mine.includes(x.sym)?' mine':''}"><td class="first"><b>${x.sym}</b></td><td class="n mute">${x.score!=null?i+1:'—'}</td><td class="n">${x.price!=null?fmtPx(M, x.price):'—'}</td><td class="n">${chg(x.chg)}</td><td class="n"><b>${x.score!=null?x.score:'—'}</b></td><td>${x.marketState?esc(x.marketState.label):'<span class="mute">—</span>'}</td><td class="n">${cf(x)}</td><td class="n last mute">${x.dd365!=null?'−'+fmtPct(x.dd365):'—'}</td></tr>`).join('')+`</tbody>`;
   /* Vùng giá mua */
   el('tdBandSub').textContent = `giá ${sym} về mức nào thì vào vùng đó`;
   el('tdBandNow').textContent = r && r.score!=null ? `hiện ${fmtPx(M, r.price)} · Score ${r.score}` : 'chưa có điểm';
@@ -5963,7 +6053,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
-        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion},
+        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1},
   render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
   refreshDca, refreshStocks, refreshCoins, importStockHistory, reconcileStocks, openPnl, openBacktest, openTradeOrder, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
