@@ -7,6 +7,8 @@ const VN30 = ['ACB','BCM','BID','BVH','CTG','FPT','GAS','GVR','HDB','HPG','LPB',
 /* VN70 (VNMidcap) — danh sách tham khảo kỳ 2024–2025, HOSE đổi rổ mỗi 6 tháng; mã không lấy được sẽ nằm trong errors, sửa tay. */
 const VN70 = ['AAA','ANV','ASM','BAF','BMP','BSI','BWE','CII','CMG','CTD','CTR','CTS','DBC','DCM','DGC','DGW','DIG','DPM','DXG','DXS','EIB','EVF','FRT','FTS','GEX','GMD','HAG','HCM','HDC','HDG','HHV','HSG','HT1','IMP','KBC','KDH','KOS','MSB','NKG','NLG','NT2','OCB','ORS','PAN','PC1','PDR','PHR','PNJ','POW','PPC','PTB','PVD','PVT','REE','SBT','SCS','SIP','SJS','SZC','TCH','TLG','VCG','VCI','VGC','VHC','VIX','VND','VOS','VPI','VSC'];
 const VN100 = [...VN30, ...VN70];
+/* Mã owner đang giữ nhưng ngoài VN100 — cào thêm để Danh mục cổ phiếu có giá. Cùng danh sách STOCK_EXTRA trong index.html. */
+const EXTRA = ['DPR','TV2'];
 const VN30_BASKET = 'VN100 = VN30 + 70 midcap · kỳ 08/2024 → 01/2025 (tham khảo)';
 const INDEX = 'VNINDEX';
 const BARS = 800, KEEP = 820, OUT = 'data/vn100.json';   // 800 phiên ≈ 3,2 năm: trừ 220 phiên khởi động còn ~2,3 năm chuỗi điểm để backtest hai kỳ. 101 mã × 820 × ~40 byte ≈ 3,3 MB, Pages nén gzip
@@ -87,7 +89,7 @@ try{ prev = JSON.parse(readFileSync(OUT,'utf8')); }catch{ /* lần đầu */ }
 
 const out = { updatedAt: Date.now(), basket: VN30_BASKET, bars: BARS, symbols:{}, index:null, errors:{} };
 let okCount = 0;
-for(const sym of [...VN100, INDEX]){
+for(const sym of [...VN100, ...EXTRA, INDEX]){
   const kind = sym===INDEX ? 'index' : 'stock';
   const got = await fetchSymbol(sym, kind);
   const old = sym===INDEX ? (prev.index||null) : (prev.symbols||{})[sym];
@@ -102,5 +104,5 @@ for(const sym of [...VN100, INDEX]){
 }
 mkdirSync('data', { recursive:true });
 writeFileSync(OUT, JSON.stringify(out));
-console.log(`\n${okCount}/${VN100.length+1} mã lấy được hôm nay · ghi ${OUT} (${(JSON.stringify(out).length/1024).toFixed(0)} KB)`);
+console.log(`\n${okCount}/${VN100.length+EXTRA.length+1} mã lấy được hôm nay · ghi ${OUT} (${(JSON.stringify(out).length/1024).toFixed(0)} KB)`);
 if(okCount===0){ console.error('Không nguồn nào trả dữ liệu cho bất kỳ mã nào — xem log từng mã ở trên.'); process.exit(1); }
