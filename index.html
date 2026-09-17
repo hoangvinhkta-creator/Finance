@@ -46,7 +46,9 @@ svg.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;str
 main{padding:26px 30px 26px;width:100%;min-width:0}
 .view{display:none}.view.active{display:block}
 .vhead{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}
-.vhead .right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vhead .right{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+/* Nút đầu tab: cùng một cỡ ở mọi tab, không xuống hàng (owner yêu cầu 2026-09-17). Điện thoại: chia đều bề ngang, chữ 12px. */
+.vhead .right .btn{width:128px;flex:none;justify-content:center;padding:0 8px;overflow:hidden;text-overflow:ellipsis}
 .month-nav{display:flex;align-items:center;gap:6px}
 .month-nav h1{min-width:150px;text-align:center}
 .tabbar{display:none}
@@ -142,7 +144,7 @@ select.inline:hover{border-color:var(--line)}
 .catlegend b{font-weight:600;color:var(--ink);margin:0 5px}
 .catlegend .p{color:var(--mute)}
 .col{min-width:0}
-.colhead{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px 10px}
+.colhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;padding:14px 16px 10px}
 .colhead span{font-weight:600}
 .quick{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 116px auto;gap:6px;padding:0 12px 12px;align-items:center;border-bottom:1px solid var(--line)}
 .quick.editing{background:var(--soft);padding-top:10px;margin-top:-2px}
@@ -380,6 +382,9 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 @media (max-width:820px){
   #stockListCard,#tdListCard,#stockHoldCard,#tdBookCard{height:auto;min-height:0;display:block}  #stockListCard .scroll,#tdListCard .scroll,#stockHoldCard .scroll,#tdBookCard .scroll{max-height:70vh;overflow:auto}
   #xferCard{margin-top:14px} #xferCard .scroll{max-height:60vh;overflow:auto}
+  .vhead{flex-direction:column;align-items:stretch;gap:10px}
+  .vhead .right{gap:6px}
+  .vhead .right .btn{flex:1 1 0;width:auto;min-width:0;padding:0 4px;font-size:12px}
   .app{display:block}
   .side{display:none}
   main{padding:calc(18px + env(safe-area-inset-top)) 14px calc(90px + env(safe-area-inset-bottom))}   /* vỏ iOS (Capacitor) phủ hết màn hình: tránh tai thỏ và vạch Home */
@@ -450,7 +455,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
   <main>
     <!-- ===== Tổng quan (Pha 3) ===== -->
     <section id="view-tong" class="view">
-      <header class="vhead"><h1>Tổng quan</h1><div class="right"><small id="ovBase"></small><button class="btn" id="ovMonthsOpen">Bảng tháng</button><button class="btn" id="ovCatOpen">Chi theo nhóm</button><button class="btn" id="ovSrcOpen">Thu theo nguồn</button></div></header>
+      <header class="vhead"><h1>Tổng quan</h1><div class="right"><button class="btn" id="ovMonthsOpen">Bảng tháng</button><button class="btn" id="ovCatOpen">Chi theo nhóm</button><button class="btn" id="ovSrcOpen">Thu theo nguồn</button></div></header>
 
       <div class="grid2 eq" style="margin-bottom:14px">
         <section class="card pad" id="ovHeroCard"><div id="ovHero"></div><div class="stats tight" id="ovMonth" style="margin-top:14px"></div></section>
@@ -504,7 +509,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <button class="ib" id="mNext" aria-label="Tháng sau"><svg class="ic" viewBox="0 0 18 18"><path d="M7 4l5 5-5 5"/></svg></button>
           <button class="link" id="mToday">tháng này</button>
         </div>
-        <div class="right"><label class="chk"><input type="checkbox" id="showSettled"> Hiện nợ đã tất toán</label><span id="closedInfo" class="mute" style="font-size:12px"></span><button class="btn" id="btnClose">Chốt tháng</button></div>
+        <div class="right"><label class="chk"><input type="checkbox" id="showSettled"> Hiện nợ đã tất toán</label><button class="btn" id="btnClose">Chốt tháng</button></div>
       </header>
       <div id="importNotice" class="notice" hidden>Tháng đã import từ sheet — xem chi tiết theo nhóm ở Tổng quan → Chi theo nhóm. Số dưới đây là số đã chốt, không có từng dòng giao dịch.</div>
 
@@ -658,7 +663,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
     <!-- ===== DCA ===== -->
     <section id="view-dca" class="view">
-      <header class="vhead"><h1>DCA</h1><div class="right"><small id="dcaUpdated" class="mute"></small><button class="btn" id="dcaHistOpen">Lịch sử</button><button class="btn" id="dcaHoldOpen">Thêm coin</button><button class="btn" id="dcaBuyOpen">Mua nhanh</button><button class="btn primary" id="dcaRefresh">Cập nhật</button></div></header>
+      <header class="vhead"><h1>DCA</h1><div class="right"><button class="btn" id="dcaHistOpen">Lịch sử</button><button class="btn" id="dcaHoldOpen">Thêm coin</button><button class="btn" id="dcaBuyOpen">Mua nhanh</button><button class="btn primary" id="dcaRefresh">Cập nhật</button></div></header>
 
       <div class="grid2 eq" id="dcaTopRow" style="margin-bottom:14px">
         <section class="card pad" id="dcaScoreCard">
@@ -699,7 +704,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
     <!-- ===== Trading (swing H4): backtest + paper — mở 2026-09-17 ===== -->
     <!-- ===== Chứng khoán: cổ phiếu ĐANG GIỮ (hero mã đang chọn, danh mục, vùng giá, lịch sử giao dịch). Danh sách 100 mã theo điểm nằm ở tab Trading. ===== -->
     <section id="view-chungkhoan" class="view">
-      <header class="vhead"><h1>Chứng khoán</h1><div class="right"><small id="stockUpdated" class="mute"></small><button class="btn" id="stockHistOpen">Lịch sử</button><button class="btn" id="stockAdd">Thêm cổ phiếu</button><button class="btn" id="stockBuy">Mua nhanh</button><button class="btn primary" id="stockRefresh">Cập nhật</button></div></header>
+      <header class="vhead"><h1>Chứng khoán</h1><div class="right"><button class="btn" id="stockHistOpen">Lịch sử</button><button class="btn" id="stockAdd">Thêm mã</button><button class="btn" id="stockBuy">Mua nhanh</button><button class="btn primary" id="stockRefresh">Cập nhật</button></div></header>
       <div class="grid2 eq" style="margin-bottom:14px">
         <section class="card pad" id="stockHeroCard">
           <div class="colhead" style="padding:0 0 10px"><h2>Buy Score <small>nến ngày · cửa sổ 1 năm · so với VN-Index</small></h2><small class="mute" id="stockHeroSrc"></small></div>
@@ -736,10 +741,10 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
     <!-- ===== Trading: bảng theo dõi 100 coin (Binance) + 100 cổ phiếu (kho VN100) theo Buy Score, popup PnL/Backtest, sổ lệnh ===== -->
     <section id="view-trade" class="view">
-      <header class="vhead"><h1>Trading</h1><div class="right"><small id="tdUpdated" class="mute"></small><div class="seg" id="tdMkt" style="flex:none"></div><button class="btn" id="tdOrder">Mua / Bán</button><button class="btn" id="tdPnl">Tính PnL</button><button class="btn" id="tdBt">Backtest</button><button class="btn primary" id="tdRefresh">Cập nhật</button></div></header>
+      <header class="vhead"><h1>Trading</h1><div class="right"><button class="btn" id="tdOrder">Mua / Bán</button><button class="btn" id="tdPnl">Tính PnL</button><button class="btn" id="tdBt">Backtest</button><button class="btn primary" id="tdRefresh">Cập nhật</button></div></header>
       <div class="grid2 eq" style="margin-bottom:14px">
         <section class="card pad" id="tdHeroCard">
-          <div class="colhead" style="padding:0 0 10px"><h2>Buy Score <small id="tdHeroSub"></small></h2><small class="mute" id="tdHeroSrc"></small></div>
+          <div class="colhead" style="padding:0 0 10px"><h2>Buy Score <small id="tdHeroSub"></small></h2><div style="display:flex;align-items:center;gap:10px;flex:none"><small class="mute" id="tdHeroSrc"></small><div class="seg" id="tdMkt"></div></div></div>
           <div class="hero">
             <div><div class="lbl mute" id="tdHeroLbl" style="font-size:12px;margin-bottom:6px">Giá</div><div class="big" id="tdHeroPrice">—</div></div>
             <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Buy Score</div><div class="big" id="tdHeroScore">—</div></div>
@@ -3677,10 +3682,6 @@ function renderOverview(){
   /* 1. Tài sản ròng */
   const nw = netWorth();
   const baseM = p0.S0 ? p0.S0.month : null;
-  el('ovBase').textContent = baseM
-    ? `Mốc so sánh: bản chốt ${fmtMonth(baseM)}${p0.S0.snapAsOf?' chụp '+fmtDate(p0.S0.snapAsOf):''}${p0.marketKnown?'':' — chưa có ảnh chụp danh mục'}`
-    : (Object.keys(D.months).length ? `Chưa chốt ${fmtMonth(shiftMonth(m,-1))} — chưa có mốc so sánh cho tháng này`
-                                    : 'Chưa chốt tháng nào — chưa có mốc so sánh');
   const parts = p0.dNW==null ? '' :
     `<div class="split"><span>mình tích lũy <b>${signed(p0.cashFlow)}</b></span>
       <span>thị trường ${p0.marketKnown?`<b>${signed(p0.market)}</b>`:'<span class="u">cần chốt tháng có snapshot</span>'}</span>
@@ -3822,7 +3823,6 @@ function renderLedger(){
   const t = importOnly ? { income:Number(closed.income||0), expense:Number(closed.expense||0), pending:0, byCategory:closed.byCategory||{} } : monthTotals(m);
   const p = pace(m, t);
   el('mLabel').textContent = fmtMonthLong(m);
-  el('closedInfo').textContent = closed && closed.closedAt ? 'đã chốt '+fmtTime(closed.closedAt) : '';
   el('btnClose').textContent = closed ? 'Chốt lại tháng' : 'Chốt tháng';
   el('importNotice').hidden = !importOnly;
   el('soStats').innerHTML = monthStatsHtml(m, t, importOnly, 'Chênh lệch', debtTileHtml());
@@ -4655,7 +4655,7 @@ function fillHero(P, o){
     ? `<span class="badge on">${esc(o.r.marketState.label)}</span> <span class="badge">Độ tin cậy: ${esc(o.C.confLabel[o.r.confidence]||o.r.confidence||'—')}</span>${o.stale?' <span class="badge warn">dữ liệu cũ</span>':''}`
     : `<span class="mute">${o.r && o.r.reason ? esc(o.r.reason) : (o.busy ? 'đang tải…' : 'chưa có dữ liệu')}</span>`;
   el(P+'HeroMeta').innerHTML = o.r ? o.meta : `<span class="u">${o.empty}</span>`;
-  el(P+'HeroSrc').textContent = o.r ? o.C.version : '';
+  el(P+'HeroSrc').textContent = o.src!==undefined ? o.src : (o.r ? o.C.version : '');
   el(P+'HeroScoreTable').innerHTML = scoreTableHtml(o.r ? o.r.components : null, o.r ? o.r.score : null, o.busy ? 'đang tải…' : 'chưa chấm — bấm "Cập nhật"', o.C);
 }
 function bandTableHtml(M, st, sym, r){
@@ -4689,7 +4689,7 @@ function renderStocks(){
   const stale = !!(stockStore && (Date.now()-stockStore.updatedAt)/3600e3 > STOCK_STORE_STALE_H);
   el('stockRefresh').disabled = stockBusy; el('stockRefresh').textContent = stockBusy ? 'Đang tải…' : 'Cập nhật';
   const srcCount = stockStore ? Object.values(stockStore.symbols).reduce((m,r)=>{ if(r.source){ const kk=String(r.source).replace(' (cũ)',''); m[kk]=(m[kk]||0)+1; } return m; }, {}) : {};
-  el('stockUpdated').textContent = stockStore ? `kho ${fmtTime(stockStore.updatedAt)} · ${Object.entries(srcCount).map(([kk,n])=>kk+' '+n).join(', ')}` : (st && st.storeErr ? 'kho: '+st.storeErr : '');
+  const stockSrc = stockStore ? `kho ${fmtTime(stockStore.updatedAt)} · ${Object.entries(srcCount).map(([kk,n])=>kk+' '+n).join(', ')}` : (st && st.storeErr ? 'kho: '+st.storeErr : '');
   const hs = stockHoldings(), open = hs.filter(h=>Number(h.quantity)>0), closed = hs.filter(h=>!(Number(h.quantity)>0)), mine = open.map(h=>h.priceKey.slice(4));
   /* Mã đang chọn phải là mã đang giữ (tab này chỉ nói về danh mục); chưa giữ gì thì lấy mã đầu VN30 để khung không rỗng. */
   const sym = mine.includes(state.stockSym) ? state.stockSym : (mine[0] || (STOCK_ALL.includes(state.stockSym) ? state.stockSym : VN30[0]));
@@ -4697,8 +4697,7 @@ function renderStocks(){
   const ledgers = Object.fromEntries(hs.map(h=>[h.priceKey.slice(4), stockLedger(h.priceKey.slice(4))])), L0 = ledgers[sym] || stockLedger(sym);
   const ids = new Map(hs.map(h=>[h.id, h.priceKey.slice(4)]));
   const tx = D.transfers.filter(t=>ids.has(t.toId) || ids.has(t.fromId));
-  el('stockHistOpen').textContent = tx.length ? `Lịch sử (${tx.length})` : 'Lịch sử';
-  fillHero('stock', { sym, r, C, stale, busy:stockBusy, fmt:p=>fmtK(p,2),
+  fillHero('stock', { sym, r, C, stale, busy:stockBusy, fmt:p=>fmtK(p,2), src:stockSrc,
     meta: r ? [
       `<span>phiên <b>${fmtDayY(r.time)}</b><span class="u"> ${r.chg==null?'':'· hôm nay '+fmtPctS(r.chg)}</span></span>`,
       `<span>xếp hạng <b>${rank}/${stockRanks.length}</b><span class="u"> mã trong kho</span></span>`,
@@ -4779,7 +4778,7 @@ function renderTrade(){
   if(M.key==='coin' && !coinStore && !coinBusy && !coinAutoTried){ coinAutoTried = true; refreshCoins({silent:true}); return; }
   const stale = !!(st && (Date.now()-st.updatedAt)/3600e3 > M.staleH);
   el('tdRefresh').disabled = busy; el('tdRefresh').textContent = busy ? (M.key==='coin' && coinProgress ? `Đang tải ${coinProgress}…` : 'Đang tải…') : 'Cập nhật';
-  el('tdUpdated').textContent = st ? `${M.key==='coin' ? 'Binance' : 'kho'} ${fmtTime(st.updatedAt)} · ${Object.keys(st.symbols).length} mã` : (cache && cache.storeErr ? 'lỗi: '+cache.storeErr : '');
+  const tdSrc = st ? `${M.key==='coin' ? 'Binance' : 'kho'} ${fmtTime(st.updatedAt)} · ${Object.keys(st.symbols).length} mã` : (cache && cache.storeErr ? 'lỗi: '+cache.storeErr : '');
   el('tdHeroSub').textContent = M.sub;
   const mine = mktMine(M), sets = M.sets, set = sets.find(x=>x.key===state.tradeSet[M.key]) || sets[0];
   const all = st ? Object.keys(st.symbols) : (M.key==='coin' ? [] : VN100);
@@ -4787,7 +4786,7 @@ function renderTrade(){
   renderCoinPick('tdSetPick', sets, set.key);
   const sym = tdSym(M), r = ranks.find(x=>x.sym===sym) || null, rank = r ? ranks.indexOf(r)+1 : null;
   const bt = btCacheOf(M), btSym = bt && bt.perSym[sym] ? stockBtBest(bt.perSym[sym]) : null;
-  fillHero('td', { sym, r, C, stale, busy, fmt:p=>fmtPx(M,p),
+  fillHero('td', { sym, r, C, stale, busy, fmt:p=>fmtPx(M,p), src:tdSrc,
     meta: r ? [
       `<span>${M.key==='coin'?'nến':'phiên'} <b>${fmtDayY(r.time)}</b><span class="u"> ${r.chg==null?'':'· hôm nay '+fmtPctS(r.chg)}</span></span>`,
       `<span>xếp hạng <b>${rank}/${ranks.length}</b><span class="u"> mã</span></span>`,
@@ -4819,7 +4818,6 @@ function renderTrade(){
     <div class="stat"><div class="lbl">Đang mở</div><div class="val ${openPnl<0?'neg':''}">${posRows.length ? signed(Math.round(openPnl), fmtK) : '—'}</div><div class="sub">${posRows.length} vị thế · vốn ${fmtK(Math.round(openCost))}</div></div>
     <div class="stat"><div class="lbl">Đã chốt tháng này</div><div class="val ${realM<0?'neg':''}">${closedM.length ? signed(Math.round(realM), fmtK) : '—'}</div><div class="sub">${closedM.length} lệnh</div></div>
     <div class="stat ${L.realizedK<0?'strong':''}"><div class="lbl">Đã chốt tổng</div><div class="val ${L.realizedK<0?'neg':''}">${L.closed.length ? signed(Math.round(L.realizedK), fmtK) : '—'}</div><div class="sub">${L.closed.length} lệnh${L.closed.length?` · thắng ${fmtPct(L.wins/L.closed.length)}`:''}</div></div>`;
-  el('tdBookHist').textContent = `Lịch sử (${L.n})`;
   el('tdBookTable').innerHTML = `<thead><tr><th class="first">Mã</th><th class="n">Điểm</th><th class="n">SL</th><th class="n">Giá vốn</th><th class="n">Giá</th><th class="n">Lãi/lỗ</th><th class="last n"></th></tr></thead><tbody>`+
     (posRows.length ? posRows.map(x=>`<tr data-mkt="${x.P.mkt}" data-sym="${x.P.sym}"><td class="first"><b>${esc(x.P.sym)}</b> <small class="mute">${x.MM.label}</small></td><td class="n">${x.score!=null?x.score:'—'}</td><td class="n">${fmtQtyM(x.MM, x.P.qty)}</td><td class="n">${fmtPx(x.MM, x.P.avgPx)}</td><td class="n">${fmtPx(x.MM, x.px)}</td><td class="n ${x.pnlK!=null&&x.pnlK<0?'neg':''}">${x.pnlK==null?'—':`<b>${signed(Math.round(x.pnlK), fmtK)}</b> <small class="mute">${fmtPctS(x.ret)}</small>`}</td><td class="last n"><button data-act="sell" class="tag" title="Bán">Bán</button></td></tr>`).join('')
      : `<tr><td class="empty" colspan="7">Chưa có vị thế nào — bấm "Mua / Bán" để ghi lệnh đầu tiên. Lệnh là một Chuyển đổi thật nên Tài sản tự đổi.</td></tr>`)+`</tbody>`;
@@ -5180,8 +5178,6 @@ function renderDca(){
                        { pnlRate: coin.pnlRate });
   const hasAny = basis.rows.length>0;
 
-  el('dcaUpdated').textContent = D.prices[coin.key] ? '' : (hasAny ? `Chưa có giá ${L} — bấm Cập nhật, hoặc nhập tay ở tab Tài sản` : '');
-  el('dcaHistOpen').textContent = hasAny ? `Lịch sử (${basis.rows.length})` : 'Lịch sử';
 
   /* Đang giữ gồm cả họ coin — ETH thì cộng luôn WBETH đã quy về ETH, ghi rõ ở dòng nhỏ. */
   const fam = familyHoldings(coin.key).filter(h=>Number(h.quantity)>0);
@@ -5575,7 +5571,6 @@ function renderHistory(){
   // ---- biểu đồ cột thu/chi + đường tài sản ròng ----
   const box = el('histChart'); const data = rows.slice(-24);
   el('ovChartSub').textContent = data.length ? `${data.length} tháng gần nhất` : '';
-  el('ovMonthsOpen').textContent = `Bảng tháng${rows.length?' ('+rows.length+')':''}`;
   if(!data.length){ box.innerHTML='<div class="mute">Chưa chốt tháng nào</div>'; return renderCatTable(rows); }
   const W = Math.max(320, box.clientWidth||800), H = 280, L=54, Rr=64, T=14, B=30, pw=W-L-Rr, ph=H-T-B;
   const yMax = niceMax(Math.max(...data.map(r=>Math.max(r.income,r.expense))));
