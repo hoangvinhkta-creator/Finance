@@ -1009,7 +1009,7 @@ const isoDay = ms => new Date(ms).toISOString().slice(0,10);
    Ngưỡng % thu hẹp còn ~70% của crypto vì cổ phiếu VN biến động thấp hơn (biên ±7%/phiên). ĐIỂM XUẤT PHÁT — backtest PR 3 đo thật.
    Thành phần 7: cổ phiếu so với VN-Index 21 phiên (thay ETH/BTC). */
 const STOCK_SCORE_V1 = {
-  version:'stock-d1-v1', minCandles:220, fullCandles:300, staleHours:30,
+  version:'stock-d1-v1', minCandles:220, fullCandles:300, staleHours:30, seriesWindow:300,   // chấm từng phiên chỉ nhìn 300 phiên trước (cửa sổ dài nhất 250 + RSI hội tụ)
   windows:{ year:250, month:21, volShort:5, volLong:60, rsi:14, ma:200, ethbtc:21 },
   drawdown365:{ max:25, label:'Giảm từ đỉnh 1 năm', fmt:'pct', dir:'atLeast', tiers:[[0.45,25],[0.35,22],[0.27,18],[0.20,14],[0.13,9],[0.07,4],[0,0]] },
   ma200:{ max:20, label:'Lệch so với MA200', fmt:'pct', dir:'atMost', tiers:[[-0.25,20],[-0.17,17],[-0.10,13],[-0.04,9],[0,5],[0.08,2],[Infinity,0]] },
