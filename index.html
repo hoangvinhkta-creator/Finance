@@ -712,7 +712,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
     <!-- ===== Chứng khoán: Buy Score nến ngày cho VN30 (PR 2) ===== -->
     <section id="view-chungkhoan" class="view">
-      <header class="vhead"><h1>Chứng khoán</h1><div class="right"><small id="stockUpdated" class="mute"></small><button class="btn" id="stockBt">Backtest</button><button class="btn" id="stockAdd">Thêm cổ phiếu</button><button class="btn primary" id="stockRefresh">Cập nhật</button></div></header>
+      <header class="vhead"><h1>Chứng khoán</h1><div class="right"><small id="stockUpdated" class="mute"></small><button class="btn" id="stockPnl">Tính PnL</button><button class="btn" id="stockBt">Backtest</button><button class="btn" id="stockAdd">Thêm cổ phiếu</button><button class="btn primary" id="stockRefresh">Cập nhật</button></div></header>
       <div class="grid2 eq" style="margin-bottom:14px">
         <section class="card pad" id="stockHeroCard">
           <div class="colhead" style="padding:0 0 10px"><h2>Buy Score <small>nến ngày · cửa sổ 1 năm · so với VN-Index</small></h2><small class="mute" id="stockHeroSrc"></small></div>
@@ -811,6 +811,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <div class="hint" style="padding:8px 0 14px">Chạy một lần. Cũng gọi được từ console: <code>importInitialData()</code> hoặc <code>importInitialData({force:true})</code>.</div>
             <div class="row"><button class="btn" id="btnImportDcaHistory">Nạp lịch sử mua coin (file cũ)</button><span class="mute" id="dcaHistoryInfo"></span></div>
             <div class="row"><button class="btn" id="btnImportStockHistory">Nạp lịch sử lệnh VCBS (ảnh 17/09/2026)</button><span class="mute" id="stockHistoryInfo"></span></div>
+            <div class="row"><button class="btn" id="btnReconcileStocks">Đối chiếu danh mục VCBS (ảnh 17/09/2026)</button><span class="mute" id="stockReconInfo"></span></div>
             <div class="hint" style="padding:8px 0 0">29 lần mua BTC/ETH/ADA và 39 lần nạp/rút USDT từ file Excel theo dõi cũ. Mua coin quy đổi VNĐ theo tỷ giá của lần nạp USDT gần ngày đó nhất. Chỉ ghi vào lịch sử Chuyển đổi để tính giá vốn — <b>không đụng số lượng đang có</b>. Hai mẻ tách riêng, mỗi mẻ chỉ nạp một lần.</div>
           </details>
         </section>
@@ -1282,6 +1283,7 @@ function transferValue(from, to, qtyOut, qtyIn){
 }
 /* Giá ngầm định của một transfer, theo đơn vị của bên có giá. */
 function transferImplied(tf){
+  if(tf.kind==='adjust') return null;                          // dòng đối chiếu sổ: không có giá ngầm định
   const f=holdingById(tf.fromId), t=holdingById(tf.toId);
   if(t && t.priceKey && Number(tf.qtyIn))  return {v:Number(tf.valueVnd||0)/Number(tf.qtyIn),  key:t.priceKey};
   if(f && f.priceKey && Number(tf.qtyOut)) return {v:Number(tf.valueVnd||0)/Number(tf.qtyOut), key:f.priceKey};
@@ -1496,7 +1498,7 @@ function usdtHistoryOps(rows, cashId, usdtId, batch){
    đang có trong Danh mục đã đúng theo số dư thật (nhập tay riêng), sổ mua cũ này chỉ để tính
    giá vốn — cộng dồn lại vào holdings sẽ nhân đôi số lượng đang có.
    Hai mẻ tách riêng: ai đã nạp mẻ coin từ trước vẫn nạp được mẻ USDT thêm sau. */
-const HISTORY_BATCHES = { coin:'xlsx-2026-09', usdt:'xlsx-2026-09-usdt', stocks:'vcbs-2026-09' };
+const HISTORY_BATCHES = { coin:'xlsx-2026-09', usdt:'xlsx-2026-09-usdt', stocks:'vcbs-2026-09', stocksRecon:'vcbs-2026-09-recon' };
 const historyImported = b => D.transfers.some(t=>t.historyBatch===b);
 async function importDcaHistory(){
   if(!store) throw new Error('Chưa đăng nhập');
@@ -2960,6 +2962,28 @@ function testStocks(){
   const lv = stockLedgerOf('VIX', tf, hs);
   chk('VIX: 300 CP, vốn TB (4.710+2.600)/300 = 24,37k, chưa bán', [lv.qty, Math.round(lv.avg*100)/100, lv.realized], [300, 24.37, 0]);
   chk('mã không có giao dịch ⇒ sổ rỗng', stockLedgerOf('FPT', tf, hs).n, 0);
+  console.log('%c6b — đối chiếu với danh mục VCBS: dòng điều chỉnh có dấu, giá vốn TB về đúng số VCBS','font-weight:600');
+  { const hv = [{id:'h5', priceKey:'stk:VIX', quantity:506}, {id:'h2', priceKey:'stk:BID', quantity:106}, {id:'h3', priceKey:'stk:DPR', quantity:200}];
+    const led = { VIX: stockLedgerOf('VIX', tf, hv), BID: stockLedgerOf('BID', tf, hv), DPR: stockLedgerOf('DPR', tf, hv) };
+    const rc = stockReconcileOps([['VIX',504,18.73],['BID',106,37.83],['DPR',200,42.7],['PHR',144,35.833]], led, hv, 'rb', '2026-09-17');
+    chk('VIX: sổ 300 CP vốn 7.310k ⇒ VCBS 504 @18,73 ⇒ Δ +204 CP, Δ vốn +2.129,92k', [rc.docs[0].kind, rc.docs[0].toId, rc.docs[0].qtyIn, Math.round(rc.docs[0].valueVnd*100)/100], ['adjust', 'h5', 204, 2129.92]);
+    chk('BID: +6 CP thưởng, vốn giảm 45,02k (giá vốn TB 40,55 → 37,83)', [rc.docs[1].qtyIn, Math.round(rc.docs[1].valueVnd*100)/100, Math.round(rc.lines[1].avgBefore*100)/100, rc.lines[1].avgAfter], [6, -45.02, 40.55, 37.83]);
+    chk('DPR đã khớp (200 @42,7) ⇒ không sinh dòng điều chỉnh; PHR chưa có holding ⇒ missing', [rc.docs.length, rc.lines.find(l=>l.sym==='DPR').dq, rc.missing], [2, 0, ['PHR']]);
+    chk('holding VIX gõ nhầm 506 ⇒ sửa về 504; BID 106 đúng ⇒ không sửa', rc.holds.map(h=>[h.sym, h.before, h.quantity]), [['VIX', 506, 504]]);
+    const after = stockLedgerOf('VIX', tf.concat(rc.docs.map((d,i)=>({...d, createdAt:1e12+i}))), hv);
+    chk('sổ VIX sau đối chiếu: 504 CP, giá vốn TB 18,73k, 1 dòng điều chỉnh, vẫn 2 lần mua', [after.qty, Math.round(after.avg*100)/100, after.adjusts, after.buys], [504, 18.73, 1, 2]);
+    chk('chạy đối chiếu lần hai trên sổ đã khớp ⇒ không sinh gì', stockReconcileOps([['VIX',504,18.73]], {VIX:after}, [{id:'h5', priceKey:'stk:VIX', quantity:504}], 'rb', '2026-09-17').docs.length, 0);
+    chk('dòng điều chỉnh không có giá ngầm định', transferImplied({kind:'adjust', toId:'x', qtyIn:6, valueVnd:-45}), null); }
+  console.log('%c6c — tính PnL: lô 100, phí mua 0,15%, bán 0,25%','font-weight:600');
+  { const pl = stockPnlPlan(10, 12, 10000);
+    chk('10.000k @10k ⇒ 900 CP (10.015/100 CP ⇒ 9 lô), tiền ra 9.013,5k, về 10.773k, lãi 1.759,5k', [pl.shares, pl.spent, pl.proceeds, Math.round(pl.netK*10)/10], [900, 9013.5, 10773, 1759.5]);
+    chk('lãi gộp 20%, sau phí ≈ 19,5%', [Math.round(pl.gross*1000)/1000, Math.round(pl.net*1000)/1000], [0.2, 0.195]);
+    chk('giá xuống ⇒ lỗ âm', stockPnlPlan(10, 9, 10000).netK < 0, true);
+    chk('chưa đủ một lô ⇒ 0 CP, tiền ra 0', [stockPnlPlan(10, 12, 500).shares, stockPnlPlan(10, 12, 500).spent], [0, 0]);
+    chk('không tới được (giá null) ⇒ chỉ phần mua', [stockPnlPlan(10, null, 10000).shares, stockPnlPlan(10, null, 10000).netK], [900, null]);
+    chk('giá 0 hay tiền 0 ⇒ null', [stockPnlPlan(0, 12, 100), stockPnlPlan(10, 12, 0)], [null, null]);
+    const pa = stockPriceAt(big, 'FPT', 55, stockScoreOf(big,'FPT').price);
+    chk('stockPriceAt FPT về 55 = giá bước 0,05k, khớp what-if', [pa!=null && Math.abs(pa/0.05 - Math.round(pa/0.05))<1e-6, pa===planWhatIf(big,'FPT')[1].price], [true, true]); }
   console.log('%c7 — kế hoạch chọn mã hằng tháng (simulatePicks) và what-if tĩnh','font-weight:600');
   { const D0 = Date.UTC(2026,0,5), d = i => D0 + i*86400e3;   // 60 phiên liền, tháng 1 và tháng 2
     const mk = (pricesFn, scoreFn) => Array.from({length:50},(_,i)=>({ time:d(i), close:pricesFn(i), score:scoreFn(i) }));   // 50 phiên: chỉ hai đầu tháng (05/01, 01/02)
@@ -4145,10 +4169,24 @@ function simulatePicks(seriesMap, opts){
 }
 /* Nếu mua hôm nay rồi bán đúng lúc điểm về ≤ X: giá bán ≈ giá cao nhất còn đạt X (stockBands), lãi sau phí. TĨNH — giả định MA200, đỉnh 1 năm, RSI, khối lượng đứng yên;
    thực tế điểm còn tụt theo THỜI GIAN khi đỉnh cũ trôi khỏi cửa sổ 250 phiên dù giá không đổi. */
+/* Giá của mã tại đó điểm vừa còn ≥ Z (dò ngược buyScore bằng chia đôi khoảng), cắt xuống bước 0,05k. null = không tới được chỉ bằng giá. */
+function stockPriceAt(store, sym, Z, priceNow){
+  const rec = store.symbols[sym]; if(!rec) return null;
+  const raw = priceForScore(rec.rows, store.index ? store.index.rows : [], {config:STOCK_SCORE_V1}, Z, priceNow);
+  return raw==null ? null : Math.floor(raw/0.05)*0.05;
+}
+/* Mua amountK hôm nay ở price0 (lô 100, phí mua), bán ở priceZ (phí bán + thuế) ⇒ số CP, tiền bỏ ra, tiền về, lãi/lỗ nghìn đồng và %. priceZ null ⇒ chỉ có phần mua. */
+function stockPnlPlan(price0, priceZ, amountK, P){
+  P = P || STOCK_PLAN_V1;
+  if(!(price0>0) || !(amountK>0)) return null;
+  const shares = Math.floor(amountK/(price0*(1+P.fee))/100)*100, spent = shares*price0*(1+P.fee);
+  if(priceZ==null || !(priceZ>0)) return { shares, spent, proceeds:null, netK:null, gross:null, net:null };
+  const proceeds = shares*priceZ*(1-P.fee-P.sellTax);
+  return { shares, spent, proceeds, netK: proceeds-spent, gross: priceZ/price0-1, net: spent>0 ? proceeds/spent-1 : null };
+}
 function planWhatIf(store, sym, opts){
   const P = {...STOCK_PLAN_V1, ...(opts||{})}, sc = stockScoreOf(store, sym); if(!sc || sc.score==null) return [];
-  const rec = store.symbols[sym], ref = store.index ? store.index.rows : [], o = {config:STOCK_SCORE_V1};
-  return P.exits.map(X=>{ const raw = priceForScore(rec.rows, ref, o, X, sc.price), p = raw==null ? null : Math.floor(raw/0.05)*0.05, reachable = sc.score > X;
+  return P.exits.map(X=>{ const p = stockPriceAt(store, sym, X, sc.price), reachable = sc.score > X;
     const gross = p!=null && sc.price>0 ? p/sc.price-1 : null, net = p!=null && sc.price>0 ? (p*(1-P.fee-P.sellTax))/(sc.price*(1+P.fee))-1 : null;
     return { X, price:p, gross, net, reachable, already: sc.score <= X }; });
 }
@@ -4206,12 +4244,14 @@ function openStockBacktest(rerun){
 function stockLedgerOf(sym, transfers, holdings){
   const ids = new Set((holdings||[]).filter(h=>h.priceKey===STOCK_PRICE_PREFIX+sym).map(h=>h.id));
   const rows = (transfers||[]).filter(t=>ids.has(t.toId) || ids.has(t.fromId)).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'') || (a.createdAt||0)-(b.createdAt||0));
-  let qty = 0, cost = 0, realized = 0, buys = 0, sells = 0;
+  let qty = 0, cost = 0, realized = 0, buys = 0, sells = 0, adjusts = 0;
   for(const t of rows){
+    /* kind:'adjust' = dòng đối chiếu sổ với công ty chứng khoán: qtyIn và valueVnd CÓ DẤU (cổ phiếu thưởng/quyền làm số CP tăng mà vốn không đổi ⇒ giá vốn TB hạ). Không phải mua/bán. */
+    if(t.kind==='adjust'){ qty += Number(t.qtyIn)||0; cost += Number(t.valueVnd)||0; adjusts++; if(qty<=1e-9){ qty = 0; cost = 0; } continue; }
     if(ids.has(t.toId)){ const q = Number(t.qtyIn)||0, v = Number(t.valueVnd)||0; qty += q; cost += v; buys++; }
     else { const q = Number(t.qtyOut)||0, v = Number(t.valueVnd)||0, avg = qty>0 ? cost/qty : 0; realized += v - avg*q; cost -= avg*q; qty -= q; sells++; if(qty<=1e-9){ qty = 0; cost = 0; } }
   }
-  return { sym, qty, cost, avg: qty>0 ? cost/qty : 0, realized, buys, sells, n: rows.length };
+  return { sym, qty, cost, avg: qty>0 ? cost/qty : 0, realized, buys, sells, adjusts, n: rows.length };
 }
 const stockLedger = sym => stockLedgerOf(sym, D.transfers, D.holdings);
 /* Lịch sử lệnh VCBS chép từ ảnh owner gửi 2026-09-17 (bộ lọc 17/02/2025 → 17/09/2026, "Hoàn thành"; lệnh "Hủy mua" TCB 200 bỏ qua).
@@ -4270,6 +4310,75 @@ async function importStockHistory(){
   render();
   return { transfers: docs.length, positions: Object.entries(qty).filter(([,q])=>q>0).map(([s,q])=>`${s} ${q}`), sold: Object.entries(qty).filter(([,q])=>!(q>0)).map(([s])=>s), marketValue: mv, cash: cashQty, oldValue: old ? Number(old.quantity||0) : null };
 }
+/* Popup "Tính PnL": mua X nghìn đồng hôm nay ở điểm hiện tại, kéo thanh trượt tới điểm Z ⇒ giá lúc đó và lãi/lỗ sau phí.
+   Cùng phép dò ngược với Vùng giá mua (stockPriceAt), nhớ kết quả theo Z trong lúc popup mở. TĨNH — mọi thứ khác đứng yên. */
+function openStockPnl(sym){
+  if(!stockStore){ toast('Chưa có kho dữ liệu — bấm Cập nhật trước.'); return; }
+  const r = stockRanks.find(x=>x.sym===sym);
+  if(!r || r.score==null){ toast(`${sym} chưa có điểm — chưa đủ nến trong kho.`); return; }
+  const memo = new Map(), priceAt = Z => { if(!memo.has(Z)) memo.set(Z, stockPriceAt(stockStore, sym, Z, r.price)); return memo.get(Z); };
+  const amt0 = (settings().trade||{}).sleeve || 10000, Z0 = Math.max(0, Math.min(65, r.score-5));
+  const body = `<div class="scntop" style="padding-bottom:6px">
+      <div class="scnval"><span class="mute">Mua hôm nay</span><input id="pnlAmt" inputmode="numeric" value="${Math.round(amt0)}" style="width:90px"><span class="mute">k · ${fmtK(r.price,2)} · điểm ${r.score}</span></div>
+      <div class="scnslide"><span class="mute" style="min-width:0;font-weight:400">Bán khi điểm về</span><input type="range" id="pnlZ" min="0" max="100" step="1" value="${Z0}"><span id="pnlZv">${Z0}</span></div>
+      <div class="scnpre" id="pnlPre">${STOCK_PLAN_V1.exits.map(x=>`<button data-z="${x}">${x}</button>`).join('')}</div>
+    </div>
+    <div class="stats three" id="pnlStats" style="margin-bottom:10px"></div>
+    <div class="scroll"><table class="tbl compact" id="pnlTable"></table></div>
+    <div class="hint" style="padding:6px 0 0">Điểm giảm khi giá lên, tăng khi giá xuống — kéo về trái là kịch bản giá lên (lãi), kéo qua phải quá điểm hiện tại là giá xuống (lỗ). Phí mua 0,15%, bán 0,15% + thuế 0,1%, lô 100 CP. <b>Tĩnh</b>: giả định MA200, đỉnh 1 năm, RSI, khối lượng đứng yên — thực tế điểm còn tụt theo thời gian khi đỉnh cũ trôi khỏi cửa sổ 250 phiên, tức có thể bán ra mà giá chưa lên tới mức này.</div>`;
+  showModal(`Tính PnL — ${sym}`, body, 'Đóng', ()=>{}, {noCancel:true});
+  const draw = () => {
+    const amt = parseNum(el('pnlAmt').value.replace(/\.(?=\d{3}\b)/g,'')), Z = Number(el('pnlZ').value); el('pnlZv').textContent = String(Z);   // "20.000" là hai mươi nghìn, không phải 20,000
+    el('pnlPre').querySelectorAll('button').forEach(b=>b.classList.toggle('on', Number(b.dataset.z)===Z));
+    const pz = Z===r.score ? r.price : priceAt(Z), plan = isNaN(amt) ? null : stockPnlPlan(r.price, pz, amt);
+    const k = x => fmtK(Math.round(x)), neg = x => x!=null && x<0 ? 'neg' : '';
+    el('pnlStats').innerHTML = `
+      <div class="stat"><div class="lbl">Mua hôm nay · điểm ${r.score}</div><div class="val">${plan ? fmtNum(plan.shares)+' CP' : '—'}</div><div class="sub">${plan ? `${k(plan.spent)} gồm phí` : 'nhập số tiền'}</div></div>
+      <div class="stat"><div class="lbl">Giá khi điểm về ${Z}</div><div class="val">${pz==null ? '—' : fmtK(pz,2)}</div><div class="sub">${pz==null ? 'không tới được chỉ bằng giá' : fmtPctS(pz/r.price-1)+' so với hôm nay'}</div></div>
+      <div class="stat ${plan&&plan.netK!=null&&plan.netK<0?'strong':''}"><div class="lbl">Lãi/lỗ sau phí</div><div class="val ${neg(plan&&plan.netK)}">${plan&&plan.netK!=null ? signed(Math.round(plan.netK), fmtK) : '—'}</div><div class="sub">${plan&&plan.net!=null ? fmtPctS(plan.net)+' trên tiền bỏ ra' : plan&&plan.shares===0 ? 'chưa đủ một lô 100 CP' : ''}</div></div>`;
+    /* Bảng 3 mốc cố định để so nhanh, dòng đang kéo tô đậm. */
+    const Zs = [...new Set([...STOCK_PLAN_V1.exits, Z])].sort((a,b)=>b-a);
+    el('pnlTable').innerHTML = `<thead><tr><th class="first">Điểm về</th><th class="n">Giá lúc đó</th><th class="n">So hôm nay</th><th class="n">Tiền về</th><th class="n last">Lãi/lỗ sau phí</th></tr></thead><tbody>`+
+      Zs.map(z=>{ const p = z===r.score ? r.price : priceAt(z), pl = isNaN(amt) ? null : stockPnlPlan(r.price, p, amt);
+        return `<tr class="${z===Z?'total':''}"><td class="first"><b>${z}</b>${z>=r.score?' <small class="mute">giá xuống</small>':''}</td><td class="n">${p==null?'<span class="mute">không tới được</span>':fmtK(p,2)}</td><td class="n ${p!=null&&p<r.price?'neg':''}">${p==null?'—':fmtPctS(p/r.price-1)}</td><td class="n">${pl&&pl.proceeds!=null?k(pl.proceeds):'—'}</td><td class="n last ${neg(pl&&pl.netK)}">${pl&&pl.netK!=null?`<b>${signed(Math.round(pl.netK), fmtK)}</b> <small class="mute">${fmtPctS(pl.net)}</small>`:'—'}</td></tr>`; }).join('')+`</tbody>`;
+  };
+  el('pnlZ').oninput = draw; el('pnlAmt').oninput = draw;
+  el('pnlPre').onclick = e => { const b = e.target.closest('button[data-z]'); if(!b) return; el('pnlZ').value = b.dataset.z; draw(); };
+  draw();
+}
+/* Đối chiếu sổ với ảnh Danh mục đầu tư VCBS (owner gửi 2026-09-17): [mã, số CP đang có, giá vốn TB k]. Số CP ở VCBS gồm cả cổ phiếu thưởng/quyền (_WFT)
+   không có trong lịch sử lệnh ⇒ sổ mua thiếu, giá vốn TB tính ra cao hơn thật. Mỗi mã lệch ⇒ một transfer kind:'adjust' (Δ số CP, Δ vốn có dấu) và sửa số CP holding. */
+const STOCK_RECONCILE_VCBS = { asOf:'2026-09-17', rows:[['BID',106,37.83],['DPR',200,42.7],['PHR',144,35.833],['TCB',70,33.05],['VIX',504,18.73]] };
+/* Hàm thuần: rows ⇒ {docs (transfers điều chỉnh), holds (sửa số CP), lines (tóm tắt từng mã), missing (mã chưa có holding)}. Sổ đã khớp ⇒ không sinh gì. */
+function stockReconcileOps(rows, ledgers, holdings, batch, date){
+  const docs = [], holds = [], lines = [], missing = [];
+  for(const [sym, q, avg] of rows){
+    const h = (holdings||[]).find(x=>x.priceKey===STOCK_PRICE_PREFIX+sym); if(!h){ missing.push(sym); continue; }
+    const L = ledgers[sym] || {qty:0, cost:0}, dq = r6(q - (L.qty||0)), dc = r6(q*avg - (L.cost||0));
+    if(Math.abs((Number(h.quantity)||0) - q) > 1e-9) holds.push({ id:h.id, sym, quantity:q, before: Number(h.quantity)||0 });
+    if(Math.abs(dq) > 1e-9 || Math.abs(dc) > 1e-6){
+      const note = `Đối chiếu VCBS ${fmtDate(date)}/${date.slice(0,4)}: ${dq ? `${dq>0?'+':''}${fmtNum(dq)} CP (thưởng/quyền)` : ''}${dq && dc ? ' · ' : ''}${dc ? `vốn ${signed(Math.round(dc), fmtK)}` : ''} ⇒ ${fmtNum(q)} CP @ ${fmtK(avg,2)}`;
+      docs.push({ date, month:date.slice(0,7), kind:'adjust', fromId:null, toId:h.id, qtyOut:0, qtyIn:dq, valueVnd:dc, note, historyBatch:batch });
+    }
+    lines.push({ sym, hid:h.id, qty:q, dq, dc, avgBefore: L.qty>0 ? L.cost/L.qty : null, avgAfter: avg });
+  }
+  return { docs, holds, lines, missing };
+}
+async function reconcileStocks(){
+  if(!store) throw new Error('Chưa đăng nhập');
+  if(historyImported(HISTORY_BATCHES.stocksRecon)) throw new Error('Đã đối chiếu rồi — chỉ làm một lần.');
+  const R = STOCK_RECONCILE_VCBS, ledgers = Object.fromEntries(R.rows.map(([s])=>[s, stockLedger(s)]));
+  const r = stockReconcileOps(R.rows, ledgers, D.holdings, HISTORY_BATCHES.stocksRecon, R.asOf);
+  if(r.missing.length) throw new Error(`Chưa có holding của ${r.missing.join(', ')} — nạp lịch sử lệnh VCBS trước (nút bên trên) rồi đối chiếu.`);
+  if(!r.docs.length && !r.holds.length) throw new Error('Sổ đã khớp VCBS, không có gì để sửa.');
+  const now = Date.now(), ops = [];
+  for(const x of r.lines){ const h = holdingById(x.hid), {id, ...data} = h; ops.push({op:'set', col:'holdings', id:x.hid, data:{...data, quantity:x.qty}}); }   // ghi số CP cho mọi mã, kể cả mã đã khớp
+  r.docs.forEach((d,i)=>ops.push({op:'set', col:'transfers', id:store.newId(), data:{...d, createdAt:now+i}}));
+  await store.batch(ops);
+  applyLoaded(await store.loadAll());
+  render();
+  return r;
+}
 const stockHoldings = () => D.holdings.filter(h=>String(h.priceKey||'').startsWith(STOCK_PRICE_PREFIX)).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
 let stockStore = null, stockRanks = [], stockBusy = false, stockAutoTried = false;   // nến đầy đủ giữ trong RAM (không ghi Firestore — 31 × 600 nến vượt 1 MB/document)
 async function refreshStocks(opts){
@@ -4325,7 +4434,7 @@ function renderStocks(){
   el('stockScoreTable').innerHTML = scoreTableHtml(r ? r.components : null, r ? r.score : null, stockBusy ? 'đang tải…' : 'chưa chấm — bấm "Cập nhật"', C);
   /* Bảng VN30 xếp theo điểm — luôn đủ 30 dòng, bấm dòng để chọn mã. */
   el('stockListSub').textContent = `${VN30_BASKET} · giá nghìn đồng`;
-  el('stockListMeta').textContent = stockStore ? `${setRanks.length}/${setSyms.length} mã có điểm · bấm dòng để xem${mine.length?` · ● = đang giữ`:''}` : (set.key==='MINE' && !mine.length ? 'Chưa có mã nào — bấm "Thêm cổ phiếu" hoặc nạp lịch sử lệnh VCBS ở Cài đặt → Nâng cao' : '');
+  el('stockListMeta').textContent = stockStore ? `${setRanks.length}/${setSyms.length} mã có điểm · bấm dòng để xem, bấm lại để tính PnL${mine.length?` · ● = đang giữ`:''}` : (set.key==='MINE' && !mine.length ? 'Chưa có mã nào — bấm "Thêm cổ phiếu" hoặc nạp lịch sử lệnh VCBS ở Cài đặt → Nâng cao' : '');
   const list = setRanks.length ? setRanks.concat(setSyms.filter(x=>!setRanks.some(y=>y.sym===x)).map(x=>({sym:x}))) : setSyms.map(x=>({sym:x}));
   const chg = x => x==null ? '—' : `<span class="${x<0?'neg':''}">${fmtPctS(x)}</span>`;
   el('stockTable').innerHTML = `<colgroup><col style="width:11%"><col style="width:6%"><col style="width:17%"><col style="width:15%"><col style="width:12%"><col style="width:22%"><col style="width:17%"></colgroup>
@@ -4356,7 +4465,10 @@ function renderStocks(){
     : '';
 }
 el('stockRefresh').onclick = ()=>refreshStocks();
-el('stockTable').addEventListener('click', e=>{ const tr = e.target.closest('tr[data-sym]'); if(!tr) return; state.stockSym = tr.dataset.sym; renderStocks(); });
+el('stockTable').addEventListener('click', e=>{ const tr = e.target.closest('tr[data-sym]'); if(!tr) return;
+  if(tr.dataset.sym===state.stockSym && stockStore){ openStockPnl(tr.dataset.sym); return; }   // bấm lại mã đang chọn ⇒ popup Tính PnL
+  state.stockSym = tr.dataset.sym; renderStocks(); });
+el('stockPnl').onclick = ()=>openStockPnl(STOCK_ALL.includes(state.stockSym) ? state.stockSym : VN30[0]);
 el('stockSetPick').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.stockSet) return; state.stockSet=b.dataset.coin; renderStocks(); });
 el('stockBt').onclick = ()=>openStockBacktest(false);
 el('stockHoldTable').addEventListener('click', e=>{ const b = e.target.closest('button[data-act="del"]'); if(!b) return; const tr = b.closest('tr'), sym = tr && tr.querySelector('td.first b') ? tr.querySelector('td.first b').textContent : null;
@@ -5253,6 +5365,9 @@ function renderSettings(){
   const doneStk = historyImported(HISTORY_BATCHES.stocks);
   el('stockHistoryInfo').textContent = doneStk ? 'Đã nạp — xem Chứng khoán → Danh mục cổ phiếu' : `${STOCK_HISTORY_IMPORT.length} lệnh · tạo holding từng mã, đổi khoản VCBS thành Tiền tại VCBS`;
   el('btnImportStockHistory').disabled = doneStk;
+  const doneRecon = historyImported(HISTORY_BATCHES.stocksRecon);
+  el('stockReconInfo').textContent = doneRecon ? 'Đã đối chiếu — sổ khớp VCBS 17/09/2026' : `${STOCK_RECONCILE_VCBS.rows.map(([s,q])=>`${s} ${q}`).join(' · ')} · sửa số CP và giá vốn TB theo VCBS`;
+  el('btnReconcileStocks').disabled = doneRecon;
 }
 el('saveDca').onclick = ()=>{
   const numList = v => String(v||'').split(',').map(x=>parseNum(x.trim())).filter(x=>!isNaN(x));
@@ -5302,6 +5417,14 @@ el('btnImportStockHistory').onclick = async ()=>{
     const r = await importStockHistory();
     alert(`Đã nạp ${r.transfers} lệnh.\nĐang giữ: ${r.positions.join(', ')}${r.sold.length?`\nĐã bán hết: ${r.sold.join(', ')}`:''}\nGiá trị cổ phiếu theo kho: ${fmtK(Math.round(r.marketValue))}`+
       (r.oldValue!=null ? `\nKhoản VCBS cũ ${fmtK(Math.round(r.oldValue))} ⇒ Tiền tại VCBS ước lượng ${fmtK(Math.round(r.cash))} — sửa lại theo số dư thật ở Tài sản → Tiền.` : '\nChưa có khoản VCBS cũ ⇒ Tiền tại VCBS = 0, nhập tay ở Tài sản → Tiền.'));
+  }catch(e){ alert(e.message); }
+};
+el('btnReconcileStocks').onclick = async ()=>{
+  if(!confirm('Đối chiếu sổ cổ phiếu với ảnh Danh mục VCBS 17/09/2026: sửa số CP đang giữ và giá vốn TB của BID, DPR, PHR, TCB, VIX cho khớp VCBS (ghi một dòng điều chỉnh mỗi mã lệch vào lịch sử Chuyển đổi). Chỉ làm một lần.')) return;
+  try{
+    const r = await reconcileStocks();
+    alert(`Đã đối chiếu ${r.lines.length} mã.\n`+r.lines.map(l=>`${l.sym}: ${fmtNum(l.qty)} CP${l.dq?` (${l.dq>0?'+':''}${fmtNum(l.dq)} CP)`:''} · giá vốn ${l.avgBefore!=null?fmtK(l.avgBefore,2)+' → ':''}${fmtK(l.avgAfter,2)}`).join('\n')+
+      (r.holds.length ? `\nSửa số CP holding: ${r.holds.map(h=>`${h.sym} ${fmtNum(h.before)} → ${fmtNum(h.quantity)}`).join(', ')}` : ''));
   }catch(e){ alert(e.message); }
 };
 el('btnImportDcaHistory').onclick = async ()=>{
@@ -5577,9 +5700,9 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
-        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1},
+        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS},
   render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
-  refreshDca, refreshTrade, refreshStocks, importStockHistory, makeCandles,
+  refreshDca, refreshTrade, refreshStocks, importStockHistory, reconcileStocks, openStockPnl, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
 boot();
