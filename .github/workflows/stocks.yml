@@ -1,6 +1,6 @@
-name: Cập nhật giá VN30
+name: Cập nhật giá VN100
 
-# Cào nến ngày VN30 + VN-Index sau phiên ATC (14:45 giờ VN) rồi commit data/vn30.json để GitHub Pages phục vụ cùng origin.
+# Cào nến ngày VN100 (VN30 + VN70) + VN-Index sau phiên ATC (14:45 giờ VN) rồi commit data/vn100.json để GitHub Pages phục vụ cùng origin.
 # 08:40 UTC = 15:40 giờ Việt Nam, thứ Hai → thứ Sáu. Bấm "Run workflow" để chạy tay bất kỳ lúc nào.
 on:
   schedule:
@@ -29,8 +29,8 @@ jobs:
         run: |
           git config user.name "fintrace-bot"
           git config user.email "fintrace-bot@users.noreply.github.com"
-          git add data/vn30.json
+          git add data/vn100.json
           if git diff --cached --quiet; then echo "Không có thay đổi."; else
-            git commit -m "data: giá VN30 $(TZ=Asia/Ho_Chi_Minh date +%Y-%m-%d\ %H:%M)"
+            git commit -m "data: giá VN100 $(TZ=Asia/Ho_Chi_Minh date +%Y-%m-%d\ %H:%M)"
             git push
           fi
