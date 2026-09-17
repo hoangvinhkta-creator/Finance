@@ -1,0 +1,14 @@
+{
+  "appId": "vn.fintrace.app",
+  "appName": "FinTrace",
+  "webDir": "www",
+  "server": {
+    "url": "https://hoangvinhkta-creator.github.io/Finance/",
+    "errorPath": "error.html"
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f4f4f2",
+    "preferredContentMode": "mobile"
+  }
+}

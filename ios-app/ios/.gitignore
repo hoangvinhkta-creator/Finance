@@ -1,0 +1,7 @@
+App/build
+App/Pods
+App/output
+DerivedData
+xcuserdata
+# Khác mẫu Capacitor gốc: GIỮ App/App/public, App/App/capacitor.config.json và capacitor-cordova-ios-plugins trong git,
+# vì owner chỉ mở Xcode, không chạy `cap sync` trên Mac.

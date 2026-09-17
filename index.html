@@ -2,7 +2,11 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="FinTrace">
+<meta name="theme-color" content="#f4f4f2">
 <meta name="robots" content="noindex">
 <title>FinTrace</title>
 <style>
@@ -358,7 +362,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 @media (max-width:820px){
   .app{display:block}
   .side{display:none}
-  main{padding:18px 14px 90px}
+  main{padding:calc(18px + env(safe-area-inset-top)) 14px calc(90px + env(safe-area-inset-bottom))}   /* vỏ iOS (Capacitor) phủ hết màn hình: tránh tai thỏ và vạch Home */
   .ledger{grid-template-columns:minmax(0,1fr)}
   .ledger4{grid-template-columns:minmax(0,1fr)}
   .stats.five{grid-template-columns:repeat(2,minmax(0,1fr))}
