@@ -342,8 +342,14 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 @media (min-width:821px){
   #view-dongtien.active{display:flex;flex-direction:column;height:calc(100vh - 52px)}   /* 52 = đệm trên + dưới của main */
   /* Bảng VN30 cuộn TRONG card, card cao bằng card hero bên trái: min-height:0 để không kéo hàng grid theo 30 dòng. */
-  #stockListCard,#tdListCard,#stockHoldCard,#stockTxCard,#tdBookCard{height:0;min-height:100%;overflow:hidden;display:flex;flex-direction:column}   /* height:0 ⇒ 30 dòng không kéo hàng grid; min-height:100% ⇒ giãn bằng card hero */
-  #stockListCard .scroll,#tdListCard .scroll,#stockHoldCard .scroll,#stockTxCard .scroll,#tdBookCard .scroll{flex:1;min-height:0;overflow:auto}
+  #stockListCard,#tdListCard,#stockHoldCard,#tdBookCard{height:0;min-height:100%;overflow:hidden;display:flex;flex-direction:column}   /* height:0 ⇒ 30 dòng không kéo hàng grid; min-height:100% ⇒ giãn bằng card hero */
+  #stockListCard .scroll,#tdListCard .scroll,#stockHoldCard .scroll,#tdBookCard .scroll{flex:1;min-height:0;overflow:auto}
+  #stockHoldCard .stats,#stockHoldCard .colhead,#stockHoldCard #stockAlloc,#stockHoldCard .hint{flex:none}
+  /* Tài sản: cả tab cao một màn như Dòng tiền, Lịch sử chuyển đổi nằm dưới và cuộn trong card */
+  #view-taisan.active{display:flex;flex-direction:column;height:calc(100vh - 52px)}
+  #view-taisan .grid2,#view-taisan .stats,#view-taisan .vhead{flex:none}
+  #xferCard{flex:1;min-height:0;display:flex;flex-direction:column;margin-top:14px}
+  #xferCard .scroll{flex:1;min-height:0;overflow:auto}
   #stockTable tbody tr{cursor:pointer}
   #stockTable tr.mine td.first::before{content:'●';font-size:8px;margin-right:5px;vertical-align:1px}
   /* Danh mục cổ phiếu: tối đa 4 dòng nhìn thấy rồi cuộn trong card, ghi chú một dòng — để hàng 2 giữ ~240px và cả tab vẫn một màn hình */
@@ -367,7 +373,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 /* Hàng 5 ô giữ nguyên tới đúng chỗ 4 card gãy, rồi mới xuống 2 */
 @media (max-width:1040px){ .stats.five{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:820px){
-  #stockListCard,#tdListCard,#stockHoldCard,#stockTxCard,#tdBookCard{height:auto;min-height:0;display:block}  #stockListCard .scroll,#tdListCard .scroll,#stockHoldCard .scroll,#stockTxCard .scroll,#tdBookCard .scroll{max-height:70vh;overflow:auto}
+  #stockListCard,#tdListCard,#stockHoldCard,#tdBookCard{height:auto;min-height:0;display:block}  #stockListCard .scroll,#tdListCard .scroll,#stockHoldCard .scroll,#tdBookCard .scroll{max-height:70vh;overflow:auto}
+  #xferCard{margin-top:14px} #xferCard .scroll{max-height:60vh;overflow:auto}
   .app{display:block}
   .side{display:none}
   main{padding:calc(18px + env(safe-area-inset-top)) 14px calc(90px + env(safe-area-inset-bottom))}   /* vỏ iOS (Capacitor) phủ hết màn hình: tránh tai thỏ và vạch Home */
@@ -564,7 +571,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
     <!-- ===== Tài sản ===== -->
     <section id="view-taisan" class="view">
-      <header class="vhead"><h1>Tài sản</h1><div class="right"><button class="btn" id="xferHistOpen">Lịch sử chuyển đổi</button><button class="btn" id="scnOpen">Kịch bản</button><button class="btn primary" id="xferOpen">Chuyển đổi</button></div></header>
+      <header class="vhead"><h1>Tài sản</h1><div class="right"><button class="btn" id="scnOpen">Kịch bản</button><button class="btn primary" id="xferOpen">Chuyển đổi</button></div></header>
       <div class="stats three tight" id="assetStats" style="margin-bottom:14px"></div>
       <div class="grid2" style="margin-bottom:0">
         <section class="card" id="holdCard">
@@ -591,7 +598,13 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         <div class="scroll" id="capTableWrap" style="margin-top:10px"><table class="tbl compact" id="capTable"></table></div>
       </section>
 
-      <!-- Ba khối chỉ mở bằng popup (openHolder): form Chuyển đổi, lịch sử chuyển đổi, kịch bản. -->
+      <!-- Lịch sử chuyển đổi: sổ gốc của mọi lần đổi tài sản (mua coin DCA, lệnh cổ phiếu, trade, đối chiếu) — nơi duy nhất xoá được một dòng. -->
+      <section class="card" id="xferCard">
+        <div class="colhead"><h2>Lịch sử chuyển đổi <small>sổ gốc · mua coin, lệnh cổ phiếu, trade, đối chiếu đều nằm đây</small></h2><span id="xferCount" class="mute" style="font-size:12px"></span></div>
+        <div class="scroll"><table class="tbl compact" id="xferTable"></table></div>
+      </section>
+
+      <!-- Hai khối chỉ mở bằng popup (openHolder): form Chuyển đổi, kịch bản. -->
       <div class="holders" id="taisanHolders">
         <div id="xferHolder">
           <form class="quick xfer" id="formXfer" autocomplete="off" style="border:0;padding:0">
@@ -614,10 +627,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <div class="lb" id="xferHint"></div>
           </form>
           <div class="hint" style="padding:10px 0 0">Không vào sổ tháng · không tính là chi · không đổi tài sản ròng. Mua coin theo Base/Smart/Opportunity thì dùng Mua nhanh ở tab DCA.</div>
-        </div>
-        <div id="xferHistHolder">
-          <div class="colhead" style="padding:0 0 8px"><h2>Chuyển đổi gần đây</h2><span id="xferCount" class="mute" style="font-size:12px"></span></div>
-          <div class="scroll"><table class="tbl compact" id="xferTable"></table></div>
         </div>
         <div id="scnHolder">
           <div class="scntop">
@@ -648,6 +657,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
       <div class="grid2 eq" id="dcaTopRow" style="margin-bottom:14px">
         <section class="card pad" id="dcaScoreCard">
+          <div class="colhead" style="padding:0 0 10px"><h2>Buy Score <small id="dcaHeroSub">nến ngày · cửa sổ 365 ngày</small></h2><small class="mute" id="dcaHeroSrc"></small></div>
           <div class="hero">
             <div><div class="lbl mute" id="dcaHeroLbl" style="font-size:12px;margin-bottom:6px">Giá ETH</div><div class="big" id="dcaHeroPrice">—</div></div>
             <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Buy Score</div><div class="big" id="dcaHeroScore">—</div></div>
@@ -684,7 +694,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
     <!-- ===== Trading (swing H4): backtest + paper — mở 2026-09-17 ===== -->
     <!-- ===== Chứng khoán: cổ phiếu ĐANG GIỮ (hero mã đang chọn, danh mục, vùng giá, lịch sử giao dịch). Danh sách 100 mã theo điểm nằm ở tab Trading. ===== -->
     <section id="view-chungkhoan" class="view">
-      <header class="vhead"><h1>Chứng khoán</h1><div class="right"><small id="stockUpdated" class="mute"></small><button class="btn" id="stockAdd">Thêm cổ phiếu</button><button class="btn primary" id="stockRefresh">Cập nhật</button></div></header>
+      <header class="vhead"><h1>Chứng khoán</h1><div class="right"><small id="stockUpdated" class="mute"></small><button class="btn" id="stockHistOpen">Lịch sử</button><button class="btn" id="stockAdd">Thêm cổ phiếu</button><button class="btn" id="stockBuy">Mua nhanh</button><button class="btn primary" id="stockRefresh">Cập nhật</button></div></header>
       <div class="grid2 eq" style="margin-bottom:14px">
         <section class="card pad" id="stockHeroCard">
           <div class="colhead" style="padding:0 0 10px"><h2>Buy Score <small>nến ngày · cửa sổ 1 năm · so với VN-Index</small></h2><small class="mute" id="stockHeroSrc"></small></div>
@@ -699,9 +709,12 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="scroll"><table class="tbl compact" id="stockHeroScoreTable"></table></div>
         </section>
         <section class="card pad" id="stockHoldCard">
-          <div class="colhead" style="padding:0 0 6px"><h2>Danh mục cổ phiếu <small>bấm dòng để xem điểm · giá theo kho · cũng hiện ở Tài sản</small></h2><small class="mute" id="stockHoldMeta"></small></div>
+          <div class="colhead" style="padding:0 0 10px"><h2>Giá vốn <small>&amp; Danh mục cổ phiếu</small></h2><div class="seg" id="stockSymPick"></div></div>
+          <div class="stats three tight" id="stockStats"></div>
+          <div class="colhead" style="padding:12px 0 4px"><h2>Danh mục</h2><span id="stockHoldMeta" class="mute"></span></div>
           <div class="scroll"><table class="tbl compact" id="stockHoldTable"></table></div>
-          <div class="hint" id="stockHoldNote" style="padding:4px 0 0"></div>
+          <div id="stockAlloc" style="padding:10px 0 0"></div>
+          <div class="hint" id="stockHoldNote" style="padding:6px 0 0"></div>
         </section>
       </div>
       <div class="grid2 eq">
@@ -709,9 +722,9 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="colhead" style="padding:0 0 6px"><h2>Vùng giá mua <small id="stockBandSub"></small></h2><small class="mute" id="stockBandNow"></small></div>
           <div class="scroll"><table class="tbl compact" id="stockBandTable"></table></div>
         </section>
-        <section class="card pad" id="stockTxCard">
-          <div class="colhead" style="padding:0 0 6px"><h2>Lịch sử giao dịch <small>mua/bán/điều chỉnh từ lịch sử Chuyển đổi</small></h2><small class="mute" id="stockTxMeta"></small></div>
-          <div class="scroll"><table class="tbl compact" id="stockTxTable"></table></div>
+        <section class="card pad" id="stockPlanCard">
+          <div class="colhead" style="padding:0 0 6px"><h2>Tháng này <small id="stockPlanSub"></small></h2><small class="mute" id="stockPlanMeta"></small></div>
+          <div id="stockPlanBody"></div>
         </section>
       </div>
     </section>
@@ -3052,7 +3065,15 @@ function testStocks(){
     chk('SOL: còn 15, giá vốn TB 110 USD, vốn 42.900k; FPT đóng hết ⇒ không còn vị thế', [led.positions.length, sol.qty, sol.avgPx, Math.round(sol.costK)], [1, 15, 110, 42900]);
     chk('lệnh bán SOL 5@150: lãi 200 USD = 5.200k; FPT 100@77: +700k; tổng hiện thực 5.900k, 2 thắng/2, 5 lệnh trade', [led.closed.map(c=>[c.sym, Math.round(c.pnlPx), Math.round(c.pnlK)]), Math.round(led.realizedK), led.wins, led.n], [[['FPT',700,700],['SOL',200,5200]], 5900, 2, 5]);
     chk('lệnh bán ghi % so giá vốn (150/110 − 1)', Math.round(led.closed.find(c=>c.sym==='SOL').ret*1e4)/1e4, 0.3636);
-    chk('không có lệnh ⇒ sổ rỗng', [tradeLedger([]).positions.length, tradeLedger([]).realizedK, tradeLedger(null).n], [0, 0, 0]); }
+    chk('không có lệnh ⇒ sổ rỗng', [tradeLedger([]).positions.length, tradeLedger([]).realizedK, tradeLedger(null).n], [0, 0, 0]);
+    /* Tháng này của cổ phiếu: cùng luật STOCK_PLAN_V1 — mua ≥75 chưa giữ, bán khi ≤65, đếm lệnh trade trong tháng. */
+    const rk = [{sym:'KDH', score:87},{sym:'CII', score:84},{sym:'VIX', score:70},{sym:'TCB', score:18},{sym:'FPT', score:30},{sym:'PDR', score:78}];
+    const pl = stockPlanNow(rk, ['VIX','TCB','CII'], tf2, '2026-09');
+    chk('ứng viên mua = điểm ≥75 chưa giữ, theo thứ tự điểm (CII đang giữ ⇒ loại)', pl.candidates.map(c=>c.sym), ['KDH','PDR']);
+    chk('đang giữ 3 mã; về ≤65 chỉ TCB', [pl.held.length, pl.sellDue.map(h=>h.sym)], [3, ['TCB']]);
+    chk('lệnh cổ phiếu tháng 9: 0 mua, 1 bán (FPT 100@77), đã chốt +700k; lệnh coin không tính', [pl.buysM, pl.sellsM, Math.round(pl.realizedM)], [0, 1, 700]);
+    chk('gợi ý một dòng nêu điểm, ứng viên và ngưỡng bán', stockSuggestion(pl, 'VIX', 70), 'Score 70 VIX · đủ điều kiện mua: KDH 87, PDR 78 · 1 mã đang giữ đã về ≤ 65');
+    chk('không kho, không giữ ⇒ rỗng không lỗi', [stockPlanNow([], [], [], '2026-09').candidates.length, stockPlanNow(null, null, null, '2026-09').held.length], [0, 0]); }
   console.log('%c8 — nhãn lỗi','font-weight:600');
   chk('TypeError ⇒ CORS/mất mạng', probeErrorLabel(new TypeError('Failed to fetch')), 'trình duyệt chặn (CORS) hoặc mất mạng');
   chk('HTTP ⇒ giữ thông điệp', probeErrorLabel(new Error('HTTP 404')), 'HTTP 404');
@@ -3567,7 +3588,7 @@ function fillStaticSelects(){
   if(!had && settings().incomeCats.includes('Hoa hồng')) thuSel.value='Hoa hồng';
   document.querySelectorAll('form.debt select[name=unit]').forEach(s=>setOptions(s, DEBT_UNITS, u=>u.label, u=>u.value));
   /* Coin quản lý riêng ở "Ví Coin" (tab DCA) — bớt một chỗ nữa có thể sửa cùng một dữ liệu. */
-  setOptions(el('formHold').group, HOLDING_GROUPS.filter(g=>g!=='Crypto'));
+  setOptions(el('formHold').group, HOLDING_GROUPS.filter(g=>g!=='Crypto' && g!=='Chứng khoán'));   // coin thêm ở DCA, cổ phiếu thêm ở Chứng khoán
   setOptions(el('formHold').priceKey, [{key:'',label:'giá = số lượng (VND)'},...PRICE_KEYS.filter(p=>!LIVE_KEYS.includes(p.key))], p=>p.label, p=>p.key);
   fillXferSelects();
 }
@@ -4028,7 +4049,7 @@ function renderHoldings(){
   const groupOf = h => HOLDING_GROUPS.includes(h.group) ? h.group : 'Khác';
   const itemRow = h => `<tr data-id="${h.id}">
       <td class="first" style="padding-left:22px"><input class="inline l" data-f="name" value="${esc(h.name)}" style="width:100%;min-width:0"></td>
-      <td><select class="inline" data-f="group">${options(HOLDING_GROUPS.filter(g=>g!=='Crypto'),h.group)}</select></td>
+      <td><select class="inline" data-f="group">${options(HOLDING_GROUPS.filter(g=>g!=='Crypto' && g!=='Chứng khoán'),h.group)}</select></td>
       <td class="n"><input class="inline" data-f="quantity" value="${esc(fmtInput(h.quantity))}" inputmode="decimal" style="width:96px"></td>
       <td class="n">${h.priceKey ? (D.prices[h.priceKey]&&D.prices[h.priceKey].source==='live' ? fmtK(price(h.priceKey)) : `<input class="inline" data-p="${esc(h.priceKey)}" value="${esc(fmtInput(price(h.priceKey)))}" inputmode="decimal" style="width:96px" title="${esc(priceLabel(h.priceKey))}">`) : '<span class="mute">—</span>'}</td>
       <td class="n">${fmtK(Math.round(holdingValue(h)))}</td>
@@ -4037,9 +4058,14 @@ function renderHoldings(){
     return `<tr class="grp${open?' open':''}" data-g="${esc(g)}"><td class="first" colspan="4"><span class="chev">${open?'▾':'▸'}</span>${esc(g)}<span class="cnt">${hs.length} mục</span></td><td class="n">${fmtK(Math.round(sum(hs,holdingValue)))}</td><td class="act last"></td></tr>`
          + (open ? hs.map(itemRow).join('') : ''); };
   const coinRow = () => `<tr class="grp coin"><td class="first" colspan="3"><span class="chev"></span>Binance<span class="cnt">${coinHs.length} coin · tổng quy USDT</span></td><td class="n">${cu!=null?fmtUsdt(cu):'<span class="mute">—</span>'}</td><td class="n">${fmtK(Math.round(sum(coinHs,holdingValue)))}</td><td class="act last"><a class="link" href="#dca">DCA</a></td></tr>`;
+  /* Cổ phiếu cũng gộp MỘT dòng (như Binance): số CP, giá vốn, lãi/lỗ quản ở tab Chứng khoán — không sửa tay ở đây để không lệch sổ. */
+  const stkHs = nonCoin.filter(h=>groupOf(h)==='Chứng khoán'), stkLed = stkHs.filter(h=>String(h.priceKey||'').startsWith(STOCK_PRICE_PREFIX)).map(h=>stockLedger(h.priceKey.slice(4)));
+  const stkCost = sum(stkLed, L=>L.cost), stkVal = sum(stkHs, holdingValue);
+  const stkRow = () => `<tr class="grp coin"><td class="first" colspan="3"><span class="chev"></span>Chứng khoán<span class="cnt">${stkHs.filter(h=>Number(h.quantity)>0).length} mã · giá theo kho</span></td><td class="n ${stkVal-stkCost<0?'neg':''}">${stkCost>0?`<small class="mute">lãi/lỗ</small> ${signed(Math.round(stkVal-stkCost))}`:'<span class="mute">—</span>'}</td><td class="n">${fmtK(Math.round(stkVal))}</td><td class="act last"><a class="link" href="#chungkhoan">CK</a></td></tr>`;
   let body = '';
   for(const g of HOLDING_GROUPS){
     if(g==='Crypto'){ if(coinHs.length) body += coinRow(); continue; }
+    if(g==='Chứng khoán'){ if(stkHs.length) body += stkRow(); continue; }
     const hs = nonCoin.filter(h=>groupOf(h)===g).sort(byOrder);
     if(hs.length) body += grpRow(g, hs);
   }
@@ -4634,7 +4660,24 @@ function bandTableHtml(M, st, sym, r){
       return `<tr${key===cur?' class="total"':''}><td class="first">${esc(label)}${key===cur?' <span class="badge on">đang ở đây</span>':''}</td><td class="n mute">≥ ${min}</td><td class="n">${!b ? '<span class="mute">—</span>' : b.price==null ? '<span class="mute">không tới được</span>' : `<b>${fmtPx(M, b.price)}</b>`}</td><td class="last n ${b&&b.gap!=null&&b.gap<0?'':'mute'}">${!b||b.gap==null?'—':fmtPctS(b.gap)}</td></tr>`; }).join('')+`</tbody>`;
 }
 
-/* ---- Tab Cổ phiếu: cổ phiếu ĐANG GIỮ — hero mã đang chọn trong danh mục, danh mục, vùng giá, lịch sử giao dịch ---- */
+/* ---- Tab Cổ phiếu: cùng khung với DCA — hàng 1: Buy Score | Giá vốn & Danh mục (bộ chọn mã trên tiêu đề); hàng 2: Vùng giá mua | Tháng này (kế hoạch chọn mã). Lịch sử là popup. ---- */
+/* Kế hoạch tháng cho cổ phiếu — cùng luật STOCK_PLAN_V1 mà Backtest mô phỏng: mua tối đa `picks` mã điểm ≥ entryMin chưa giữ, bán khi điểm ≤ exits[0]. Hàm thuần theo (ranks, mine, trades, month). */
+function stockPlanNow(ranks, mine, transfers, month, P){
+  P = P || STOCK_PLAN_V1;
+  const held = (mine||[]).map(s=>{ const r = (ranks||[]).find(x=>x.sym===s); return { sym:s, score: r && r.score!=null ? r.score : null }; });
+  const candidates = (ranks||[]).filter(x=>x.score!=null && x.score>=P.entryMin && x.score<=P.entryMax && !(mine||[]).includes(x.sym)).map(x=>({sym:x.sym, score:x.score}));
+  const sellDue = held.filter(h=>h.score!=null && h.score<=P.exits[0]);
+  const T = (transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock' && String(t.date||'').slice(0,7)===month);
+  const L = tradeLedger((transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock')), closedM = L.closed.filter(c=>String(c.date||'').slice(0,7)===month);
+  return { candidates, picks:P.picks, held, sellDue, buysM: T.filter(t=>t.trade.side==='buy').length, sellsM: T.filter(t=>t.trade.side==='sell').length,
+           realizedM: closedM.reduce((a,c)=>a+c.pnlK,0), entryMin:P.entryMin, exit:P.exits[0], maxHold:P.maxHold };
+}
+function stockSuggestion(p, sym, score){
+  const bits = [score==null ? 'Chưa có điểm' : `Score ${score} ${sym}`];
+  bits.push(p.candidates.length ? `đủ điều kiện mua: ${p.candidates.slice(0,p.picks).map(c=>`${c.sym} ${c.score}`).join(', ')}` : `chưa mã nào ≥ ${p.entryMin}`);
+  bits.push(p.sellDue.length ? `${p.sellDue.length} mã đang giữ đã về ≤ ${p.exit}` : 'chưa mã nào tới ngưỡng bán');
+  return bits.join(' · ');
+}
 function renderStocks(){
   const M = MARKETS.stock, st = D.prices && D.prices.stocks || null, C = STOCK_SCORE_V1;
   if(!stockStore && !stockBusy && !stockAutoTried){ stockAutoTried = true; refreshStocks({silent:true}); return; }   // lần đầu mở tab: tự tải kho, không cần bấm
@@ -4646,46 +4689,76 @@ function renderStocks(){
   /* Mã đang chọn phải là mã đang giữ (tab này chỉ nói về danh mục); chưa giữ gì thì lấy mã đầu VN30 để khung không rỗng. */
   const sym = mine.includes(state.stockSym) ? state.stockSym : (mine[0] || (STOCK_ALL.includes(state.stockSym) ? state.stockSym : VN30[0]));
   const r = stockRanks.find(x=>x.sym===sym) || null, rank = r ? stockRanks.indexOf(r)+1 : null;
-  const bt = btCacheOf(M), btSym = bt && bt.perSym[sym] ? stockBtBest(bt.perSym[sym]) : null, L0 = stockLedger(sym);
+  const ledgers = Object.fromEntries(hs.map(h=>[h.priceKey.slice(4), stockLedger(h.priceKey.slice(4))])), L0 = ledgers[sym] || stockLedger(sym);
+  const ids = new Map(hs.map(h=>[h.id, h.priceKey.slice(4)]));
+  const tx = D.transfers.filter(t=>ids.has(t.toId) || ids.has(t.fromId));
+  el('stockHistOpen').textContent = tx.length ? `Lịch sử (${tx.length})` : 'Lịch sử';
   fillHero('stock', { sym, r, C, stale, busy:stockBusy, fmt:p=>fmtK(p,2),
     meta: r ? [
       `<span>phiên <b>${fmtDayY(r.time)}</b><span class="u"> ${r.chg==null?'':'· hôm nay '+fmtPctS(r.chg)}</span></span>`,
       `<span>xếp hạng <b>${rank}/${stockRanks.length}</b><span class="u"> mã trong kho</span></span>`,
-      L0.qty>0 ? `<span>giá vốn <b>${fmtK(L0.avg,2)}</b><span class="u"> · ${r.price>0?fmtPctS(r.price/L0.avg-1):'—'} so giá vốn</span></span>` : `<span>backtest <b>${btSym ? fmtPctS(btSym.net)+' · '+fmtPctS(btSym.netY1) : '—'}</b><span class="u">${btSym ? ` bộ ${btSym.entry}/${btSym.ladder}` : ' xem ở tab Trading'}</span></span>`,
+      `<span>giá vốn <b>${L0.qty>0?fmtK(L0.avg,2):'—'}</b><span class="u">${L0.qty>0 && r.price>0 ? ' · '+fmtPctS(r.price/L0.avg-1)+' so giá vốn' : ' · chưa giữ mã này'}</span></span>`,
     ].join('') : '',
     empty: stockBusy ? 'Đang tải kho…' : 'Chưa có kho — bấm "Cập nhật". Kho do GitHub Actions cào mỗi ngày 15:40 sau phiên.' });
   el('stockWarn').hidden = !stale; el('stockWarn').textContent = stale ? `Kho quá ${STOCK_STORE_STALE_H} giờ chưa cập nhật — Actions có thể không chạy (GitHub tắt lịch sau 60 ngày repo không có commit). Vào tab Actions của repo, bấm Run workflow.` : '';
   el('stockAlgo').textContent = stockStore ? `${C.version} · ${fmtNum(C.windows.year)} phiên ≈ 1 năm` : '';
+  /* Giá vốn & Danh mục — bộ chọn mã đang giữ trên tiêu đề (như bộ chọn coin của DCA), 3 ô cho mã đang chọn, bảng danh mục, thanh tỉ trọng. */
+  renderCoinPick('stockSymPick', mine.length ? mine.map(s=>({key:s, label:s})) : [{key:sym, label:sym}], sym);
+  const pr = r ? r.price : price(STOCK_PRICE_PREFIX+sym), qty0 = L0.qty, cost0 = L0.cost, val0 = pr>0 ? qty0*pr : null, pnl0 = val0!=null && cost0>0 ? val0-cost0 : null;
+  el('stockStats').innerHTML = `
+    <div class="stat"><div class="lbl">Đang giữ</div><div class="val">${qty0>0?fmtNum(qty0)+' CP':'—'}</div><div class="sub">${val0!=null&&qty0>0?'giá trị '+fmtK(Math.round(val0)):'chưa giữ '+esc(sym)}</div></div>
+    <div class="stat"><div class="lbl">Giá vốn trung bình</div><div class="val">${qty0>0?fmtK(L0.avg,2):'—'}</div><div class="sub">${qty0>0?'vốn '+fmtK(Math.round(cost0))+(L0.realized?' · đã hiện thực '+signed(Math.round(L0.realized), fmtK):''):'—'}</div></div>
+    <div class="stat strong"><div class="lbl">Lãi / lỗ</div><div class="val">${pnl0!=null?signed(pnl0):'—'}</div><div class="sub">${pnl0!=null?fmtPctS(pnl0/cost0)+' so với vốn đã bỏ':'—'}</div></div>`;
+  let total = 0, totalCost = 0, realized = 0;
+  for(const h of hs) realized += ledgers[h.priceKey.slice(4)].realized;
+  el('stockHoldTable').innerHTML = `<colgroup><col style="width:14%"><col style="width:12%"><col style="width:13%"><col style="width:15%"><col style="width:14%"><col style="width:17%"><col style="width:9%"><col style="width:6%"></colgroup>
+    <thead><tr><th class="first">Mã</th><th class="n">Điểm</th><th class="n">Số CP</th><th class="n">Giá vốn</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="n">Lãi/lỗ</th><th class="last"></th></tr></thead><tbody>`+
+    (open.length ? open.map(h=>{ const s2 = h.priceKey.slice(4), p2 = price(h.priceKey), v = holdingValue(h), Lg = ledgers[s2], cost = Lg.avg>0 ? Lg.avg*Number(h.quantity) : null, rk = stockRanks.find(x=>x.sym===s2); total += v; if(cost!=null) totalCost += cost;
+      const pnl = cost!=null && p2>0 ? v-cost : null, inList = STOCK_ALL.includes(s2);
+      return `<tr data-sym="${s2}" class="${s2===sym?'best':''}"><td class="first"><b>${esc(s2)}</b>${inList?'':' <small class="mute">chưa có trong kho</small>'}</td><td class="n">${rk&&rk.score!=null?`<b>${rk.score}</b>`:'<span class="mute">—</span>'}</td><td class="n">${fmtNum(h.quantity)}</td><td class="n">${Lg.avg>0?fmtK(Lg.avg,2):'<span class="mute">—</span>'}</td><td class="n">${p2>0?fmtK(p2,2):'—'}</td><td class="n"><b>${p2>0?fmtK(Math.round(v)):'—'}</b></td><td class="n ${pnl!=null&&pnl<0?'neg':''}">${pnl==null?'—':`${signed(Math.round(pnl))}<small class="mute"> ${fmtPctS(pnl/cost)}</small>`}</td><td class="last n">${rowBtn('del', IC_DEL, 'Xoá')}</td></tr>`; }).join('')
+      + `<tr class="total"><td class="first">Tổng</td><td></td><td></td><td class="n">${totalCost>0?fmtK(Math.round(totalCost)):''}</td><td></td><td class="n">${fmtK(Math.round(total))}</td><td class="n ${total-totalCost<0?'neg':''}">${totalCost>0?signed(Math.round(total-totalCost)):''}</td><td class="last"></td></tr>`
+    : `<tr><td class="first mute" colspan="8">Chưa có cổ phiếu nào — bấm "Thêm cổ phiếu" hoặc "Mua nhanh", hoặc nạp lịch sử lệnh VCBS ở Cài đặt → Nâng cao.</td></tr>`)+`</tbody>`;
+  el('stockHoldMeta').innerHTML = open.length ? `${open.length} mã · ${fmtK(Math.round(total))}${totalCost>0?` · <b class="${total-totalCost<0?'neg':''}">${signed(Math.round(total-totalCost))}</b> (${fmtPctS((total-totalCost)/totalCost)})`:''}` : '';
+  const rows = open.map(h=>({name:h.priceKey.slice(4), v:holdingValue(h)})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  el('stockAlloc').innerHTML = !rows.length ? '' :
+    `<div class="catstack">${rows.map((x,i)=>`<i style="width:${total?x.v/total*100:0}%;background:${SHADES[i%SHADES.length]}" title="${esc(x.name)} · ${fmtK(Math.round(x.v))} · ${fmtPct(x.v/total)}"></i>`).join('')}</div>
+     <div class="catlegend">${rows.map((x,i)=>`<span><i style="background:${SHADES[i%SHADES.length]}"></i>${esc(x.name)}<b>${fmtK(Math.round(x.v))}</b><span class="p">${fmtPct(x.v/total)}</span></span>`).join('')}</div>`;
+  const cashH = D.holdings.find(h=>!h.priceKey && /vcbs/i.test(h.name||''));
+  el('stockHoldNote').innerHTML = hs.length
+    ? `${closed.length ? `Đã bán hết: ${closed.map(h=>`<b>${esc(h.priceKey.slice(4))}</b> ${signed(Math.round(ledgers[h.priceKey.slice(4)].realized))}`).join(', ')} · ` : ''}${realized ? `lãi/lỗ đã hiện thực <b>${signed(Math.round(realized))}</b> · ` : ''}${cashH ? `tiền tại VCBS <b>${fmtK(Math.round(holdingValue(cashH)))}</b> · ` : ''}giá theo kho, giá vốn từ lịch sử. Danh sách 100 mã, Backtest, Tính PnL ở tab <b>Trading</b>.`
+    : '';
   /* Vùng giá mua */
   el('stockBandSub').textContent = `giá ${sym} về mức nào thì vào vùng đó`;
   el('stockBandNow').textContent = r && r.score!=null ? `hiện ${fmtK(r.price,2)} · Score ${r.score}` : 'chưa có điểm';
   el('stockBandTable').innerHTML = bandTableHtml(M, stockStore, sym, r);
-  /* Danh mục cổ phiếu: giá từ kho, giá vốn + lãi/lỗ từ sổ (stockLedger). Bấm dòng ⇒ chọn mã cho hero. */
-  let total = 0, totalCost = 0, realized = 0;
-  const ledgers = Object.fromEntries(hs.map(h=>[h.priceKey.slice(4), stockLedger(h.priceKey.slice(4))]));
-  for(const h of hs) realized += ledgers[h.priceKey.slice(4)].realized;
-  el('stockHoldTable').innerHTML = `<colgroup><col style="width:14%"><col style="width:13%"><col style="width:12%"><col style="width:15%"><col style="width:14%"><col style="width:17%"><col style="width:9%"><col style="width:6%"></colgroup>
-    <thead><tr><th class="first">Mã</th><th class="n">Điểm</th><th class="n">Số CP</th><th class="n">Giá vốn</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="n">Lãi/lỗ</th><th class="last"></th></tr></thead><tbody>`+
-    (open.length ? open.map(h=>{ const s2 = h.priceKey.slice(4), pr = price(h.priceKey), v = holdingValue(h), Lg = ledgers[s2], cost = Lg.avg>0 ? Lg.avg*Number(h.quantity) : null, rk = stockRanks.find(x=>x.sym===s2); total += v; if(cost!=null) totalCost += cost;
-      const pnl = cost!=null && pr>0 ? v-cost : null, inList = STOCK_ALL.includes(s2);
-      return `<tr data-sym="${s2}" class="${s2===sym?'best':''}"><td class="first"><b>${esc(s2)}</b>${inList?'':' <small class="mute">chưa có trong kho</small>'}</td><td class="n">${rk&&rk.score!=null?`<b>${rk.score}</b>`:'<span class="mute">—</span>'}</td><td class="n">${fmtNum(h.quantity)}</td><td class="n">${Lg.avg>0?fmtK(Lg.avg,2):'<span class="mute">—</span>'}</td><td class="n">${pr>0?fmtK(pr,2):'—'}</td><td class="n"><b>${pr>0?fmtK(Math.round(v)):'—'}</b></td><td class="n ${pnl!=null&&pnl<0?'neg':''}">${pnl==null?'—':`${signed(Math.round(pnl))}<small class="mute"> ${fmtPctS(pnl/cost)}</small>`}</td><td class="last n">${rowBtn('del', IC_DEL, 'Xoá')}</td></tr>`; }).join('')
-      + `<tr class="total"><td class="first">Tổng</td><td></td><td></td><td class="n">${totalCost>0?fmtK(Math.round(totalCost)):''}</td><td></td><td class="n">${fmtK(Math.round(total))}</td><td class="n ${total-totalCost<0?'neg':''}">${totalCost>0?signed(Math.round(total-totalCost)):''}</td><td class="last"></td></tr>`
-    : `<tr><td class="first mute" colspan="8">Chưa có cổ phiếu nào — bấm "Thêm cổ phiếu" (mã + số CP), ghi lệnh Mua ở tab Trading, hoặc nạp lịch sử lệnh VCBS ở Cài đặt → Nâng cao.</td></tr>`)+`</tbody>`;
-  el('stockHoldMeta').textContent = open.length ? `${open.length} mã · ${fmtK(Math.round(total))}${totalCost>0?` · ${signed(Math.round(total-totalCost))} (${fmtPctS((total-totalCost)/totalCost)})`:''}` : '';
-  const cashH = D.holdings.find(h=>!h.priceKey && /vcbs/i.test(h.name||''));
-  el('stockHoldNote').innerHTML = hs.length
-    ? `${closed.length ? `Đã bán hết: ${closed.map(h=>`<b>${esc(h.priceKey.slice(4))}</b> ${signed(Math.round(ledgers[h.priceKey.slice(4)].realized))}`).join(', ')} · ` : ''}${realized ? `lãi/lỗ đã hiện thực <b>${signed(Math.round(realized))}</b> · ` : ''}${cashH ? `tiền tại VCBS <b>${fmtK(Math.round(holdingValue(cashH)))}</b> (sửa ở Tài sản → Tiền) · ` : ''}giá vốn từ lịch sử Chuyển đổi, giá là đóng cửa phiên cuối trong kho. Danh sách 100 mã theo điểm, Backtest và Tính PnL ở tab <b>Trading</b>.`
-    : '';
-  /* Lịch sử giao dịch: mọi transfer chạm holding cổ phiếu (mua, bán, điều chỉnh đối chiếu), mới nhất trước. */
-  const ids = new Map(hs.map(h=>[h.id, h.priceKey.slice(4)]));
+  /* Tháng này — kế hoạch chọn mã (cùng luật Backtest mô phỏng), luôn 3 dòng + một dòng gợi ý như card Tháng này của DCA. */
+  const p = stockPlanNow(stockRanks, mine, D.transfers, thisMonth());
+  el('stockPlanSub').textContent = 'kế hoạch chọn mã · '+fmtMonthLong(thisMonth()).toLowerCase();
+  el('stockPlanMeta').textContent = `mua điểm ≥ ${p.entryMin} · bán khi ≤ ${p.exit} · tối đa ${p.picks} mã/tháng · giữ ≤ ${p.maxHold} phiên`;
+  const heldScores = p.held.filter(h=>h.score!=null).map(h=>h.score), cands = p.candidates.slice(0, 6);
+  const row = (name, badge, mid, note) => `<tr><td class="first"><b>${name}</b>${badge?` <span class="badge">${badge}</span>`:''}</td><td class="cut" title="${esc(mid.replace(/<[^>]+>/g,''))}">${mid}</td><td class="last cut" title="${esc(note.replace(/<[^>]+>/g,''))}">${note}</td></tr>`;
+  el('stockPlanBody').innerHTML = `<div class="suggest one" title="${esc(stockSuggestion(p, sym, r ? r.score : null))}">${esc(stockSuggestion(p, sym, r ? r.score : null))}</div>
+    <div class="scroll"><table class="tbl compact"><colgroup><col style="width:20%"><col style="width:44%"><col style="width:36%"></colgroup><thead><tr><th class="first">Bước</th><th>Tháng này</th><th class="last">Ghi chú</th></tr></thead><tbody>${
+      row('Mua mới', `${p.buysM}/${p.picks}`, cands.length ? cands.map(c=>`<b>${esc(c.sym)}</b> <span class="mute">${c.score}</span>`).join(' · ') : `<span class="mute">chưa mã nào điểm ≥ ${p.entryMin}</span>`, `đã mua ${p.buysM} lệnh tháng này${stockStore?'':' · chưa có kho'}`)+
+      row('Đang giữ', String(p.held.length), p.held.length ? `${p.held.length} mã · điểm ${heldScores.length?Math.min(...heldScores)+'–'+Math.max(...heldScores):'—'}` : '<span class="mute">chưa giữ mã nào</span>', p.sellDue.length ? `về ≤ ${p.exit}: ${p.sellDue.map(h=>`<b>${esc(h.sym)}</b> ${h.score}`).join(', ')}` : 'chưa mã nào tới ngưỡng bán')+
+      row('Đã bán', String(p.sellsM), p.sellsM ? `${p.sellsM} lệnh · đã chốt <b class="${p.realizedM<0?'neg':''}">${signed(Math.round(p.realizedM), fmtK)}</b>` : '<span class="mute">chưa bán lệnh nào tháng này</span>', 'lệnh Mua nhanh / Mua-Bán ở Trading ghi vào đây')
+    }</tbody></table></div>`;
+}
+/* Lịch sử giao dịch cổ phiếu — popup như Lịch sử mua của DCA: mọi transfer chạm holding cổ phiếu (mua, bán, điều chỉnh đối chiếu), mới nhất trước. */
+function openStockHistory(){
+  const hs = stockHoldings(), ids = new Map(hs.map(h=>[h.id, h.priceKey.slice(4)]));
   const tx = D.transfers.filter(t=>ids.has(t.toId) || ids.has(t.fromId)).sort((a,b)=>(b.date||'').localeCompare(a.date||'') || (b.createdAt||0)-(a.createdAt||0));
-  el('stockTxMeta').textContent = tx.length ? `${tx.length} dòng` : '';
-  el('stockTxTable').innerHTML = `<thead><tr><th class="first">Ngày</th><th>Mã</th><th>Loại</th><th class="n">Số CP</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last">Ghi chú</th></tr></thead><tbody>`+
+  const body = `<div class="hint" style="padding:0 0 8px">${tx.length} dòng · mua/bán từ lịch sử lệnh, Mua nhanh, Trading; dòng điều chỉnh là đối chiếu với VCBS. Xoá một dòng ở Tài sản → Lịch sử chuyển đổi.</div>
+    <div class="scroll" style="max-height:min(60vh,520px);overflow-y:auto"><table class="tbl compact"><thead><tr><th class="first">Ngày</th><th>Mã</th><th>Loại</th><th class="n">Số CP</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last">Ghi chú</th></tr></thead><tbody>`+
     (tx.length ? tx.map(t=>{ const adj = t.kind==='adjust', buy = !adj && ids.has(t.toId), s2 = ids.get(adj||buy ? t.toId : t.fromId), q = adj||buy ? Number(t.qtyIn)||0 : Number(t.qtyOut)||0, v = Number(t.valueVnd)||0;
-      return `<tr><td class="d first">${fmtDate(t.date)}</td><td><b>${esc(s2||'')}</b></td><td>${adj?'<span class="mute">điều chỉnh</span>':buy?'Mua':'<b>Bán</b>'}${t.trade?' <span class="badge">trade</span>':''}</td><td class="n">${adj?(q>0?'+':'')+fmtNum(q):fmtNum(q)}</td><td class="n">${!adj&&q>0?fmtK(v/q,2):'—'}</td><td class="n">${fmtK(Math.round(v))}</td><td class="last c" title="${esc(t.note||'')}">${esc(t.note||'')}</td></tr>`; }).join('')
-     : '<tr><td class="empty" colspan="7">Chưa có giao dịch cổ phiếu nào</td></tr>')+`</tbody>`;
+      return `<tr><td class="d first">${fmtDate(t.date)}</td><td><b>${esc(s2||'')}</b></td><td>${adj?'<span class="mute">điều chỉnh</span>':buy?'Mua':'<b>Bán</b>'}${t.trade?' <span class="badge">trade</span>':''}</td><td class="n">${adj?(q>0?'+':'')+fmtNum(q):fmtNum(q)}</td><td class="n">${!adj&&q>0?fmtK(v/q,2):'—'}</td><td class="n">${fmtK(Math.round(v))}</td><td class="last c">${esc(t.note||'')}</td></tr>`; }).join('')
+     : '<tr><td class="empty" colspan="7">Chưa có giao dịch cổ phiếu nào</td></tr>')+`</tbody></table></div>`;
+  showModal('Lịch sử giao dịch cổ phiếu', body, 'Đóng', ()=>{}, {wide:true, noCancel:true});
 }
 el('stockRefresh').onclick = ()=>refreshStocks();
+el('stockHistOpen').onclick = openStockHistory;
+el('stockBuy').onclick = ()=>{ const mine = stockHoldings().filter(h=>Number(h.quantity)>0).map(h=>h.priceKey.slice(4)); openTradeOrder(MARKETS.stock, mine.includes(state.stockSym) ? state.stockSym : (mine[0] || (STOCK_ALL.includes(state.stockSym) ? state.stockSym : VN30[0])), 'buy'); };
+el('stockSymPick').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.stockSym) return; state.stockSym=b.dataset.coin; renderStocks(); });
 el('stockHoldTable').addEventListener('click', e=>{
   const b = e.target.closest('button[data-act="del"]'), tr = e.target.closest('tr[data-sym]'); if(!tr) return;
   const sym = tr.dataset.sym;
@@ -4856,6 +4929,8 @@ function renderDcaScore(){
   el('dcaRefresh').textContent = dcaBusy ? 'Đang lấy…' : 'Cập nhật';
   /* ADA/USDT chỉ theo dõi giá vốn. KHÔNG giấu card (giấu là hàng card đổi hình khi đổi coin) —
      vẫn hiện giá, còn điểm và phân rã thì ghi rõ "không chấm", giữ nguyên khung. */
+  el('dcaHeroSub').textContent = coin.basisOnly ? 'chỉ theo dõi giá vốn' : `nến ngày · cửa sổ 365 ngày · so với ${coin.ref ? coin.ref.toUpperCase() : 'BTC'}`;
+  el('dcaHeroSrc').textContent = coin.basisOnly ? '' : 'Buy Score '+BUY_SCORE_V1.version;
   if(coin.basisOnly){
     const cur = price(coin.key), u = price('usdt');
     el('dcaHeroLbl').textContent = 'Giá '+coin.label;
@@ -5242,7 +5317,6 @@ function updateXferLabels(){
 function renderTransfers(){
   const all = xfersSorted(), rows = all;
   el('xferCount').textContent = all.length ? `${all.length} dòng` : '';
-  el('xferHistOpen').textContent = `Lịch sử chuyển đổi${all.length?' ('+all.length+')':''}`;
   const side = (id, qty, kind) => {
     const h = holdingById(id);
     if(!h) return id ? '<span class="mute">đã xoá</span>' : `<span class="mute">${kind==='out'?'ngoài':'ngoài'}</span>`;
@@ -5458,7 +5532,6 @@ el('scnVal').addEventListener('change', e=>{ const k=state.scn.key; if(!k||k==='
 el('scnVal').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); e.target.blur(); } });
 /* Ba popup của tab Tài sản. Kịch bản vẽ lại sau khi vào modal để biểu đồ lấy đúng bề rộng. */
 el('xferOpen').onclick = ()=>{ openHolder('xferHolder', 'Chuyển đổi tài sản'); el('formXfer').qtyOut.focus(); };
-el('xferHistOpen').onclick = ()=>openHolder('xferHistHolder', 'Lịch sử chuyển đổi');
 el('scnOpen').onclick = ()=>{ openHolder('scnHolder', 'Kịch bản giá giả định · giữ nguyên số lượng'); renderScenario(); };
 el('scnPick').onchange = e=>{
   const sc=(settings().scenarios||[]).find(x=>x.name===e.target.value);
@@ -5890,7 +5963,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
-        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows},
+        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion},
   render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
   refreshDca, refreshStocks, refreshCoins, importStockHistory, reconcileStocks, openPnl, openBacktest, openTradeOrder, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
