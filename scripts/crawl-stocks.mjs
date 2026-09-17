@@ -1,12 +1,15 @@
-// Cào nến ngày VN30 + VN-Index từ các nguồn công khai, ghi data/vn30.json để GitHub Pages phục vụ cùng origin (không CORS).
+// Cào nến ngày VN100 (VN30 + VN70 midcap) + VN-Index từ các nguồn công khai, ghi data/vn30.json để GitHub Pages phục vụ cùng origin (không CORS).
 // Chạy bởi .github/workflows/stocks.yml (mỗi ngày sau phiên) hoặc tay: node scripts/crawl-stocks.mjs
 // Không phụ thuộc gói ngoài (Node ≥ 20 có fetch). Giá quy về NGHÌN ĐỒNG, VN-Index giữ điểm — cùng quy tắc với index.html.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const VN30 = ['ACB','BCM','BID','BVH','CTG','FPT','GAS','GVR','HDB','HPG','LPB','MBB','MSN','MWG','PLX','SAB','SHB','SSB','SSI','STB','TCB','TPB','VCB','VHM','VIB','VIC','VJC','VNM','VPB','VRE'];
-const VN30_BASKET = 'kỳ 08/2024 → 01/2025';
+/* VN70 (VNMidcap) — danh sách tham khảo kỳ 2024–2025, HOSE đổi rổ mỗi 6 tháng; mã không lấy được sẽ nằm trong errors, sửa tay. */
+const VN70 = ['AAA','ANV','ASM','BAF','BMP','BSI','BWE','CII','CMG','CTD','CTR','CTS','DBC','DCM','DGC','DGW','DIG','DPM','DXG','DXS','EIB','EVF','FRT','FTS','GEX','GMD','HAG','HCM','HDC','HDG','HHV','HSG','HT1','IMP','KBC','KDH','KOS','MSB','NKG','NLG','NT2','OCB','ORS','PAN','PC1','PDR','PHR','PNJ','POW','PPC','PTB','PVD','PVT','REE','SBT','SCS','SIP','SJS','SZC','TCH','TLG','VCG','VCI','VGC','VHC','VIX','VND','VOS','VPI','VSC'];
+const VN100 = [...VN30, ...VN70];
+const VN30_BASKET = 'VN100 = VN30 + 70 midcap · kỳ 08/2024 → 01/2025 (tham khảo)';
 const INDEX = 'VNINDEX';
-const BARS = 600, KEEP = 700, OUT = 'data/vn30.json';
+const BARS = 800, KEEP = 820, OUT = 'data/vn100.json';   // 800 phiên ≈ 3,2 năm: trừ 220 phiên khởi động còn ~2,3 năm chuỗi điểm để backtest hai kỳ. 101 mã × 820 × ~40 byte ≈ 3,3 MB, Pages nén gzip
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36';
 const isoDay = ms => new Date(ms).toISOString().slice(0,10);
 const sleep = ms => new Promise(r=>setTimeout(r, ms));
@@ -84,7 +87,7 @@ try{ prev = JSON.parse(readFileSync(OUT,'utf8')); }catch{ /* lần đầu */ }
 
 const out = { updatedAt: Date.now(), basket: VN30_BASKET, bars: BARS, symbols:{}, index:null, errors:{} };
 let okCount = 0;
-for(const sym of [...VN30, INDEX]){
+for(const sym of [...VN100, INDEX]){
   const kind = sym===INDEX ? 'index' : 'stock';
   const got = await fetchSymbol(sym, kind);
   const old = sym===INDEX ? (prev.index||null) : (prev.symbols||{})[sym];
@@ -99,5 +102,5 @@ for(const sym of [...VN30, INDEX]){
 }
 mkdirSync('data', { recursive:true });
 writeFileSync(OUT, JSON.stringify(out));
-console.log(`\n${okCount}/${VN30.length+1} mã lấy được hôm nay · ghi ${OUT} (${(JSON.stringify(out).length/1024).toFixed(0)} KB)`);
+console.log(`\n${okCount}/${VN100.length+1} mã lấy được hôm nay · ghi ${OUT} (${(JSON.stringify(out).length/1024).toFixed(0)} KB)`);
 if(okCount===0){ console.error('Không nguồn nào trả dữ liệu cho bất kỳ mã nào — xem log từng mã ở trên.'); process.exit(1); }
