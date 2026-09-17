@@ -18,7 +18,7 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20        # script tự dừng tải ở phút 11 rồi vẫn commit; 20 phút là mức chặn cuối, không phải mức trông đợi
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
