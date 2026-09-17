@@ -1067,8 +1067,12 @@ const STOCK_STORE_URL = 'data/vn100.json';
 const STOCK_STORE_STALE_H = 30;   // kho cũ hơn 30 giờ (qua một phiên không cào) ⇒ nhãn "cũ"
 function parseStockStore(j){
   if(!j || typeof j!=='object' || !j.symbols || typeof j.symbols!=='object') throw new Error('kho không đúng định dạng');
-  const unpack = arr => (Array.isArray(arr) ? arr : []).filter(a=>Array.isArray(a) && a.length>=5 && isFinite(a[0]) && a[4]>0)
-    .map(a=>({ time:a[0], open:+a[1], high:+a[2], low:+a[3], close:+a[4], volume:+(a[5]||0) }));
+  /* Bỏ dòng hỏng (thời gian/giá không hữu hạn, close ≤ 0, khối lượng âm), xếp tăng theo thời gian, gộp trùng ngày (giữ dòng sau) — audit F10. */
+  const unpack = arr => { const m = new Map();
+    for(const a of (Array.isArray(arr) ? arr : [])){ if(!Array.isArray(a) || a.length<5) continue; const [t,o,h,l,c] = a.map(Number), v = Number(a[5]||0);
+      if(!isFinite(t) || !isFinite(c) || !(c>0) || !isFinite(o) || !isFinite(h) || !isFinite(l) || !isFinite(v) || v<0) continue;
+      m.set(t, { time:t, open:o, high:h, low:l, close:c, volume:v }); }
+    return [...m.values()].sort((a,b)=>a.time-b.time); };
   const symbols = {};
   for(const [k,v] of Object.entries(j.symbols)) symbols[k] = { source: v && v.source || null, fetchedAt: v && v.fetchedAt || null, rows: unpack(v && v.rows) };
   return { updatedAt: Number(j.updatedAt)||null, basket: j.basket||'', symbols,
@@ -1726,7 +1730,10 @@ function swingScoreSeries(candles, refCandles, cfg, opts){
     const a = Math.max(0, i+1-W), b = Math.max(0, j-W);
     const r = buyScore(cs.slice(a,i+1), rs.slice(b,j), {config:C});
     const q = withSell ? buyScore(ics.slice(a,i+1), irs.slice(b,j), {config:C}) : {score:0};
-    out.push({ time:cs[i].time, close:Number(cs[i].close), score:r.score==null ? 0 : r.score, sell:q.score==null ? 0 : q.score, kind: r.score==null ? 'mixed' : cheapKind(r.components).kind, conf: confirmSignal(cs, i).count });
+    const ddc = r.score==null ? null : (r.components||[]).find(c=>c.key==='drawdown365');
+    out.push({ time:cs[i].time, close:Number(cs[i].close), open: Number(cs[i].open)>0 ? Number(cs[i].open) : Number(cs[i].close),
+               score:r.score==null ? 0 : r.score, sell:q.score==null ? 0 : q.score, kind: r.score==null ? 'mixed' : cheapKind(r.components).kind,
+               conf: confirmSignal(cs, i).count, confidence:r.confidence, dd: ddc ? ddc.value : null });   // open/confidence/dd để simulatePicks dùng ĐÚNG bộ lọc của bộ Gợi ý và khớp ở giá mở phiên sau (audit F02/F05)
   }
   return out;
 }
@@ -1800,7 +1807,7 @@ function simulateLadder(series, rules){
       const prevC = i>0 ? S[i-1].close : b.close;
       const atFloor = floorPct>0 && b.close <= prevC*(1-floorPct)+1e-9, atCeil = floorPct>0 && b.close >= prevC*(1+floorPct)-1e-9;
       const addHit = R.addOn && (pos.dir>0 ? b.close <= pos.firstPrice*(1-R.addOn.drop) : b.close >= pos.firstPrice*(1+R.addOn.drop));
-      if(addHit && !pos.added && cash>0 && sig >= R.entry && !(pos.dir>0 ? atCeil : atFloor)){
+      if(addHit && !pos.added && cash>0 && pos.tpIdx===0 && pos.slIdx===0 && !pos.be && sig >= R.entry && !(pos.dir>0 ? atCeil : atFloor)){   // nhịp 2 chỉ trước khi bắt đầu thoát — không dùng tiền vừa chốt lời để mua lại (audit F12)
         const spend = cash, units = spend*(1-R.fee)/b.close;
         pos.units += units; pos.spent += spend; pos.unitsGross += spend/b.close; pos.avg = pos.spent/pos.unitsGross; cash = 0; pos.added = true; pos.lastBuyI = i;
         pos.legs.push({time:b.time, price:b.close, why:'add'});
@@ -2956,6 +2963,16 @@ function testStocks(){
   chk('quotes: FPT có giá và giá hôm trước; ACB ghi lý do; 101 mã thiếu', [qs.quotes.FPT.close, qs.quotes.FPT.prev, qs.quotes.ACB.err.startsWith('kho không lấy được'), qs.errors], [122, 121.5, true, 101]);
   let bad1 = false; try{ parseStockStore({}); }catch(e){ bad1 = true; } chk('kho sai định dạng ⇒ ném lỗi', bad1, true);
   chk('dòng nén thiếu cột hoặc close 0 bị bỏ', parseStockStore({symbols:{X:{rows:[[T0,1,2],[T0,1,2,3,0,1],[T0,1,2,3,4,5]]}}}).symbols.X.rows.length, 1);
+  { const px = parseStockStore({symbols:{X:{rows:[[T0,1,2,3,4,5],[T0-86400e3,1,2,3,3,5],[T0,1,2,3,4.5,5],[T0+86400e3,1,Infinity,3,4,5],[T0+2*86400e3,1,2,3,4,-1]]}}}).symbols.X.rows;
+    chk('kho: xếp tăng theo thời gian, gộp trùng ngày (giữ dòng sau), bỏ high vô hạn và khối lượng âm (audit F10)', [px.map(r=>r.close), px.length], [[3, 4.5], 2]); }
+  { const now = Date.UTC(2026,8,17,10), rows = [[Date.UTC(2026,8,15),'1','2','0.5','1.5','100', Date.UTC(2026,8,15,23,59,59,999)],[Date.UTC(2026,8,16),'1','2','0.5','1.6','100', Date.UTC(2026,8,16,23,59,59,999)],[Date.UTC(2026,8,17),'1','2','0.5','1.7','40', Date.UTC(2026,8,17,23,59,59,999)]];
+    const k = parseKlines(rows, now);
+    chk('parseKlines bỏ nến đang chạy (closeTime > now), giữ ở .live để hiện giá (audit F04)', [k.length, k[k.length-1].close, k.live && k.live.close, Object.keys(k).length], [2, 1.6, 1.7, 2]);
+    chk('nến không có closeTime (dữ liệu cũ/giả) coi là đã đóng', parseKlines([[1,'1','1','1','1','1']]).length, 1);
+    const fri = Date.UTC(2026,8,11), mon9 = Date.UTC(2026,8,14,2), tue9 = Date.UTC(2026,8,15,2);
+    chk('dataAgeHours cổ phiếu: nến thứ Sáu, sáng thứ Hai 18 giờ (bỏ cuối tuần) — chưa cũ; sáng thứ Ba 42 giờ ⇒ cũ (> 30)', [Math.round(dataAgeHours([{time:fri}], true, mon9)), Math.round(dataAgeHours([{time:fri}], true, tue9)) > 30, dataAgeHours([], true) === Infinity], [18, true, true]);
+    chk('dataAgeHours coin: kể từ closeTime; thiếu closeTime thì time + 24h', [Math.round(dataAgeHours([{time:0, closeTime:3600e3*10}], false, 3600e3*12)), Math.round(dataAgeHours([{time:0}], false, 3600e3*30))], [2, 6]);
+ }
   chk('mã thiếu nến ⇒ không có điểm (null), không ném', stockScoreOf(store, 'ACB'), null);
   chk('mã có 2 nến < 220 ⇒ score null kèm lý do', [stockScoreOf(store,'FPT').score, stockScoreOf(store,'FPT').reason.startsWith('Cần ít nhất')], [null, true]);
   console.log('%c3 — chấm điểm trên kho tổng hợp 320 phiên: rớt sâu điểm cao, tăng mạnh điểm thấp, xếp hạng giảm dần, so với VN-Index','font-weight:600');
@@ -3037,12 +3054,30 @@ function testStocks(){
     const C = mk(i=>20, i=> 30);                                            // không bao giờ đủ điểm
     const r65 = simulatePicks({A, B, C}, {exitScore:65, maxHold:42});
     chk('đầu tháng 1 mua A và B (C dưới 75), tối đa 2 mã', [r65.trades.map(t=>t.sym).sort(), r65.n], [['A','B'], 2]);
-    chk('A thoát vì điểm ≤ 65 ở phiên 20 (70 chưa đủ thấp, 40 mới bán), B thoát vì hết hạn 42 phiên', [r65.trades.find(t=>t.sym==='A').why, r65.trades.find(t=>t.sym==='A').held, r65.trades.find(t=>t.sym==='B').why, r65.trades.find(t=>t.sym==='B').held], ['score', 20, 'time', 42]);
+    chk('A thoát vì điểm ≤ 65 (tín hiệu phiên 20, khớp mở phiên 21 ⇒ giữ 20 phiên kể từ khớp mua ở phiên 1), B thoát vì hết hạn (khớp phiên 44 ⇒ 43)', [r65.trades.find(t=>t.sym==='A').why, r65.trades.find(t=>t.sym==='A').held, r65.trades.find(t=>t.sym==='B').why, r65.trades.find(t=>t.sym==='B').held], ['score', 20, 'time', 43]);
+    chk('khớp ở giá MỞ phiên sau tín hiệu (audit F05): mua A tại 100,5 (phiên 1), không phải 100 (phiên 0); execAt close = cách cũ mua 100', [Math.round(r65.trades.find(t=>t.sym==='A').spent/ r65.trades.find(t=>t.sym==='A').spent*1005)/10, simulatePicks({A, B, C}, {exitScore:65, execAt:'close'}).trades.find(t=>t.sym==='A').held], [100.5, 20]);
     chk('A lãi (110/100 trừ phí), B lỗ đúng phí 0,4%', [r65.trades.find(t=>t.sym==='A').ret > 0.09, Math.round(r65.trades.find(t=>t.sym==='B').ret*1e4)/1e4], [true, -0.004]);
-    chk('đếm lý do thoát và số tháng chọn', [r65.exits, r65.months], [{score:1, time:1, end:0}, 2]);
+    chk('đếm lý do thoát (end = vị thế còn mở) và số tháng chọn', [r65.exits, r65.months], [{score:1, time:1, end:0}, 2]);
     const r25 = simulatePicks({A, B, C}, {exitScore:25, maxHold:42});
     chk('ngưỡng 25: A không bao giờ tụt tới ⇒ cả hai thoát vì hết hạn', [r25.exits.score, r25.exits.time], [0, 2]);
-    chk('T+2: điểm tụt ngay phiên 1 vẫn phải chờ tới phiên 2', simulatePicks({Z: mk(i=>100, i=> i===0 ? 90 : 10)}, {exitScore:65}).trades[0].held, 2);
+    chk('T+2: điểm tụt ngay vẫn phải chờ tới phiên 2 sau khớp mua, rồi khớp bán ở phiên kế ⇒ giữ 3 phiên (cách cũ: 2)', [simulatePicks({Z: mk(i=>100, i=> i===0 ? 90 : 10)}, {exitScore:65}).trades[0].held, simulatePicks({Z: mk(i=>100, i=> i===0 ? 90 : 10)}, {exitScore:65, execAt:'close'}).trades[0].held], [3, 2]);
+    { /* Sàn/trần (audit F05): mã mở cửa +7% so phiên trước ⇒ không mua được; mở cửa −7% ⇒ chưa bán được, chờ phiên sau. */
+      const ceil = Array.from({length:50},(_,i)=>({ time:d(i), close: i===1 ? 107 : 100, open: i===1 ? 107 : 100, score: i<3 ? 85 : 40 }));
+      const rCeil = simulatePicks({ceil}, {exitScore:65, floorPct:0.069}), rNo = simulatePicks({ceil}, {exitScore:65});
+      chk('mở cửa sát trần ⇒ bỏ lệnh mua, tiền trả lại (không có lệnh); không có luật sàn/trần thì vẫn mua', [rCeil.entries, rCeil.netReturn, rNo.entries], [0, 0, 1]);
+      const flr = Array.from({length:50},(_,i)=>({ time:d(i), close: i===4 ? 93 : 100, open: i===4 ? 93 : 100, score: i<3 ? 85 : 40 }));
+      chk('mở cửa sát sàn ở phiên bán ⇒ chưa bán được, khớp phiên sau (giữ 4 thay vì 3)', simulatePicks({flr}, {exitScore:65, floorPct:0.069}).trades[0].held, 4);
+      /* Vị thế còn mở cuối kỳ KHÔNG ép bán: điểm 85 cả kỳ, giá lên ⇒ 0 lệnh chốt, exits.end = 1, equity vẫn ăn phần tăng giá. */
+      const hold = Array.from({length:30},(_,i)=>({ time:d(i), close: 100+i, score: 85 }));
+      const rH = simulatePicks({hold}, {exitScore:65});
+      chk('cuối dữ liệu không ép bán: n=0, entries=1, exits.end=1, equity > 1 (nửa tiền mua ở 101, giá cuối 129 ⇒ ≈ +13,9%)', [rH.n, rH.entries, rH.exits.end, Math.round(rH.netReturn*100), rH.open.length], [0, 1, 1, 14, 1]);
+      /* Cùng bộ lọc với bộ Gợi ý (audit F02): độ tin cậy LOW hoặc rớt > 65% từ đỉnh ⇒ không mua dù điểm 85. */
+      const lowC = Array.from({length:50},(_,i)=>({ time:d(i), close:100, score:85, confidence:'LOW' })), deep = Array.from({length:50},(_,i)=>({ time:d(i), close:100, score:85, dd:0.7 })), okD = Array.from({length:50},(_,i)=>({ time:d(i), close:100, score:85, dd:0.5, confidence:'HIGH' }));
+      chk('backtest lọc như Gợi ý: LOW không mua, rớt 70% không mua, rớt 50% tin cậy cao thì mua', [simulatePicks({lowC}, {exitScore:65}).entries, simulatePicks({deep}, {exitScore:65}).entries, simulatePicks({okD}, {exitScore:65}).entries], [0, 0, 1]);
+      /* Soi từng phiên (cadence day): điểm chỉ đạt 85 ở phiên 10–14 (giữa tháng) ⇒ cách cũ đầu tháng không vào, soi từng phiên vào; tối đa `picks` lệnh mua mới mỗi tháng. */
+      const mid = Array.from({length:50},(_,i)=>({ time:d(i), close:100, score: (i>=10 && i<15) ? 85 : 40 }));
+      const mid2 = { A: mid, B: mid.map(b=>({...b})), Cc: mid.map(b=>({...b})) };
+      chk('cadence day vào giữa tháng, cách cũ không; tối đa 2 lệnh mua mới/tháng dù 3 mã đủ điểm', [simulatePicks({mid}, {exitScore:65}).entries, simulatePicks({mid}, {exitScore:65, cadence:'day'}).entries, simulatePicks(mid2, {exitScore:65, cadence:'day'}).entries], [0, 1, 2]); }
     chk('chia đều tiền: mỗi mã 50% khi có 2 chỗ trống', r65.trades.map(t=>Math.round(t.spent*100)/100), [0.5, 0.5]);
     const wi = planWhatIf(big, 'FPT');
     chk('what-if FPT (điểm cao, đang rẻ): 3 dòng 65/55/25, giá tăng dần theo ngưỡng thấp hơn, lãi sau phí < lãi gộp', [wi.length, wi.map(w=>w.X), wi.filter(w=>w.price!=null).every((w,i,a)=>i===0 || w.price>=a[i-1].price), wi.filter(w=>w.net!=null).every(w=>w.net < w.gross)], [3, [65,55,25], true, true]);
@@ -3089,6 +3124,8 @@ function testStocks(){
     chk('lệnh bán SOL 5@150: lãi 200 USD = 5.200k; FPT 100@77: +700k; tổng hiện thực 5.900k, 2 thắng/2, 5 lệnh trade', [led.closed.map(c=>[c.sym, Math.round(c.pnlPx), Math.round(c.pnlK)]), Math.round(led.realizedK), led.wins, led.n], [[['FPT',700,700],['SOL',200,5200]], 5900, 2, 5]);
     chk('lệnh bán ghi % so giá vốn (150/110 − 1)', Math.round(led.closed.find(c=>c.sym==='SOL').ret*1e4)/1e4, 0.3636);
     chk('không có lệnh ⇒ sổ rỗng', [tradeLedger([]).positions.length, tradeLedger([]).realizedK, tradeLedger(null).n], [0, 0, 0]);
+    { const sellOnly = tradeLedger([{ id:'x', date:'2026-09-17', valueVnd:1000, trade:{ mkt:'stock', sym:'VIX', side:'sell', qty:100, px:10 } }]);
+      chk('bán mã không mua qua Trading (audit F06): lãi/lỗ "chưa xác định" (null), không cộng 1.000k vào hiện thực, đếm unknown', [sellOnly.closed[0].pnlK, sellOnly.closed[0].basis, sellOnly.realizedK, sellOnly.unknown, sellOnly.wins], [null, false, 0, 1, 0]); }
     /* Tháng này của cổ phiếu: cùng luật STOCK_PLAN_V1 — mua ≥75 chưa giữ, bán khi ≤65, đếm lệnh trade trong tháng. */
     const rk = [{sym:'KDH', score:87},{sym:'CII', score:84},{sym:'VIX', score:70},{sym:'TCB', score:18},{sym:'FPT', score:30},{sym:'PDR', score:78}];
     const pl = stockPlanNow(rk, ['VIX','TCB','CII'], tf2, '2026-09');
@@ -3113,7 +3150,8 @@ function testStocks(){
     chk('2 sự kiện chạm 80; sự kiện 1 (k=5, giá còn rớt tới 75 ở k=50) rớt thêm tối đa −23,1%; sự kiện 2 (k=45) lợi suất 21 phiên dương', [evNow.length, Math.round(evNow[0].dd*1000)/1000, evNow[1].fw[21] > 0, evNow[0].wait], [2, -0.231, true, 0]);
     chk('sự kiện quá gần cuối chuỗi (không đủ 21 phiên) bị bỏ', eventStudyOne(S.slice(0,20), cs.slice(0,20), 80, 'now').length, 0);
     const evC = eventStudyOne(S, cs, 80, 'confirm');
-    chk('chờ xác nhận: sự kiện 1 không có dấu hồi trong 21 phiên ⇒ bỏ; sự kiện 2 vào sau khi có dấu (wait > 0), rớt thêm ≈ 0', [evC.length, evC.length ? evC[0].wait > 0 : null, evC.length ? evC[0].dd > -0.02 : null], [1, true, true]);
+    chk('chờ xác nhận: sự kiện 1 không có dấu hồi trong 21 phiên ⇒ bỏ; sự kiện 2 vào sau khi có dấu (wait > 0); chưa đủ 63 phiên phía sau ⇒ rớt thêm KHÔNG tính (null), lợi suất 21 phiên vẫn có', [evC.length, evC.length ? evC[0].wait > 0 : null, evC.length ? evC[0].dd : 0, evC.length ? evC[0].fw[21]!=null : null], [1, true, null, true]);
+    chk('eventStudyAll: nDd ≤ n (chỉ sự kiện đủ 63 phiên mới có rớt thêm)', eventStudyAll({ symbols:{ A:{ rows: big.symbols.FPT.rows } }, index: big.index }, ['A']).every(e=>e.nDd <= e.n), true);
     const st2 = { symbols:{ A:{ rows: big.symbols.FPT.rows }, B:{ rows: big.symbols.VCB.rows } }, index: big.index };
     const es = eventStudyAll(st2, ['A','B']);
     chk('eventStudyAll: 3 ngưỡng × 2 cách vào = 6 dòng, mỗi dòng có 3 mốc phiên', [es.length, es.map(e=>e.T+e.mode).join(','), Object.keys(es[0].h).map(Number)], [6, '75now,75confirm,80now,80confirm,85now,85confirm', [21,42,63]]);
@@ -3158,13 +3196,17 @@ function testStocks(){
     { const D0 = Date.UTC(2026,0,5), d = i => D0 + i*86400e3;
       const mk = (kind, conf) => Array.from({length:50},(_,i)=>({ time:d(i), close:100+i*0.5, score: i<20 ? 85 : 40, kind, conf }));
       const rP = simulatePicks({A: mk('panic', 0)}, {exitScore:65, entryRule:'kind'}), rS = simulatePicks({A: mk('struct', 0)}, {exitScore:65, entryRule:'kind'}), rC = simulatePicks({A: mk('struct', 2)}, {exitScore:65, entryRule:'confirm'}), rO = simulatePicks({A: mk('struct', 0)}, {exitScore:65});
-      chk('simulatePicks theo kiểu: hoảng loạn 0 dấu vẫn vào; cấu trúc 0 dấu không vào; cấu trúc 2 dấu vào theo confirm; luật cũ vào', [rP.n, rS.n, rC.n, rO.n], [1, 0, 1, 1]);
+      chk('simulatePicks theo kiểu: hoảng loạn 0 dấu vẫn vào; cấu trúc 0 dấu không vào; cấu trúc 2 dấu vào theo confirm; luật cũ vào', [rP.entries, rS.entries, rC.entries, rO.entries], [1, 0, 1, 1]);
       /* Đầu tháng 1 (phiên 0) điểm 70; chạm 85 ở phiên 10–14, tụt về 70, dấu hồi từ phiên 15: đầu tháng 2 (phiên 27) điểm 70 nhưng đã chạm 85 trong 21 phiên ⇒ confirm vào; luật cũ không vào ở cả hai đầu tháng. */
       const late = Array.from({length:50},(_,i)=>({ time:d(i), close:100, score: (i>=10 && i<15) ? 85 : 70, kind:'struct', conf: i>=15 ? 3 : 0 }));
-      chk('vào muộn theo xác nhận: chạm 85 rồi tụt về 70 có dấu hồi ⇒ confirm vào (peak trong 21 phiên), luật cũ không vào', [simulatePicks({A:late}, {exitScore:65, entryRule:'confirm'}).n, simulatePicks({A:late}, {exitScore:65}).n], [1, 0]); }
+      chk('vào muộn theo xác nhận: chạm 85 rồi tụt về 70 có dấu hồi ⇒ confirm vào (peak trong 21 phiên), luật cũ không vào', [simulatePicks({A:late}, {exitScore:65, entryRule:'confirm'}).entries, simulatePicks({A:late}, {exitScore:65}).entries], [1, 0]); }
     const btc = stockBacktestAll(big, ['FPT','VCB','HPG']);
-    chk('backtest trả planCmp 3 cách vào × 3 ngưỡng = 9 dòng, plan cũ vẫn 3', [btc.planCmp.length, btc.planCmp.filter(x=>x.rule==='kind').length, btc.plan.length], [9, 3, 3]);
-    chk('planCmpNote: mẫu nhỏ nói thẳng "dưới 10 lệnh", so sụt tối đa; thiếu dòng ⇒ chuỗi rỗng', [planCmpNote(btc.planCmp, btc.events).includes('Dưới 10 lệnh') || planCmpNote(btc.planCmp, btc.events).includes('đáng dùng'), planCmpNote([], []).length], [true, 0]); }
+    chk('backtest trả planCmp 3 cách vào × 3 ngưỡng = 9 dòng soi từng phiên, plan cũ 3 dòng đầu tháng, có storeAt', [btc.planCmp.length, btc.planCmp.filter(x=>x.rule==='kind').length, btc.plan.length, btc.planCmp.every(x=>x.cadence==='day'), btc.plan.every(x=>x.cadence==='month'), btc.storeAt===big.updatedAt], [9, 3, 3, true, true, true]);
+    chk('planCmpNote: mẫu nhỏ nói thẳng "dưới 10 lệnh", so sụt tối đa; thiếu dòng ⇒ chuỗi rỗng', [planCmpNote(btc.planCmp, btc.events).includes('Dưới 10 lệnh') || planCmpNote(btc.planCmp, btc.events).includes('đáng dùng'), planCmpNote([], []).length], [true, 0]);
+    {     const oldRows = big.symbols.FPT.rows.map(r=>({...r, time: r.time - 400*86400e3})), stOld = { symbols:{ FPT:{ rows:oldRows } }, index:{ rows: big.index.rows.map(r=>({...r, time:r.time - 400*86400e3})) } };
+    const so = stockScoreOf(stOld, 'FPT');
+    chk('mã có nến cuối cách hơn một năm ⇒ Confidence LOW + stale, bộ Gợi ý loại với lý do "dữ liệu cũ" (audit F03)', [so.confidence, so.stale, screenPicks([{...so, score:85, confirm:{count:3}, kind:{kind:'panic'}}], []).excluded[0].why[0]], ['LOW', true, 'dữ liệu cũ']);
+    chk('entryDecision: cùng một hàm cho live và backtest — LOW ⇒ why, rớt 70% ⇒ why, đủ ⇒ ok', [entryDecision({score:85, confidence:'LOW'}, SCREEN_V1).why.length, entryDecision({score:85, dd:0.7}, SCREEN_V1).ok, entryDecision({score:85, kind:'panic', dd:0.3, confidence:'HIGH'}, SCREEN_V1).ok, entryDecision({score:60}, SCREEN_V1).eligible], [1, false, true, false]); } }
   console.log('%c8 — nhãn lỗi','font-weight:600');
   chk('TypeError ⇒ CORS/mất mạng', probeErrorLabel(new TypeError('Failed to fetch')), 'trình duyệt chặn (CORS) hoặc mất mạng');
   chk('HTTP ⇒ giữ thông điệp', probeErrorLabel(new Error('HTTP 404')), 'HTTP 404');
@@ -3438,7 +3480,15 @@ async function fetchJson(url, ms=15000){
   }finally{ clearTimeout(t); }
 }
 /* Nến Binance: [openTime, open, high, low, close, volume, closeTime, ...] */
-const parseKlines = rows => (rows||[]).map(k=>({time:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]}));
+/* Nến Binance: k[6] = closeTime. Nến ĐANG CHẠY (closeTime > now) không dùng để chấm điểm, xác nhận hồi hay backtest (audit F04: khối lượng nửa ngày bị so với
+   khối lượng ngày đủ, tín hiệu đổi trong ngày) — trả riêng ở thuộc tính không đếm `live` để hiện giá hiện tại. Hàm thuần theo (rows, now). */
+const parseKlines = (rows, now) => {
+  const t = now==null ? Date.now() : now;
+  const all = (rows||[]).map(k=>({time:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5], closeTime: k[6]!=null ? +k[6] : null}));
+  const closed = all.filter(c=>c.closeTime==null || c.closeTime <= t), live = all.find(c=>c.closeTime!=null && c.closeTime > t) || null;
+  Object.defineProperty(closed, 'live', { value:live, enumerable:false });
+  return closed;
+};
 const fetchKlines = async (symbol, limit=DCA_KLINE_LIMIT, interval='1d') =>
   parseKlines(await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
 /* Kéo nhiều hơn 1.000 nến: gọi lùi từng đợt bằng endTime = nến cũ nhất − 1 cho tới khi đủ `total` hoặc Binance hết dữ liệu. */
@@ -3518,8 +3568,8 @@ async function refreshDca(opts={}){
     if(!(usd.eth>0)) usd.eth = lastClose(ethK);     // ticker hỏng thì lấy close của nến cuối
     if(!(usd.btc>0)) usd.btc = lastClose(btcK);
     const ethUsd = usd.eth, btcUsd = usd.btc;
-    const dataTime = ethK[ethK.length-1].time;
-    const ageHours = (Date.now()-dataTime)/3600e3;
+    const lastC = ethK[ethK.length-1], dataTime = lastC.closeTime || (lastC.time + 86400e3);   // mốc dữ liệu = lúc nến cuối ĐÓNG (nến đang chạy đã bị parseKlines bỏ)
+    const ageHours = Math.max(0, (Date.now()-dataTime)/3600e3);
     const kl = {eth:ethK, btc:btcK};
     const now = Date.now(), coins = {};
     for(const c of DCA_SCORED){
@@ -4200,15 +4250,26 @@ function floorPx(p, step){
   if(step>0) return Math.floor(p/step + 1e-9)*step;                  // +1e-9: giá đã đúng bước không bị cắt thêm một bước vì sai số dấu phẩy động
   const d = p>=100 ? 0 : p>=1 ? 2 : p>=0.01 ? 4 : 6, m = Math.pow(10,d); return Math.floor(p*m + 1e-9)/m;
 }
+/* Tuổi dữ liệu của MỘT mã, tính bằng giờ kể từ khi nến cuối ĐÓNG (audit F03: trước đây stockScoreOf không truyền ageHours nên mã cũ một năm vẫn "tin cậy cao").
+   Cổ phiếu: nến ngày đóng 15:00 giờ VN (08:00 UTC), không đếm thứ Bảy/Chủ nhật (kho cào thứ Sáu, mở app sáng thứ Hai vẫn mới). Coin: nến đóng 00:00 UTC hôm sau. Hàm thuần. */
+function dataAgeHours(rows, isStock, now){
+  if(!rows || !rows.length) return Infinity;
+  const L = rows[rows.length-1], t = now==null ? Date.now() : now;
+  if(!isStock) return Math.max(0, (t - (L.closeTime || L.time + 86400e3))/3600e3);
+  let age = (t - (L.time + 8*3600e3))/3600e3;
+  for(let d = L.time + 86400e3; d < t; d += 86400e3){ const wd = new Date(d).getUTCDay(); if(wd===0 || wd===6) age -= 24; }
+  return Math.max(0, age);
+}
 function stockScoreOf(store, sym){
   const rec = store && store.symbols ? store.symbols[sym] : null, rows = rec ? rec.rows : [];
   if(!rows.length) return null;
-  const C = cfgOf(store), ref = refRows(store, sym);
-  const r = buyScore(rows, ref, {config:C, ratioLabel:C.ethbtc30.label});
-  const L = rows[rows.length-1], P = rows[rows.length-2];
+  const C = cfgOf(store), ref = refRows(store, sym), isStock = !(store && store.market==='coin');
+  const ageH = dataAgeHours(rows, isStock), r = buyScore(rows, ref, {config:C, ratioLabel:C.ethbtc30.label, ageHours:ageH});
+  const L = rows[rows.length-1], P = rows[rows.length-2], live = rec.live && rec.live.close>0 ? rec.live : null;   // coin: nến đang chạy chỉ để hiện giá
   const dd = (r.components||[]).find(c=>c.key==='drawdown365');
   return { sym, score:r.score, marketState:r.marketState, confidence:r.confidence, components:r.components, candles:r.candles, reason:r.reason||'',
-           price:L.close, prev: P ? P.close : null, chg: P && P.close>0 ? L.close/P.close-1 : null, time:L.time, n:rows.length, source:rec.source, dd365: dd ? dd.value : null,
+           price: live ? live.close : L.close, prev: live ? L.close : (P ? P.close : null), chg: live ? (L.close>0 ? live.close/L.close-1 : null) : (P && P.close>0 ? L.close/P.close-1 : null),
+           time:L.time, n:rows.length, source:rec.source, dd365: dd ? dd.value : null, ageH, stale: ageH > C.staleHours,
            confirm: confirmSignal(rows), kind: cheapKind(r.components) };
 }
 function stockScores(store, syms){
@@ -4280,7 +4341,8 @@ function eventStudyOne(series, candles, T, mode, cfg){
     if(entry + E.horizons[0] >= S.length) continue;              // chưa đủ phiên để đánh giá mốc ngắn nhất ⇒ bỏ
     const p0 = S[entry].close, fw = {};
     for(const h of E.horizons) fw[h] = entry+h < S.length ? S[entry+h].close/p0 - 1 : null;
-    let dd = 0; for(let j=entry+1; j<=Math.min(S.length-1, entry+H); j++) dd = Math.min(dd, S[j].close/p0 - 1);
+    /* Rớt thêm chỉ tính khi còn đủ H phiên phía sau — không trộn sự kiện quan sát 63 phiên với sự kiện mới 21 phiên (audit F08). Theo giá đóng cửa, không phải đáy trong phiên. */
+    let dd = null; if(entry + H < S.length){ dd = 0; for(let j=entry+1; j<=entry+H; j++) dd = Math.min(dd, S[j].close/p0 - 1); }
     out.push({ time:S[entry].time, score:S[entry].score, fw, dd, wait: entry-k, kind: S[k].kind || 'mixed' });
   }
   return out;
@@ -4291,7 +4353,7 @@ function eventStudyAll(store, syms, opts){
   for(const T of E.thresholds) for(const mode of ['now','confirm']){
     const ev = [];
     for(const sym of (syms||[])){ const S = stockSeriesFor(store, sym), rec = store.symbols ? store.symbols[sym] : null; if(!S || !rec) continue; ev.push(...eventStudyOne(S, rec.rows, T, mode, E)); }
-    const agg = list => { const row = { n:list.length, ddMed:quantile(list.map(e=>e.dd), 0.5), ddP10:quantile(list.map(e=>e.dd), 0.1), waitAvg: list.length ? list.reduce((a,e)=>a+e.wait,0)/list.length : null, h:{} };
+    const agg = list => { const dds = list.map(e=>e.dd).filter(x=>x!=null); const row = { n:list.length, nDd:dds.length, ddMed:quantile(dds, 0.5), ddP10:quantile(dds, 0.1), waitAvg: list.length ? list.reduce((a,e)=>a+e.wait,0)/list.length : null, h:{} };
       for(const h of E.horizons){ const v = list.map(e=>e.fw[h]).filter(x=>x!=null); row.h[h] = { n:v.length, hit: v.length ? v.filter(x=>x>0).length/v.length : null, med:quantile(v, 0.5) }; } return row; };
     /* Tách theo "rẻ kiểu gì" tại nến chạm mốc — bước 2 của kỷ luật nhãn → đo → (có thể) điều kiện. */
     const byKind = Object.fromEntries(['struct','panic','mixed'].map(k=>[k, agg(ev.filter(e=>e.kind===k))]));
@@ -4311,38 +4373,44 @@ const ENTRY_RULES = [{key:'score', label:'điểm ≥ 75 (cũ)'}, {key:'confirm'
    (đo lần đầu với điều kiện "điểm ≥ 75 VÀ Hồi cùng lúc" ⇒ 0 lệnh, vì xác nhận tới ~15 phiên sau khi điểm đã tụt). 'kind': hoảng loạn ⇒ như 'score'; còn lại ⇒ như 'confirm'. */
 /* Một câu đọc bảng "ba cách vào": so số lệnh, sụt tối đa và nói thẳng khi mẫu quá nhỏ. Kế hoạch mua ĐẦU THÁNG hiếm khi trùng phiên có đủ dấu hồi,
    nên hai cách vào có Hồi ra rất ít lệnh dù bảng sự kiện (soi từng phiên) đếm được nhiều lần "chờ xác nhận" hơn. */
-const planCmpNote = (cmp, events) => {
+const planCmpNote = (cmp, events, old) => {
   const by = k => cmp.filter(x=>x.rule===k), best = rows => rows.slice().sort((a,b)=>(b.net||0)-(a.net||0))[0];
   const o = best(by('score')), c = best(by('confirm')), k = best(by('kind')); if(!o || !c || !k) return '';
   const f = x => `${x.n} lệnh · toàn kỳ ${fmtPctS(x.net)} · 12 th ${x.netY1==null?'—':fmtPctS(x.netY1)} · sụt ${fmtPct(x.dd||0)}`;
-  const ev = (events||[]).find(e=>e.mode==='confirm' && e.T===SCREEN_V1.entryMin), small = Math.max(c.n, k.n) < 10;
-  return `Đọc: luật cũ ${f(o)}; điểm + Hồi ${f(c)}; theo kiểu rẻ ${f(k)}. `
-    + (small ? `Hai cách vào có Hồi chỉ ra ${c.n}–${k.n} lệnh trong cả kỳ${ev ? ` trong khi bảng sự kiện đếm ${ev.n} lần "chờ xác nhận" — vì kế hoạch chỉ mua đầu tháng, còn dấu hồi xuất hiện ở phiên bất kỳ và thường tắt trước đầu tháng sau` : ''}. Dưới 10 lệnh thì lãi/thua chưa nói được gì; điều thật duy nhất là sụt tối đa nhỏ hơn hẳn (${fmtPct(k.dd||0)} so ${fmtPct(o.dd||0)}). Muốn so công bằng phải cho kế hoạch soi từng phiên thay vì đầu tháng — chưa làm.`
-             : `Cách nào thắng cả toàn kỳ và 12 tháng với sụt nhỏ hơn thì đáng dùng; bằng nhau thì chọn cách ít lệnh hơn.`);
+  const ob = old && old.length ? best(old) : null, small = Math.min(c.n, k.n) < 10;
+  return `Đọc: cùng soi từng phiên — điểm ${f(o)}; điểm + Hồi ${f(c)}; theo kiểu rẻ ${f(k)}${ob ? `; cách cũ chọn đầu tháng ${f(ob)}` : ''}. `
+    + (small ? `Dưới 10 lệnh thì lãi/thua chưa nói được gì; chỉ so được sụt tối đa. ` : `Cách nào thắng cả toàn kỳ và 12 tháng với sụt nhỏ hơn thì đáng dùng; bằng nhau thì chọn cách ít lệnh hơn. `)
+    + `Mọi dòng khớp ở giá mở phiên sau tín hiệu, cùng bộ lọc với Gợi ý; tham số 9 bộ được chọn và đánh giá trên cùng dữ liệu (chưa kiểm định ngoài mẫu), rổ mã lấy theo danh sách hiện tại — kết quả dễ đẹp hơn thật.`;
 };
 const entryOk = (rule, b, P) => {
   const need = (P && P.needConfirm) || SCREEN_V1.needConfirm, min = (P && P.entryMin) || SCREEN_V1.entryMin, rearm = (P && P.rearm) || EVENT_V1.rearm;
   const now = b.score!=null && b.score >= min, confirmed = (b.peak!=null ? b.peak : b.score) >= min && b.score >= min - rearm && (b.conf||0) >= need;
   return rule==='score' ? now : rule==='confirm' ? confirmed : (b.kind==='panic' ? now : confirmed);
 };
+/* MỘT hàm quyết định cho cả bộ Gợi ý (live) và simulatePicks (backtest) — audit F02 chỉ ra backtest chỉ lọc điểm còn live lọc thêm Hồi/độ tin cậy/độ sâu rớt.
+   b = {score, peak, kind, conf, confidence, dd, stale}. Trả {eligible (đang xét), why (lý do loại), ok (mua)}. */
+function entryDecision(b, P){
+  const why = [], rearm = P.rearm || EVENT_V1.rearm;
+  if(b.stale) why.push('dữ liệu cũ'); else if(b.confidence===P.lowConf) why.push('độ tin cậy thấp');
+  if(b.dd!=null && b.dd > P.maxDd) why.push(`rớt ${fmtPct(b.dd)} từ đỉnh — kiểm tra doanh nghiệp`);
+  const eligible = b.score!=null && (b.score >= P.entryMin || (b.peak!=null && b.peak >= P.entryMin && b.score >= P.entryMin - rearm));   // rẻ hôm nay, hoặc vừa rẻ trong 21 phiên và chưa hết rẻ
+  return { eligible, why, ok: eligible && !why.length && entryOk(P.entryRule||'score', b, P) };
+}
 function screenPicks(ranks, mine, P){
   P = {...SCREEN_V1, ...(P||{})}; const held = new Set(mine||[]), buy = [], watch = [], excluded = [];
   for(const r of (ranks||[])){
-    const peak = r.peak21!=null ? r.peak21 : r.score;
-    if(r.score==null || !(r.score >= P.entryMin || (peak >= P.entryMin && r.score >= P.entryMin - EVENT_V1.rearm))) continue;   // rẻ hôm nay, hoặc vừa rẻ trong 21 phiên và chưa hết rẻ
-    const why = [];
-    if(held.has(r.sym)) why.push('đang giữ');
-    if(r.confidence===P.lowConf) why.push('độ tin cậy thấp');
-    if(r.dd365!=null && r.dd365 > P.maxDd) why.push(`rớt ${fmtPct(r.dd365)} từ đỉnh — kiểm tra doanh nghiệp`);
-    const c = r.confirm ? r.confirm.count : 0, kind = r.kind ? r.kind.kind : 'mixed', item = { sym:r.sym, score:r.score, peak, confirm:c, kind, dd365:r.dd365, why };
+    const peak = r.peak21!=null ? r.peak21 : r.score, c = r.confirm ? r.confirm.count : 0, kind = r.kind ? r.kind.kind : 'mixed';
+    const d = entryDecision({score:r.score, peak, kind, conf:c, confidence:r.confidence, dd:r.dd365, stale:r.stale}, P);
+    if(!d.eligible) continue;
+    const why = (held.has(r.sym) ? ['đang giữ'] : []).concat(d.why), item = { sym:r.sym, score:r.score, peak, confirm:c, kind, dd365:r.dd365, why };
     if(why.length) excluded.push(item);
-    else if(entryOk(P.entryRule, {score:r.score, peak, kind, conf:c}, P)) buy.push(item);
+    else if(d.ok) buy.push(item);
     else watch.push(item);
   }
   const bySc = (a,b)=>(b.confirm-a.confirm) || (b.score-a.score);   // hoảng loạn vào ngay vẫn xếp theo Hồi rồi điểm
   return { buy: buy.sort(bySc), watch: watch.sort(bySc), excluded, rule:P };
 }
-const STOCK_BT_VERSION = 'stock-bt-v5';   // v5: kế hoạch tháng so ba cách vào (điểm · điểm+Hồi · theo kiểu rẻ)   // v4: sự kiện tách theo kiểu rẻ (cấu trúc / hoảng loạn / hỗn hợp)   // v3: thêm nghiên cứu sự kiện (điểm chạm mốc ⇒ rớt thêm / lợi suất sau); v2: kế hoạch chọn mã + VN-Index
+const STOCK_BT_VERSION = 'stock-bt-v6';   // v6 (audit 2026-09-17): khớp giá mở phiên sau, cùng bộ lọc với Gợi ý, soi từng phiên, vị thế mở không ép bán, sự kiện chỉ tính rớt thêm khi đủ 63 phiên   // v5: kế hoạch tháng so ba cách vào (điểm · điểm+Hồi · theo kiểu rẻ)   // v4: sự kiện tách theo kiểu rẻ (cấu trúc / hoảng loạn / hỗn hợp)   // v3: thêm nghiên cứu sự kiện (điểm chạm mốc ⇒ rớt thêm / lợi suất sau); v2: kế hoạch chọn mã + VN-Index
 /* Chuỗi điểm từng phiên của một mã, tính một lần cho mỗi bản kho (38k lần chấm cho 100 mã) — backtest lưới và mô phỏng kế hoạch dùng chung. */
 const stockSeriesCache = new WeakMap();   // theo từng object kho (không theo updatedAt — hai kho thử nghiệm cùng mốc sẽ dẫm nhau)
 function stockSeriesFor(store, sym){
@@ -4379,14 +4447,15 @@ function stockBacktestAll(store, syms){
   }));
   rows.sort((a,b)=>(b.net||-9)-(a.net||-9));
   const seriesMap = Object.fromEntries(per.map(p=>[p.sym, stockSeriesFor(store, p.sym)]));
-  const planRow = (rule, X) => { const r = simulatePicks(seriesMap, {...PL, exitScore:X, entryRule:rule}); return { rule, X, n:r.n, winRate:r.winRate, net:r.netReturn, netY1:r.netY1, dd:r.maxDD, avgHold:r.avgHold, avgRet:r.avgRet, exits:r.exits, months:r.months, exposure:r.exposure }; };
-  const plan = PL.exits.map(X=>planRow('score', X));                                            // bản cũ (giữ tên `plan` cho cache/test)
-  const planCmp = ENTRY_RULES.flatMap(R=>PL.exits.map(X=>planRow(R.key, X)));                     // bước 3: so ba cách vào
+  const floorPct = Number((store.rules||STOCK_SWING_RULES).floorPct)||0;
+  const planRow = (rule, X, cadence) => { const r = simulatePicks(seriesMap, {...PL, exitScore:X, entryRule:rule, cadence, floorPct}); return { rule, X, cadence, n:r.n, entries:r.entries, winRate:r.winRate, net:r.netReturn, netY1:r.netY1, dd:r.maxDD, avgHold:r.avgHold, avgRet:r.avgRet, exits:r.exits, months:r.months, exposure:r.exposure }; };
+  const plan = PL.exits.map(X=>planRow('score', X, 'month'));                                   // bản cũ: chọn đầu tháng (giữ tên `plan` cho cache/test)
+  const planCmp = ENTRY_RULES.flatMap(R=>PL.exits.map(X=>planRow(R.key, X, 'day')));            // ba cách vào, soi TỪNG PHIÊN như bộ Gợi ý (audit F02)
   const idxRows = store.index ? store.index.rows : [], iFrom = N ? Math.min(...per.map(p=>p.from)) : null, iTo = N ? Math.max(...per.map(p=>p.to)) : null;
   const ix = idxRows.filter(r=>iFrom!=null && r.time>=iFrom && r.time<=iTo), ix1 = ix.filter(r=>r.time >= iTo-365*86400e3);
   const bhOf = a => a.length ? a[a.length-1].close/a[0].close-1 : null;
   const events = eventStudyAll(store, per.map(p=>p.sym));
-  return { version:STOCK_BT_VERSION, at:Date.now(), n:N, rows, plan, planCmp, events, indexBh:bhOf(ix), indexBhY1:bhOf(ix1), bhAvg: mean(per.map(p=>p.bh)), bhAvgY1: mean(per.map(p=>p.bhY1)),
+  return { version:STOCK_BT_VERSION, at:Date.now(), storeAt: store.updatedAt||null, n:N, rows, plan, planCmp, events, indexBh:bhOf(ix), indexBhY1:bhOf(ix1), bhAvg: mean(per.map(p=>p.bh)), bhAvgY1: mean(per.map(p=>p.bhY1)),
            from: N ? Math.min(...per.map(p=>p.from)) : null, to: N ? Math.max(...per.map(p=>p.to)) : null,
            perSym: Object.fromEntries(per.map(p=>[p.sym, { bh:p.bh, bhY1:p.bhY1, rows:p.rows.map(x=>[x.entry, x.ladder, x.n, x.net, x.netY1, x.dd]) }])) };
 }
@@ -4396,33 +4465,61 @@ function stockBacktestAll(store, syms){
 const STOCK_PLAN_V1 = { entryMin:75, entryMax:100, picks:2, exits:[65,55,25], maxHold:42, minHold:2, fee:0.0015, sellTax:0.001 };
 function simulatePicks(seriesMap, opts){
   const P = {...STOCK_PLAN_V1, ...(opts||{})}, X = P.exitScore, sellFee = P.fee + P.sellTax;
+  const Q = {...SCREEN_V1, ...P, entryRule: P.entryRule || 'score'};              // cùng bộ lọc với bộ Gợi ý (Hồi · độ tin cậy · độ sâu rớt), luật vào mặc định = cũ
+  /* Khớp lệnh (audit F05): tín hiệu tính ở GIÁ ĐÓNG phiên t, lệnh khớp ở GIÁ MỞ phiên t+1 (execAt 'close' = cách cũ, để đối chứng). Không mua khi mở cửa sát trần, không bán khi
+     mở cửa sát sàn (floorPct, cổ phiếu 6,9%; coin 0). Vị thế còn mở ở nến cuối KHÔNG ép bán — tính theo giá cuối vào equity, đếm ở exits.end, không vào n/winRate.
+     cadence 'month' (cũ) = chỉ chọn ở phiên đầu tháng; 'day' = soi từng phiên như bộ Gợi ý, tối đa `picks` lệnh mua mới mỗi tháng và `picks` vị thế cùng lúc. */
+  const daily = P.cadence==='day', fillOpen = P.execAt!=='close', floorPct = Number(P.floorPct)||0, maxBuys = P.maxBuysPerMonth || P.picks;
   const syms = Object.keys(seriesMap||{}).filter(k=>Array.isArray(seriesMap[k]) && seriesMap[k].length);
   const dates = [...new Set(syms.flatMap(k=>seriesMap[k].map(b=>b.time)))].sort((a,b)=>a-b);
   const W = (P.waitBars || CONFIRM_V1.waitBars);
-  const at = Object.fromEntries(syms.map(k=>[k, new Map(seriesMap[k].map((b,i,arr)=>{ let pk = b.score; for(let q=Math.max(0,i-W+1); q<i; q++) if(arr[q].score > pk) pk = arr[q].score; return [b.time, {...b, peak:pk}]; }))]));
-  let cash = 1, pos = {}, peak = 1, maxDD = 0, prevMonth = null, months = 0, inMarket = 0;
-  const trades = [], eq = [];
+  const at = Object.fromEntries(syms.map(k=>[k, new Map(seriesMap[k].map((b,i,arr)=>{ let pk = b.score; for(let q=Math.max(0,i-W+1); q<i; q++) if(arr[q].score > pk) pk = arr[q].score;
+    return [b.time, {...b, peak:pk, open: b.open>0 ? b.open : b.close, prevClose: i>0 ? arr[i-1].close : null}]; }))]));
+  let cash = 1, pos = {}, peak = 1, maxDD = 0, prevMonth = null, months = 0, inMarket = 0, buysThisMonth = 0, entries = 0;
+  const trades = [], eq = [], pendBuy = [], pendSell = [];
+  const buy = (k, t, px, score, spend) => { pos[k] = { time:t, score, units: spend*(1-P.fee)/px, spent:spend, held:0, lastClose:px }; entries++; };
+  const sell = (k, t, px, exitScore, why, heldAdd) => { const p = pos[k], got = p.units*px*(1-sellFee); cash += got;
+    trades.push({ sym:k, entryTime:p.time, exitTime:t, entryScore:p.score, exitScore, held:p.held+heldAdd, spent:p.spent, ret:got/p.spent-1, why }); delete pos[k]; };
   dates.forEach((t, di) => {
-    const month = isoDay(t).slice(0,7), monthStart = month !== prevMonth, last = di === dates.length-1; prevMonth = month;
-    for(const k of Object.keys(pos)){ const p = pos[k], b = at[k].get(t); if(!b) continue; p.held++; p.lastClose = b.close;
-      const why = last ? 'end' : (p.held >= P.minHold && b.score <= X) ? 'score' : p.held >= P.maxHold ? 'time' : null;
-      if(why){ const got = p.units*b.close*(1-sellFee); cash += got; trades.push({ sym:k, entryTime:p.time, exitTime:t, entryScore:p.score, exitScore:b.score, held:p.held, spent:p.spent, ret:got/p.spent-1, why }); delete pos[k]; } }
-    if(monthStart && !last){ months++;
-      const slots = P.picks - Object.keys(pos).length;
-      if(slots > 0){
-        const cands = syms.filter(k=>!pos[k]).map(k=>({k, b:at[k].get(t)})).filter(x=>x.b && x.b.score <= P.entryMax && entryOk(P.entryRule||'score', x.b, P)).sort((a,b)=>b.b.score-a.b.score).slice(0, slots);
+    const month = isoDay(t).slice(0,7), monthStart = month !== prevMonth, last = di === dates.length-1;
+    if(monthStart){ buysThisMonth = 0; if(!last) months++; } prevMonth = month;
+    /* 1) khớp lệnh chờ ở giá mở phiên này */
+    if(fillOpen){
+      for(const o of pendSell.splice(0)){ const p = pos[o.k], b = at[o.k].get(t); if(!p) continue; if(!b){ pendSell.push(o); continue; }
+        if(floorPct>0 && b.prevClose>0 && b.open <= b.prevClose*(1-floorPct)+1e-9){ pendSell.push(o); continue; }   // mở cửa sát sàn ⇒ chưa bán được, chờ phiên sau
+        sell(o.k, t, b.open, b.score, o.why, 1); }
+      for(const o of pendBuy.splice(0)){ const b = at[o.k].get(t);
+        if(pos[o.k] || !b || (floorPct>0 && b.prevClose>0 && b.open >= b.prevClose*(1+floorPct)-1e-9)){ cash += o.spend; continue; }   // sát trần ⇒ bỏ lệnh, trả tiền
+        buy(o.k, t, b.open, o.score, o.spend); }
+    }
+    /* 2) cuối phiên: mark-to-market + tín hiệu bán */
+    for(const k of Object.keys(pos)){ const p = pos[k], b = at[k].get(t); if(!b) continue; if(p.time !== t) p.held++; p.lastClose = b.close;
+      if(pendSell.some(o=>o.k===k)) continue;
+      const why = (p.held >= P.minHold && b.score <= X) ? 'score' : p.held >= P.maxHold ? 'time' : null;
+      if(!why) continue;
+      if(!fillOpen) sell(k, t, b.close, b.score, why, 0); else if(!last) pendSell.push({k, why}); }
+    /* 3) cuối phiên: tín hiệu mua (khớp phiên sau) */
+    const canPick = !last && (daily ? buysThisMonth < maxBuys : monthStart);
+    if(canPick){
+      const slots = P.picks - Object.keys(pos).length - pendBuy.length, room = daily ? Math.min(slots, maxBuys - buysThisMonth) : slots;
+      if(room > 0){
+        const cands = syms.filter(k=>!pos[k] && !pendBuy.some(o=>o.k===k)).map(k=>({k, b:at[k].get(t)}))
+          .filter(x=>x.b && x.b.score <= P.entryMax && entryDecision(x.b, Q).ok).sort((a,b)=>b.b.score-a.b.score).slice(0, room);
         const per = cash/slots;
-        for(const x of cands){ const spend = Math.min(per, cash), units = spend*(1-P.fee)/x.b.close; cash -= spend; pos[x.k] = { time:t, score:x.b.score, units, spent:spend, held:0, lastClose:x.b.close }; } } }
-    const mtm = cash + Object.values(pos).reduce((a,p)=>a+p.units*p.lastClose, 0);
+        for(const x of cands){ const spend = Math.min(per, cash); if(!(spend>0)) break; cash -= spend; buysThisMonth++;
+          if(fillOpen) pendBuy.push({k:x.k, score:x.b.score, spend}); else buy(x.k, t, x.b.close, x.b.score, spend); } } }
+    const mtm = cash + pendBuy.reduce((a,o)=>a+o.spend,0) + Object.values(pos).reduce((a,p)=>a+p.units*p.lastClose, 0);
     if(Object.keys(pos).length) inMarket++;
     peak = Math.max(peak, mtm); maxDD = Math.max(maxDD, peak>0 ? 1-mtm/peak : 0); eq.push({time:t, eq:mtm});
   });
   const end = eq.length ? eq[eq.length-1].eq : 1, cutoff = dates.length ? dates[dates.length-1]-365*86400e3 : 0;
   const base = eq.find(e=>e.time >= cutoff);
   const wins = trades.filter(x=>x.ret>0).length, by = k => trades.filter(x=>x.why===k).length;
-  return { exitScore:X, n:trades.length, wins, winRate: trades.length ? wins/trades.length : null, netReturn:end-1, netY1: base ? end/base.eq-1 : null, maxDD,
+  const open = Object.entries(pos).map(([k,p])=>({ sym:k, entryTime:p.time, held:p.held, spent:p.spent, ret: p.units*p.lastClose*(1-sellFee)/p.spent-1 }));
+  return { exitScore:X, n:trades.length, entries, wins, winRate: trades.length ? wins/trades.length : null, netReturn:end-1, netY1: base ? end/base.eq-1 : null, maxDD,
            avgHold: trades.length ? trades.reduce((a,x)=>a+x.held,0)/trades.length : null, avgRet: trades.length ? trades.reduce((a,x)=>a+x.ret,0)/trades.length : null,
-           exits:{ score:by('score'), time:by('time'), end:by('end') }, months, exposure: dates.length ? inMarket/dates.length : 0, trades, bars:dates.length };
+           exits:{ score:by('score'), time:by('time'), end:open.length }, open, months, exposure: dates.length ? inMarket/dates.length : 0, trades, bars:dates.length,
+           cadence: daily ? 'day' : 'month', execAt: fillOpen ? 'nextOpen' : 'close' };
 }
 /* Nếu mua hôm nay rồi bán đúng lúc điểm về ≤ X: giá bán ≈ giá cao nhất còn đạt X (stockBands), lãi sau phí. TĨNH — giả định MA200, đỉnh 1 năm, RSI, khối lượng đứng yên;
    thực tế điểm còn tụt theo THỜI GIAN khi đỉnh cũ trôi khỏi cửa sổ 250 phiên dù giá không đổi. */
@@ -4607,7 +4704,7 @@ const mktMine = M => D.holdings.filter(h=>String(h.priceKey||'').startsWith(M.pr
 
 /* ---- Backtest: 9 bộ lưới + kế hoạch chọn mã hằng tháng — popup dùng chung hai thị trường ---- */
 const stockBtBest = ps => { if(!ps || !ps.rows || !ps.rows.length) return null; const best = ps.rows.slice().sort((a,b)=>b[3]-a[3])[0]; return { entry:best[0], ladder:best[1], n:best[2], net:best[3], netY1:best[4], dd:best[5], bh:ps.bh, bhY1:ps.bhY1 }; };
-const btCacheOf = M => { const c = D.prices && D.prices[M.btKey] && D.prices[M.btKey].bt; return c && c.version===STOCK_BT_VERSION && c.perSym ? c : null; };
+const btCacheOf = M => { const c = D.prices && D.prices[M.btKey] && D.prices[M.btKey].bt, st = mktStore(M); return c && c.version===STOCK_BT_VERSION && c.perSym && (!st || !c.storeAt || c.storeAt===st.updatedAt) ? c : null; };   // backtest của kho cũ ⇒ coi là chưa chạy (audit F07)
 function runBacktest(M){
   const st = mktStore(M); if(!st) return null;
   const bt = stockBacktestAll(st, Object.keys(st.symbols));
@@ -4642,24 +4739,24 @@ function openBacktest(M, rerun){
     const body = `<div class="hint" style="padding:0 0 8px">Nến ngày · ${bt.n} mã · kỳ <b>${fmtDayY(bt.from)} → ${fmtDayY(bt.to)}</b> và 12 tháng gần · ${M.feeNote} · vào 2 nhịp · chốt lời/cắt lỗ 2 bậc · giữ tối đa ${R.maxHoldBars} phiên. Mua-giữ trung bình: <b>${pct(bt.bhAvg)}</b> · 12 th <b>${pct(bt.bhAvgY1)}</b>. Tính lúc ${fmtTime(bt.at)}.</div>
       <div class="scroll"><table class="tbl compact"><colgroup><col style="width:8%"><col style="width:14%"><col style="width:14%"><col style="width:9%"><col style="width:10%"><col style="width:12%"><col style="width:12%"><col style="width:10%"><col style="width:11%"></colgroup>
       <thead><tr><th class="first">Vào ≥</th><th>Chốt lời dần</th><th>Cắt lỗ dần</th><th class="n">Lệnh TB</th><th class="n">Thắng TB</th><th class="n">Toàn kỳ TB</th><th class="n">12 th TB</th><th class="n">Mã lãi</th><th class="n last">Thắng cả hai kỳ</th></tr></thead><tbody>${aggRows}</tbody></table></div>
-      <div class="hint" style="padding:8px 0">${verdict} "Mã lãi" = số mã có lãi ròng toàn kỳ; "Thắng cả hai kỳ" = số mã bộ này thắng cả tiền mặt và mua-giữ ở toàn kỳ và 12 tháng gần. Kết quả quá khứ, khớp giá đóng cửa, chưa tính trượt giá — dùng để <b>loại bộ tệ</b>.</div>
-      <div class="colhead" style="padding:6px 0 4px"><h2>Kế hoạch chọn mã hằng tháng — ba cách vào <small>đầu mỗi tháng mua tối đa ${PL.picks} mã điểm ${PL.entryMin}–${PL.entryMax} qua được cách vào (chia đều tiền) · bán khi điểm về ≤ X${PL.minHold?' sau T+2':''}, hoặc quá ${PL.maxHold} phiên · "theo kiểu rẻ" = hoảng loạn vào ngay khi ≥ 75; cấu trúc/hỗn hợp = đã chạm 75 trong 21 phiên, còn ≥ 65 và Hồi ≥ 2/3 (đúng cách "chờ xác nhận" ở bảng sự kiện)</small></h2></div>
-      ${bt.plan ? `<div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Cách vào</th><th class="n">Bán ≤</th><th class="n">Lệnh</th><th class="n">Thắng</th><th class="n">Lãi TB/lệnh</th><th class="n">Giữ TB</th><th class="n">Thoát điểm / hạn</th><th class="n">Toàn kỳ</th><th class="n">12 th gần</th><th class="n last">Sụt tối đa</th></tr></thead><tbody>${
-        (bt.planCmp || bt.plan.map(x=>({...x, rule:'score'}))).map((x,i,arr)=>{ const first = i===0 || arr[i-1].rule!==x.rule, RL = (ENTRY_RULES.find(q=>q.key===x.rule)||{}).label||x.rule, best = x.rule==='kind';
-          return `<tr class="${first&&i>0?'total':''}"><td class="first">${first?`<b>${esc(RL)}</b>`:''}</td><td class="n"><b>${x.X}</b></td><td class="n">${x.n}</td><td class="n">${x.winRate==null?'—':fmtPct(x.winRate)}</td><td class="n">${pct(x.avgRet)}</td><td class="n">${x.avgHold==null?'—':fmtNum(x.avgHold,0)+' phiên'}</td><td class="n">${x.exits.score} / ${x.exits.time}</td><td class="n"><b>${pct(x.net)}</b></td><td class="n">${pct(x.netY1)}</td><td class="n last mute">${x.dd==null?'—':'−'+fmtPct(x.dd)}</td></tr>`; }).join('')
+      <div class="hint" style="padding:8px 0">${verdict} "Mã lãi" = số mã có lãi ròng toàn kỳ; "Thắng cả hai kỳ" = số mã bộ này thắng cả tiền mặt và mua-giữ ở toàn kỳ và 12 tháng gần. Kết quả quá khứ, bảng này khớp giá đóng cửa và chỉ so bậc chốt lời/cắt lỗ theo giá đóng (chưa dùng đáy/đỉnh trong phiên), chưa tính trượt giá — dùng để <b>loại bộ tệ</b>, không phải để tin bộ tốt.</div>
+      <div class="colhead" style="padding:6px 0 4px"><h2>Kế hoạch chọn mã — ba cách vào <small>tối đa ${PL.picks} vị thế, ${PL.picks} lệnh mua mới mỗi tháng, điểm ${PL.entryMin}–${PL.entryMax} qua được ĐÚNG bộ lọc Gợi ý (cách vào · độ tin cậy không thấp · rớt ≤ ${fmtPct(SCREEN_V1.maxDd)}), chia đều tiền · bán khi điểm về ≤ X${PL.minHold?' sau T+2':''} hoặc quá ${PL.maxHold} phiên · dòng "cũ" chọn đầu tháng, ba cách còn lại soi từng phiên · tín hiệu ở giá đóng, <b>khớp ở giá mở phiên sau</b>${R.floorPct?', không mua phiên trần / không bán phiên sàn':''} · vị thế còn mở cuối kỳ tính theo giá cuối, không đếm là lệnh</small></h2></div>
+      ${bt.plan ? `<div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Cách vào</th><th class="n">Bán ≤</th><th class="n">Lệnh</th><th class="n">Thắng</th><th class="n">Lãi TB/lệnh</th><th class="n">Giữ TB</th><th class="n">Thoát điểm / hạn · mở</th><th class="n">Toàn kỳ</th><th class="n">12 th gần</th><th class="n last">Sụt tối đa</th></tr></thead><tbody>${
+        [...bt.plan.map(x=>({...x, rule:'score', old:true})), ...(bt.planCmp||[])].map((x,i,arr)=>{ const first = i===0 || arr[i-1].rule!==x.rule || arr[i-1].old!==x.old, RL = x.old ? 'điểm ≥ 75, chọn đầu tháng (cũ)' : ((ENTRY_RULES.find(q=>q.key===x.rule)||{}).label||x.rule).replace(' (cũ)', ', từng phiên');
+          return `<tr class="${first&&i>0?'total':''}"><td class="first">${first?`<b>${esc(RL)}</b>`:''}</td><td class="n"><b>${x.X}</b></td><td class="n">${x.n}</td><td class="n">${x.winRate==null?'—':fmtPct(x.winRate)}</td><td class="n">${pct(x.avgRet)}</td><td class="n">${x.avgHold==null?'—':fmtNum(x.avgHold,0)+' phiên'}</td><td class="n">${x.exits.score} / ${x.exits.time}${x.exits.end?` · <span class="mute">${x.exits.end} mở</span>`:''}</td><td class="n"><b>${pct(x.net)}</b></td><td class="n">${pct(x.netY1)}</td><td class="n last mute">${x.dd==null?'—':'−'+fmtPct(x.dd)}</td></tr>`; }).join('')
       }<tr class="total"><td class="first">${M.key==='coin'?'BTC':'VN-Index'} mua-giữ</td><td></td><td></td><td></td><td></td><td></td><td></td><td class="n">${pct(bt.indexBh)}</td><td class="n">${pct(bt.indexBhY1)}</td><td class="last"></td></tr></tbody></table></div>
-      ${bt.planCmp ? `<div class="hint" style="padding:6px 0 0">${esc(planCmpNote(bt.planCmp, bt.events))}</div>` : ''}
+      ${bt.planCmp ? `<div class="hint" style="padding:6px 0 0">${esc(planCmpNote(bt.planCmp, bt.events, bt.plan))}</div>` : ''}
       <div class="hint" style="padding:6px 0">Điểm đo độ rẻ so với chính mã đó một năm qua. Điểm về thấp có hai đường: giá lên (điều owner muốn) hoặc <b>đỉnh cũ trôi khỏi cửa sổ khi thời gian qua</b> — trường hợp sau bán ra mà giá không đổi, chỉ mất phí. Popup Tính PnL có dòng "giá đứng yên" đo đúng phần này.</div>` : ''}
       ${wi.length ? `<div class="colhead" style="padding:6px 0 4px"><h2>Nếu mua ${esc(sym)} hôm nay <small>${fmtPx(M, r.price)} · điểm ${r.score} · bán đúng lúc điểm về ngưỡng — tĩnh, mọi thứ khác đứng yên</small></h2></div>
       <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm về ≤</th><th class="n">Giá lúc đó</th><th class="n">Lãi gộp</th><th class="n last">Lãi sau phí</th></tr></thead><tbody>${wi.map(w=>`<tr><td class="first"><b>${w.X}</b></td><td class="n">${w.already ? '<span class="mute">đang dưới ngưỡng này</span>' : w.price==null ? '<span class="mute">không tới được chỉ bằng giá</span>' : fmtPx(M, w.price)}</td><td class="n">${w.already||w.price==null?'—':fmtPctS(w.gross)}</td><td class="n last ${w.net!=null&&w.net<0?'neg':''}">${w.already||w.price==null?'—':`<b>${fmtPctS(w.net)}</b>`}</td></tr>`).join('')}</tbody></table></div>` : ''}
-      ${bt.events ? `<div class="colhead" style="padding:6px 0 4px"><h2>Sau khi điểm chạm mốc <small>mỗi sự kiện = điểm vượt lên ≥ T · "chờ xác nhận" = vào ở phiên đầu có ≥ 2/3 dấu hồi trong ${EVENT_V1.waitBars} phiên</small></h2></div>
-      <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm ≥</th><th>Cách vào</th><th class="n">Sự kiện</th><th class="n">Rớt thêm trung vị</th><th class="n">Rớt thêm xấu (10%)</th>${EVENT_V1.horizons.map(h=>`<th class="n">${h} phiên: dương · trung vị</th>`).join('')}<th class="last"></th></tr></thead><tbody>${
-        bt.events.map(e=>`<tr class="${e.mode==='confirm'?'':''}"><td class="first"><b>${e.T}</b></td><td>${e.mode==='now'?'ngay khi chạm':`chờ xác nhận <span class="mute">· TB ${e.waitAvg==null?'—':fmtNum(e.waitAvg,1)} phiên</span>`}</td><td class="n">${e.n}</td><td class="n neg">${e.ddMed==null?'—':fmtPctS(e.ddMed)}</td><td class="n neg">${e.ddP10==null?'—':fmtPctS(e.ddP10)}</td>${EVENT_V1.horizons.map(h=>{ const x = e.h[h]; return `<td class="n">${x.n?`<b>${fmtPct(x.hit)}</b> · <span class="${x.med<0?'neg':''}">${pct(x.med)}</span>`:'—'}</td>`; }).join('')}<td class="last"></td></tr>`).join('')
+      ${bt.events ? `<div class="colhead" style="padding:6px 0 4px"><h2>Sau khi điểm chạm mốc <small>mỗi sự kiện = điểm vượt lên ≥ T · "chờ xác nhận" = vào ở phiên đầu có ≥ 2/3 dấu hồi trong ${EVENT_V1.waitBars} phiên · (n) = số sự kiện có đủ phiên để đo ô đó — rớt thêm chỉ đo khi còn đủ 63 phiên, theo giá đóng cửa, không phải đáy trong phiên · nhiều mã chạm mốc cùng ngày không độc lập với nhau</small></h2></div>
+      <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm ≥</th><th>Cách vào</th><th class="n">Sự kiện</th><th class="n">Rớt thêm trung vị (n)</th><th class="n">Rớt thêm xấu (10%)</th>${EVENT_V1.horizons.map(h=>`<th class="n">${h} phiên: dương · trung vị (n)</th>`).join('')}<th class="last"></th></tr></thead><tbody>${
+        bt.events.map(e=>`<tr class="${e.mode==='confirm'?'':''}"><td class="first"><b>${e.T}</b></td><td>${e.mode==='now'?'ngay khi chạm':`chờ xác nhận <span class="mute">· TB ${e.waitAvg==null?'—':fmtNum(e.waitAvg,1)} phiên</span>`}</td><td class="n">${e.n}</td><td class="n neg">${e.ddMed==null?'—':fmtPctS(e.ddMed)} <small class="mute">(${e.nDd==null?e.n:e.nDd})</small></td><td class="n neg">${e.ddP10==null?'—':fmtPctS(e.ddP10)}</td>${EVENT_V1.horizons.map(h=>{ const x = e.h[h]; return `<td class="n">${x.n?`<b>${fmtPct(x.hit)}</b> · <span class="${x.med<0?'neg':''}">${pct(x.med)}</span> <small class="mute">(${x.n})</small>`:'—'}</td>`; }).join('')}<td class="last"></td></tr>`).join('')
       }</tbody></table></div>
       ${(()=>{ const rows75 = bt.events.filter(e=>e.T===(st.plan||STOCK_PLAN_V1).entryMin && e.byKind); if(!rows75.length) return ''; const KL = KIND_V1.labels;
         return `<div class="colhead" style="padding:6px 0 4px"><h2>Theo kiểu rẻ <small>ngưỡng ${rows75[0].T} · nhãn suy từ phân rã tại nến chạm mốc: cấu trúc = đỉnh 1 năm/MA200/percentile · hoảng loạn = đỉnh tháng/bán tháo/RSI · nhãn này là điều kiện vào của luật &quot;theo kiểu rẻ&quot; ở bảng trên</small></h2></div>
         <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Kiểu rẻ</th><th>Cách vào</th><th class="n">Sự kiện</th><th class="n">Rớt thêm trung vị</th><th class="n">Rớt thêm xấu (10%)</th>${EVENT_V1.horizons.map(h=>`<th class="n">${h} phiên: dương · trung vị</th>`).join('')}<th class="last"></th></tr></thead><tbody>${
-          ['struct','panic','mixed'].map(k=>rows75.map(e=>{ const b = e.byKind[k]; return `<tr><td class="first"><b>${KL[k]}</b></td><td>${e.mode==='now'?'ngay khi chạm':'chờ xác nhận'}</td><td class="n">${b.n}</td><td class="n neg">${b.ddMed==null?'—':fmtPctS(b.ddMed)}</td><td class="n neg">${b.ddP10==null?'—':fmtPctS(b.ddP10)}</td>${EVENT_V1.horizons.map(h=>{ const x = b.h[h]; return `<td class="n">${x.n?`<b>${fmtPct(x.hit)}</b> · <span class="${x.med<0?'neg':''}">${pct(x.med)}</span>`:'—'}</td>`; }).join('')}<td class="last"></td></tr>`; }).join('')).join('')
+          ['struct','panic','mixed'].map(k=>rows75.map(e=>{ const b = e.byKind[k]; return `<tr><td class="first"><b>${KL[k]}</b></td><td>${e.mode==='now'?'ngay khi chạm':'chờ xác nhận'}</td><td class="n">${b.n}</td><td class="n neg">${b.ddMed==null?'—':fmtPctS(b.ddMed)} <small class="mute">(${b.nDd==null?b.n:b.nDd})</small></td><td class="n neg">${b.ddP10==null?'—':fmtPctS(b.ddP10)}</td>${EVENT_V1.horizons.map(h=>{ const x = b.h[h]; return `<td class="n">${x.n?`<b>${fmtPct(x.hit)}</b> · <span class="${x.med<0?'neg':''}">${pct(x.med)}</span> <small class="mute">(${x.n})</small>`:'—'}</td>`; }).join('')}<td class="last"></td></tr>`; }).join('')).join('')
         }</tbody></table></div>`; })()}
       <div class="hint" style="padding:6px 0">"Rớt thêm" = giá thấp nhất trong 63 phiên sau khi vào so với giá vào — phân phối thật của việc bắt dao rơi. Nếu hàng "chờ xác nhận" có rớt thêm nhỏ hơn và tỉ lệ dương cao hơn hàng "ngay khi chạm" thì xác nhận hồi có ích; nếu trung vị lợi suất thấp hơn thì đó là giá phải trả. Chưa tính phí, chưa tính T+2.</div>` : ''}
       <div class="colhead" style="padding:6px 0 4px"><h2>${esc(sym)} <small>9 bộ trên chính mã này · mua-giữ ${pct(ps?ps.bh:null)} · 12 th ${pct(ps?ps.bhY1:null)}</small></h2></div>
@@ -4729,12 +4826,15 @@ function tradeLedger(transfers){
     const T = t.trade, key = T.mkt+'|'+T.sym, P = pos[key] || (pos[key] = { mkt:T.mkt, sym:T.sym, qty:0, costPx:0, costK:0, n:0, first:t.date });
     const q = Number(T.qty)||0, px = Number(T.px)||0, v = Number(t.valueVnd)||0; P.n++;
     if(T.side==='buy'){ P.qty += q; P.costPx += q*px; P.costK += v; P.last = t.date; }
-    else { const avgPx = P.qty>0 ? P.costPx/P.qty : 0, avgK = P.qty>0 ? P.costK/P.qty : 0;
-      closed.push({ id:t.id, date:t.date, mkt:T.mkt, sym:T.sym, qty:q, px, avgPx, pnlPx:(px-avgPx)*q, pnlK: v-avgK*q, ret: avgPx>0 ? px/avgPx-1 : null, valueK:v });
+    else if(P.qty + 1e-9 < q){   // bán nhiều hơn số đã mua qua Trading (mã mua ở nơi khác) ⇒ KHÔNG có giá vốn trong sổ này, ghi "chưa xác định" thay vì coi giá vốn = 0 (audit F06)
+      closed.push({ id:t.id, date:t.date, mkt:T.mkt, sym:T.sym, qty:q, px, avgPx:null, pnlPx:null, pnlK:null, ret:null, valueK:v, basis:false });
+      P.qty = 0; P.costPx = 0; P.costK = 0; P.last = t.date; }
+    else { const avgPx = P.costPx/P.qty, avgK = P.costK/P.qty;
+      closed.push({ id:t.id, date:t.date, mkt:T.mkt, sym:T.sym, qty:q, px, avgPx, pnlPx:(px-avgPx)*q, pnlK: v-avgK*q, ret: avgPx>0 ? px/avgPx-1 : null, valueK:v, basis:true });
       P.qty -= q; P.costPx -= avgPx*q; P.costK -= avgK*q; P.last = t.date; if(P.qty<=1e-9){ P.qty=0; P.costPx=0; P.costK=0; } }
   }
   const positions = Object.values(pos).filter(P=>P.qty>1e-9).map(P=>({ ...P, avgPx:P.costPx/P.qty, avgK:P.costK/P.qty }));
-  return { positions, closed, realizedK: closed.reduce((a,c)=>a+c.pnlK,0), n: rows.length, wins: closed.filter(c=>c.pnlK>0).length };
+  return { positions, closed, realizedK: closed.reduce((a,c)=>a+(c.pnlK||0),0), n: rows.length, wins: closed.filter(c=>c.pnlK>0).length, unknown: closed.filter(c=>c.basis===false).length };
 }
 /* Giá hiện tại của một vị thế theo đơn vị giá thị trường (k / USD), lấy từ bảng xếp hạng đã tải, không có thì từ D.prices. */
 function tradePxNow(mkt, sym){
@@ -4789,9 +4889,9 @@ function openTradeOrder(M, sym, side0){
 function openTradeHistory(){
   const L = tradeLedger(D.transfers), rows = L.closed.slice().reverse();
   const buys = D.transfers.filter(t=>t.trade && t.trade.side==='buy').sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
-  const body = `<div class="hint" style="padding:0 0 8px">${L.n} lệnh · đã chốt ${L.closed.length} (thắng ${L.closed.length?fmtPct(L.wins/L.closed.length):'—'}) · lãi/lỗ hiện thực <b>${signed(Math.round(L.realizedK), fmtK)}</b>. Xoá một lệnh ở Tài sản → Lịch sử chuyển đổi.</div>
+  const body = `<div class="hint" style="padding:0 0 8px">${L.n} lệnh · đã chốt ${L.closed.length} (thắng ${L.closed.length?fmtPct(L.wins/L.closed.length):'—'}) · lãi/lỗ hiện thực <b>${signed(Math.round(L.realizedK), fmtK)}</b>${L.unknown?` · ${L.unknown} lệnh bán không có giá vốn trong sổ này (mã không mua qua Trading) — không tính vào tổng`:''}. Xoá một lệnh ở Tài sản → Lịch sử chuyển đổi.</div>
     <div class="colhead" style="padding:0 0 4px"><h2>Lệnh bán đã chốt</h2></div>
-    <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Ngày</th><th>Mã</th><th class="n">SL</th><th class="n">Giá vốn</th><th class="n">Giá bán</th><th class="n">Lãi/lỗ</th><th class="n last">%</th></tr></thead><tbody>${rows.length ? rows.map(c=>{ const M = mktOf(c.mkt); return `<tr><td class="d first">${fmtDate(c.date)}</td><td><b>${esc(c.sym)}</b> <small class="mute">${M.label}</small></td><td class="n">${fmtQtyM(M, c.qty)}</td><td class="n">${fmtPx(M, c.avgPx)}</td><td class="n">${fmtPx(M, c.px)}</td><td class="n ${c.pnlK<0?'neg':''}"><b>${signed(Math.round(c.pnlK), fmtK)}</b></td><td class="n last ${c.ret<0?'neg':''}">${fmtPctS(c.ret)}</td></tr>`; }).join('') : '<tr><td class="empty" colspan="7">Chưa chốt lệnh nào</td></tr>'}</tbody></table></div>
+    <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Ngày</th><th>Mã</th><th class="n">SL</th><th class="n">Giá vốn</th><th class="n">Giá bán</th><th class="n">Lãi/lỗ</th><th class="n last">%</th></tr></thead><tbody>${rows.length ? rows.map(c=>{ const M = mktOf(c.mkt); return `<tr><td class="d first">${fmtDate(c.date)}</td><td><b>${esc(c.sym)}</b> <small class="mute">${M.label}</small></td><td class="n">${fmtQtyM(M, c.qty)}</td><td class="n">${c.avgPx==null?'<span class="mute">—</span>':fmtPx(M, c.avgPx)}</td><td class="n">${fmtPx(M, c.px)}</td><td class="n ${c.pnlK!=null&&c.pnlK<0?'neg':''}">${c.pnlK==null?'<span class="mute" title="Mã này không mua qua Trading nên sổ lệnh không có giá vốn — xem lãi/lỗ ở tab Chứng khoán / DCA">chưa xác định</span>':`<b>${signed(Math.round(c.pnlK), fmtK)}</b>`}</td><td class="n last ${c.ret!=null&&c.ret<0?'neg':''}">${fmtPctS(c.ret)}</td></tr>`; }).join('') : '<tr><td class="empty" colspan="7">Chưa chốt lệnh nào</td></tr>'}</tbody></table></div>
     <div class="colhead" style="padding:8px 0 4px"><h2>Lệnh mua</h2></div>
     <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Ngày</th><th>Mã</th><th class="n">SL</th><th class="n">Giá</th><th class="n">Giá trị</th><th class="last">Ghi chú</th></tr></thead><tbody>${buys.length ? buys.map(t=>{ const M = mktOf(t.trade.mkt); return `<tr><td class="d first">${fmtDate(t.date)}</td><td><b>${esc(t.trade.sym)}</b> <small class="mute">${M.label}</small></td><td class="n">${fmtQtyM(M, t.trade.qty)}</td><td class="n">${fmtPx(M, t.trade.px)}</td><td class="n">${fmtK(Math.round(t.valueVnd))}</td><td class="last c">${esc(t.note||'')}</td></tr>`; }).join('') : '<tr><td class="empty" colspan="6">Chưa có lệnh mua</td></tr>'}</tbody></table></div>`;
   showModal(`Lịch sử lệnh trading`, body, 'Đóng', ()=>{}, {wide:true, noCancel:true});
@@ -4828,7 +4928,7 @@ async function loadCoinStore(onProgress){
   const need = [...new Set([...top.map(t=>t.symbol), 'BTCUSDT', 'ETHUSDT'])], kl = {}, errors = {}; let i = 0, done = 0;
   const worker = async ()=>{ while(i < need.length){ const sMb = need[i++]; try{ kl[sMb] = await fetchKlines(sMb, COIN_KLINES, '1d'); }catch(e){ errors[sMb.slice(0,-4)] = e.message||String(e); } done++; if(onProgress) onProgress(done, need.length); } };
   await Promise.all(Array.from({length:6}, worker));
-  const symbols = {}; for(const t of top) if(kl[t.symbol] && kl[t.symbol].length) symbols[t.sym] = { rows:kl[t.symbol], source:'binance', quoteVolume:t.qv };
+  const symbols = {}; for(const t of top) if(kl[t.symbol] && kl[t.symbol].length) symbols[t.sym] = { rows:kl[t.symbol], live:kl[t.symbol].live||null, source:'binance', quoteVolume:t.qv };   // live = nến đang chạy, chỉ để hiện giá
   if(!Object.keys(symbols).length) throw new Error('Binance không trả về nến cho mã nào');
   return { updatedAt:Date.now(), market:'coin', basket:`top ${COIN_TOP_N} Binance theo khối lượng 24h`, symbols, index:{rows: kl.BTCUSDT||[]}, refs:{ BTC: kl.ETHUSDT||[] }, errors,
            cfg:COIN_SCORE_V1, rules:COIN_SWING_RULES, plan:COIN_PLAN_V1, step:null };
@@ -4886,7 +4986,7 @@ function stockPlanNow(ranks, mine, transfers, month, P){
   const T = (transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock' && String(t.date||'').slice(0,7)===month);
   const L = tradeLedger((transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock')), closedM = L.closed.filter(c=>String(c.date||'').slice(0,7)===month);
   return { candidates, picks:P.picks, held, sellDue, buysM: T.filter(t=>t.trade.side==='buy').length, sellsM: T.filter(t=>t.trade.side==='sell').length,
-           realizedM: closedM.reduce((a,c)=>a+c.pnlK,0), entryMin:P.entryMin, exit:P.exits[0], maxHold:P.maxHold };
+           realizedM: closedM.reduce((a,c)=>a+(c.pnlK||0),0), entryMin:P.entryMin, exit:P.exits[0], maxHold:P.maxHold };
 }
 function stockSuggestion(p, sym, score){
   const bits = [score==null ? 'Chưa có điểm' : `Score ${score} ${sym}`];
@@ -4910,7 +5010,7 @@ function renderStocks(){
   const ledgers = Object.fromEntries(hs.map(h=>[h.priceKey.slice(4), stockLedger(h.priceKey.slice(4))])), L0 = ledgers[sym] || stockLedger(sym);
   const ids = new Map(hs.map(h=>[h.id, h.priceKey.slice(4)]));
   const tx = D.transfers.filter(t=>ids.has(t.toId) || ids.has(t.fromId));
-  fillHero('stock', { sym, r, C, stale, busy:stockBusy, fmt:p=>fmtK(p,2), src:stockSrc,
+  fillHero('stock', { sym, r, C, stale: stale || !!(r && r.stale), busy:stockBusy, fmt:p=>fmtK(p,2), src:stockSrc,
     meta: r ? [
       `<span>phiên <b>${fmtDayY(r.time)}</b><span class="u"> ${r.chg==null?'':'· hôm nay '+fmtPctS(r.chg)}</span></span>`,
       `<span>xếp hạng <b>${rank}/${stockRanks.length}</b><span class="u"> mã trong kho</span></span>`,
@@ -5000,7 +5100,7 @@ function renderTrade(){
   renderCoinPick('tdSetPick', sets, set.key);
   const sym = tdSym(M), r = ranks.find(x=>x.sym===sym) || null, rank = r ? ranks.indexOf(r)+1 : null;
   const bt = btCacheOf(M), btSym = bt && bt.perSym[sym] ? stockBtBest(bt.perSym[sym]) : null;
-  fillHero('td', { sym, r, C, stale, busy, fmt:p=>fmtPx(M,p), src:tdSrc,
+  fillHero('td', { sym, r, C, stale: stale || !!(r && r.stale), busy, fmt:p=>fmtPx(M,p), src:tdSrc,
     meta: r ? [
       `<span>${M.key==='coin'?'nến':'phiên'} <b>${fmtDayY(r.time)}</b><span class="u"> ${r.chg==null?'':'· hôm nay '+fmtPctS(r.chg)}</span></span>`,
       `<span>xếp hạng <b>${rank}/${ranks.length}</b><span class="u"> mã</span></span>`,
@@ -5013,7 +5113,7 @@ function renderTrade(){
   el('tdListSub').textContent = st && st.basket ? st.basket : (M.key==='coin' ? `top ${COIN_TOP_N} Binance theo khối lượng 24h` : `${VN30_BASKET} · giá nghìn đồng`);
   const setRanks = ranks.filter(x=>setSyms.includes(x.sym));
   el('tdListMeta').innerHTML = !st ? esc(set.key==='MINE' && !mine.length ? 'Chưa có vị thế nào — bấm "Mua / Bán"' : '')
-    : set.key==='PICK' ? `<b>${pk.buy.length}</b> đủ điều kiện mua (<i>hoảng loạn</i>: điểm ≥ ${pk.rule.entryMin} vào ngay · <i>cấu trúc</i>/<i>hỗn hợp</i>: đã chạm ${pk.rule.entryMin} trong ${CONFIRM_V1.waitBars} phiên, còn ≥ ${pk.rule.entryMin-EVENT_V1.rearm} và Hồi ≥ ${pk.rule.needConfirm}/3 · tin cậy không thấp · rớt ≤ ${fmtPct(pk.rule.maxDd)}) · <b>${pk.watch.length}</b> theo dõi (rẻ nhưng chưa có dấu hồi)${pk.excluded.length?` · loại ${pk.excluded.length}: ${pk.excluded.slice(0,4).map(x=>`${esc(x.sym)} (${esc(x.why.join(', '))})`).join(', ')}${pk.excluded.length>4?'…':''}`:''} — phép lọc, không phải lệnh.`
+    : set.key==='PICK' ? `<b>${pk.buy.length}</b> đủ điều kiện mua (<i>hoảng loạn</i>: điểm ≥ ${pk.rule.entryMin} vào ngay · <i>cấu trúc</i>/<i>hỗn hợp</i>: đã chạm ${pk.rule.entryMin} trong ${CONFIRM_V1.waitBars} phiên, còn ≥ ${pk.rule.entryMin-EVENT_V1.rearm} và Hồi ≥ ${pk.rule.needConfirm}/3 · tin cậy không thấp · dữ liệu mới · rớt ≤ ${fmtPct(pk.rule.maxDd)}) · <b>${pk.watch.length}</b> theo dõi (rẻ nhưng chưa có dấu hồi)${pk.excluded.length?` · loại ${pk.excluded.length}: ${pk.excluded.slice(0,4).map(x=>`${esc(x.sym)} (${esc(x.why.join(', '))})`).join(', ')}${pk.excluded.length>4?'…':''}`:''} — phép lọc, không phải lệnh.`
     : `${setRanks.length}/${setSyms.length} mã có điểm · bấm dòng để xem, bấm lại để tính PnL · cột Hồi = dấu xác nhận đã ngừng rớt${mine.length?` · ● = đang giữ`:''}`;
   const list0 = setRanks.length ? setRanks.concat(setSyms.filter(x=>!setRanks.some(y=>y.sym===x)).map(x=>({sym:x}))) : setSyms.map(x=>({sym:x}));
   const list = set.key==='PICK' ? pickSyms.map(s2=>list0.find(x=>x.sym===s2)).filter(Boolean) : list0;   // Gợi ý: đúng thứ tự mua trước, theo dõi sau
@@ -5033,7 +5133,7 @@ function renderTrade(){
   const posRows = L.positions.map(P=>{ const MM = mktOf(P.mkt), px = tradePxNow(P.mkt, P.sym), pnlPx = px!=null ? (px-P.avgPx)*P.qty : null, pnlK = pnlPx==null ? null : tradeToK(P.mkt, pnlPx), rk = mktRanks(MM).find(x=>x.sym===P.sym);
     return { P, MM, px, pnlK, ret: px!=null && P.avgPx>0 ? px/P.avgPx-1 : null, score: rk ? rk.score : null }; });
   const openPnl = posRows.reduce((a,x)=>a+(x.pnlK||0),0), openCost = L.positions.reduce((a,P)=>a+P.costK,0);
-  const closedM = L.closed.filter(c=>c.date && c.date.slice(0,7)===m0), realM = closedM.reduce((a,c)=>a+c.pnlK,0);
+  const closedM = L.closed.filter(c=>c.date && c.date.slice(0,7)===m0), realM = closedM.reduce((a,c)=>a+(c.pnlK||0),0);
   el('tdBookStats').innerHTML = `
     <div class="stat"><div class="lbl">Đang mở</div><div class="val ${openPnl<0?'neg':''}">${posRows.length ? signed(Math.round(openPnl), fmtK) : '—'}</div><div class="sub">${posRows.length} vị thế · vốn ${fmtK(Math.round(openCost))}</div></div>
     <div class="stat"><div class="lbl">Đã chốt tháng này</div><div class="val ${realM<0?'neg':''}">${closedM.length ? signed(Math.round(realM), fmtK) : '—'}</div><div class="sub">${closedM.length} lệnh</div></div>
