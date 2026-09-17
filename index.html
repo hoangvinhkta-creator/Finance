@@ -526,6 +526,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <input name="quantity" placeholder="Số tiền / số chỉ" inputmode="decimal">
             <select name="unit"></select>
             <input name="note" placeholder="Ghi chú">
+            <input name="rate" placeholder="Lãi %/năm (nếu có)" inputmode="decimal" title="Để trống nếu không tính lãi. App dùng số này cho card Chi phí vốn ở tab Tài sản.">
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
           </form>
           <div class="scroll"><table class="tbl"><tbody id="rowsRecv"></tbody></table></div>
@@ -538,6 +539,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <input name="quantity" placeholder="Số tiền / số chỉ" inputmode="decimal">
             <select name="unit"></select>
             <input name="note" placeholder="Ghi chú">
+            <input name="rate" placeholder="Lãi %/năm (nếu có)" inputmode="decimal" title="Để trống nếu không tính lãi. App dùng số này cho card Chi phí vốn ở tab Tài sản.">
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
           </form>
           <div class="scroll"><table class="tbl"><tbody id="rowsPay"></tbody></table></div>
@@ -566,6 +568,13 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="scroll"><table class="tbl compact" id="priceTable"></table></div>
         </section>
       </div>
+      <!-- Chi phí vốn (owner chốt 2026-09-17): lãi đang trả/thu mỗi tháng từ các khoản nợ có ghi lãi, so với tài sản đang nằm không. -->
+      <section class="card pad" id="capCard" style="margin-top:14px">
+        <div class="colhead" style="padding:0 0 10px"><h2>Chi phí vốn <small>lãi ghi trên từng khoản nợ ở tab Dòng tiền</small></h2><small class="mute" id="capUnrated"></small></div>
+        <div class="stats three tight" id="capStats"></div>
+        <div id="capSuggest" style="margin-top:10px"></div>
+        <div class="scroll" id="capTableWrap" style="margin-top:10px"><table class="tbl compact" id="capTable"></table></div>
+      </section>
 
       <!-- Ba khối chỉ mở bằng popup (openHolder): form Chuyển đổi, lịch sử chuyển đổi, kịch bản. -->
       <div class="holders" id="taisanHolders">
@@ -2338,6 +2347,43 @@ function testSnaps(){
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
 }
+/* Chi phí vốn — testCapital(): dữ liệu giả, không đụng D. */
+function testCapital(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=0.01)=>{ const p = typeof want==='number' && typeof got==='number' ? Math.abs(got-want)<=tol : JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+  const dv = d => Number(d.quantity), hv = h => Number(h.quantity);
+  const debts = [
+    {id:'a', party:'VP', direction:'payable', quantity:25000, rate:36},
+    {id:'b', party:'Công', direction:'payable', quantity:5000, rate:12},
+    {id:'c', party:'Tú', direction:'payable', quantity:1000},                       // không ghi lãi
+    {id:'d', party:'Hiệp', direction:'receivable', quantity:14300, rate:10},
+    {id:'e', party:'Thắng', direction:'receivable', quantity:14300},                // không ghi lãi
+    {id:'f', party:'Xong', direction:'payable', quantity:9999, rate:50, settled:true}, // đã tất toán ⇒ bỏ
+  ];
+  const holdings = [{name:'Vietcombank', group:'Tiền', priceKey:null, quantity:700}, {name:'USDT', group:'Crypto', priceKey:'usdt', quantity:14500},
+                    {name:'VCBS', group:'Chứng khoán', priceKey:null, quantity:28950}, {name:'Vàng', group:'Vàng', priceKey:'gold_pd', quantity:42900}];
+  const c = capitalCost(debts, holdings, {debtValue:dv, holdingValue:hv});
+  console.log('%c1 — cộng đúng lãi tháng theo từng chiều, bỏ khoản đã tất toán và khoản không ghi lãi','font-weight:600');
+  chk('lãi trả/tháng = 25.000×36%/12 + 5.000×12%/12', c.monthlyPay, 750+50);
+  chk('lãi thu/tháng = 14.300×10%/12', c.monthlyEarn, 119.1667);
+  chk('ròng âm', c.monthlyNet, 119.1667-800);
+  chk('xếp khoản lãi cao nhất lên đầu', c.paying.map(r=>r.party), ['VP','Công']);
+  chk('đếm khoản chưa ghi lãi', [c.unratedPay, c.unratedRecv, c.unratedPayValue, c.unratedRecvValue], [1,1,1000,14300]);
+  console.log('%c2 — tài sản nằm không = tiền (nhóm Tiền, không khoá giá) + USDT; chứng khoán và vàng không tính','font-weight:600');
+  chk('idle', [c.idle.cash, c.idle.usdt, c.idle.total], [700, 14500, 15200]);
+  console.log('%c3 — gợi ý: trả khoản lãi cao nhất bằng USDT trước, tiền sau, tiết kiệm đúng số','font-weight:600');
+  chk('khoản', c.suggestion.party, 'VP');
+  chk('số trả = min(25.000, 15.200)', c.suggestion.amount, 15200);
+  chk('USDT 14.500 + tiền 700', [c.suggestion.fromUsdt, c.suggestion.fromCash], [14500, 700]);
+  chk('đỡ 15.200×36%/12 mỗi tháng', c.suggestion.monthlySave, 456);
+  console.log('%c4 — không có khoản ghi lãi ⇒ không gợi ý, không lỗi','font-weight:600');
+  const c2 = capitalCost([{id:'x', party:'A', direction:'payable', quantity:100}], holdings, {debtValue:dv, holdingValue:hv});
+  chk('paying rỗng, suggestion null', [c2.paying.length, c2.suggestion], [0, null]);
+  chk('không có tài sản nằm không ⇒ không gợi ý', capitalCost(debts, [], {debtValue:dv, holdingValue:hv}).suggestion, null);
+  console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
+  return {pass:ok, fail:bad};
+}
 function testViews(){
   let ok=0, bad=0;
   const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
@@ -3169,7 +3215,7 @@ function renderDebts(){
   const row = d => `<tr class="${d.settled?'settled':''}" data-id="${d.id}">
       <td class="name first">
         <div class="rn" title="${esc(d.party)}">${esc(d.party)}</div>
-        ${d.note?`<small>${esc(d.note)}</small>`:''}
+        ${d.note||d.rate>0?`<small>${esc(d.note||'')}${d.note&&d.rate>0?' · ':''}${d.rate>0?fmtNum(d.rate,1)+'%/năm':''}</small>`:''}
       </td>
       <td class="act">${d.settled?rowBtn('reopen',IC_UNDO,'Mở lại'):rowBtn('settle',IC_CHECK,'Tất toán','tag')}${rowBtn('edit',IC_EDIT,'Sửa')}${rowBtn('del',IC_DEL,'Xoá')}</td>
       <td class="n last">${fmtK(Math.round(debtValue(d)))}</td></tr>`;
@@ -3200,12 +3246,14 @@ document.querySelectorAll('#view-dongtien form.debt').forEach(f=>{
     if(!party){ shake(f.party); f.party.focus(); return; }
     if(isNaN(q) || q<0){ shake(f.quantity); f.quantity.focus(); return; }
     const u = DEBT_UNITS.find(x=>x.value===f.unit.value);
-    const doc = { party, direction:dir, unit:u.unit, quantity:q, priceKey:u.priceKey, note:f.note.value.trim() };
+    const rate = f.rate.value.trim()==='' ? null : parseNum(f.rate.value);
+    if(rate!=null && (isNaN(rate) || rate<0)){ shake(f.rate); f.rate.focus(); return; }
+    const doc = { party, direction:dir, unit:u.unit, quantity:q, priceKey:u.priceKey, note:f.note.value.trim(), rate };
     if(state.edit[dir]) updateDebt(state.edit[dir], doc); else addDebt(doc);
     resetDebtForm(f);
   });
 });
-function resetDebtForm(f){ state.edit[f.dataset.dir]=null; f.classList.remove('editing'); f.party.value=''; f.quantity.value=''; f.note.value=''; f.querySelector('button[type=submit]').textContent='Thêm'; f.party.focus(); }
+function resetDebtForm(f){ state.edit[f.dataset.dir]=null; f.classList.remove('editing'); f.party.value=''; f.quantity.value=''; f.note.value=''; f.rate.value=''; f.querySelector('button[type=submit]').textContent='Thêm'; f.party.focus(); }
 for(const id of ['rowsRecv','rowsPay']) el(id).addEventListener('click', e=>{
   const b=e.target.closest('button[data-act]'); if(!b) return;
   const tr=b.closest('tr');
@@ -3217,7 +3265,7 @@ for(const id of ['rowsRecv','rowsPay']) el(id).addEventListener('click', e=>{
   else if(b.dataset.act==='edit'){
     const f=document.querySelector(`#view-dongtien form[data-dir=${d.direction}]`);
     state.edit[d.direction]=d.id; f.classList.add('editing');
-    f.party.value=d.party; f.quantity.value=String(d.quantity).replace('.',','); f.note.value=d.note||'';
+    f.party.value=d.party; f.quantity.value=String(d.quantity).replace('.',','); f.note.value=d.note||''; f.rate.value = d.rate>0 ? String(d.rate).replace('.',',') : '';
     f.unit.value = d.unit==='GOLD_CHI' ? (d.priceKey||'gold_pd') : 'VND';
     f.querySelector('button[type=submit]').textContent='Lưu'; f.party.focus();
   }
@@ -3314,6 +3362,50 @@ function renderHoldings(){
       <td class="n last mute">${cur?fmtTime(cur.updatedAt):'—'}</td></tr>`; }).join('')+`</tbody>`;
   renderTransfers();
   renderScenario();
+  renderCapital();
+}
+
+/* ---- Chi phí vốn (owner chốt 2026-09-17) ---------------------------------------
+   Lãi đang trả / đang thu mỗi tháng theo từng khoản nợ CÓ GHI LÃI (%/năm), so với tài sản đang nằm không
+   (tiền & ngân hàng + USDT). Khoản không ghi lãi thì không đoán — chỉ đếm và nhắc điền.
+   Hàm thuần — testCapital(). Lãi tháng = giá trị × rate/100/12 (lãi đơn, đủ cho mục đích so sánh). */
+function capitalCost(debts, holdings, opts={}){
+  const dv = opts.debtValue || debtValue, hv = opts.holdingValue || holdingValue;
+  const open = (debts||[]).filter(d=>!d.settled);
+  const row = d => { const v=dv(d), r=Number(d.rate); return {id:d.id, party:d.party, direction:d.direction, value:v, rate:r, monthly:v*r/100/12}; };
+  const rated = open.filter(d=>Number(d.rate)>0), unrated = open.filter(d=>!(Number(d.rate)>0));
+  const paying  = rated.filter(d=>d.direction==='payable').map(row).sort((a,b)=>b.rate-a.rate || b.value-a.value);
+  const earning = rated.filter(d=>d.direction==='receivable').map(row).sort((a,b)=>b.rate-a.rate || b.value-a.value);
+  const cash = sum((holdings||[]).filter(h=>!h.priceKey && h.group==='Tiền'), hv);
+  const usdt = sum((holdings||[]).filter(h=>h.priceKey==='usdt'), hv);
+  const idle = { cash, usdt, total: cash+usdt };
+  const monthlyPay = sum(paying, r=>r.monthly), monthlyEarn = sum(earning, r=>r.monthly);
+  /* Gợi ý: trả khoản lãi CAO NHẤT bằng tài sản đang nằm không (USDT trước, tiền sau). Chỉ là phép tính, không phải lệnh. */
+  let suggestion = null;
+  if(paying.length && idle.total>0){
+    const top = paying[0], amount = Math.min(top.value, idle.total), fromUsdt = Math.min(usdt, amount);
+    suggestion = { party:top.party, rate:top.rate, amount, fromUsdt, fromCash: amount-fromUsdt, monthlySave: amount*top.rate/100/12 };
+  }
+  return { paying, earning, idle, monthlyPay, monthlyEarn, monthlyNet: monthlyEarn-monthlyPay, suggestion,
+           unratedPay: unrated.filter(d=>d.direction==='payable').length, unratedRecv: unrated.filter(d=>d.direction==='receivable').length,
+           unratedPayValue: sum(unrated.filter(d=>d.direction==='payable'), dv), unratedRecvValue: sum(unrated.filter(d=>d.direction==='receivable'), dv) };
+}
+function renderCapital(){
+  const c = capitalCost(D.debts, D.holdings);
+  const k = x => fmtK(Math.round(x));
+  el('capUnrated').textContent = (c.unratedPay+c.unratedRecv) ? `${c.unratedPay+c.unratedRecv} khoản chưa ghi lãi (mình nợ ${k(c.unratedPayValue)} · họ nợ ${k(c.unratedRecvValue)})` : 'mọi khoản nợ đều đã ghi lãi';
+  el('capStats').innerHTML = `
+    <div class="stat"><div class="lbl">Lãi đang trả mỗi tháng</div><div class="val">${k(c.monthlyPay)}</div><div class="sub">${c.paying.length} khoản · ${k(sum(c.paying,r=>r.value))}</div></div>
+    <div class="stat"><div class="lbl">Lãi đang thu mỗi tháng</div><div class="val">${k(c.monthlyEarn)}</div><div class="sub">${c.earning.length} khoản · ${k(sum(c.earning,r=>r.value))}</div></div>
+    <div class="stat ${c.monthlyNet<0?'strong':''}"><div class="lbl">Tài sản nằm không</div><div class="val">${k(c.idle.total)}</div><div class="sub">USDT ${k(c.idle.usdt)} · tiền ${k(c.idle.cash)} · ròng lãi ${signed(Math.round(c.monthlyNet), fmtK)}/tháng</div></div>`;
+  const sg = c.suggestion;
+  el('capSuggest').innerHTML = sg
+    ? `<div class="suggest" style="margin:0">Trả <b>${esc(sg.party)}</b> (${fmtNum(sg.rate,1)}%/năm) <b>${k(sg.amount)}</b> bằng ${sg.fromUsdt>0.5?`USDT ${k(sg.fromUsdt)}`:''}${sg.fromUsdt>0.5&&sg.fromCash>0.5?' + ':''}${sg.fromCash>0.5?`tiền ${k(sg.fromCash)}`:''} đang nằm không ⇒ đỡ <b>${k(sg.monthlySave)}/tháng</b> lãi, chắc chắn và không rủi ro giá.</div>`
+    : c.paying.length ? '' : `<div class="suggest" style="margin:0">Chưa khoản nợ nào ghi lãi. Sang <a href="#dongtien">Dòng tiền</a>, bấm bút chì trên khoản nợ và điền ô <b>Lãi %/năm</b> — app sẽ tính đang mất bao nhiêu mỗi tháng và nên trả khoản nào trước.</div>`;
+  const rows = [...c.paying.map(r=>({...r, dir:'Mình nợ'})), ...c.earning.map(r=>({...r, dir:'Họ nợ mình'}))];
+  el('capTableWrap').hidden = !rows.length;
+  el('capTable').innerHTML = !rows.length ? '' : `<thead><tr><th class="first">Khoản</th><th>Chiều</th><th class="n">Giá trị</th><th class="n">Lãi %/năm</th><th class="n last">Lãi / tháng</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr><td class="first">${esc(r.party)}</td><td class="mute">${r.dir}</td><td class="n">${k(r.value)}</td><td class="n">${fmtNum(r.rate,1)}%</td><td class="n last ${r.direction==='payable'?'':'mute'}">${r.direction==='payable'?'−':'+'}${k(r.monthly)}</td></tr>`).join('')+`</tbody>`;
 }
 
 /* ---- DCA Khối A: hero Buy Score + bảng phân rã 7 thành phần ---- */
@@ -4338,12 +4430,13 @@ window.testUsd = testUsd;
 window.testViews = testViews;
 window.testScenario = testScenario;
 window.testSnaps = testSnaps;
+window.testCapital = testCapital;
 window.testRecovery = testRecovery;
 window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, debtQtySnapshot, snapAtFrom, snapsToPrune, snapshotOfSnap, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
-        transferValue, scnPrice, scnNetWorth, netQty, scnProjection, scnApplyPct, scnPctOf,
+        transferValue, scnPrice, scnNetWorth, netQty, scnProjection, scnApplyPct, scnPctOf, capitalCost,
         coinHolding, coinPurchases, coinSales, coinLedger, coinQtyHeld, coinValueHeld, familyHoldings, COIN_FAMILY,
         ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
@@ -4351,7 +4444,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS},
-  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps,
+  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital,
   refreshDca, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
