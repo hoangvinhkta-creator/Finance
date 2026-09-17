@@ -21,12 +21,9 @@ async function getJson(url, opts={}, ms=20000){
   }finally{ clearTimeout(t); }
 }
 
-/* Mỗi nguồn: fetch(sym, kind, n) → mảng nến thô {time, open, high, low, close, volume}. Thứ tự = thứ tự ưu tiên. */
+/* Mỗi nguồn: fetch(sym, kind, n) → mảng nến thô {time, open, high, low, close, volume}. Thứ tự = thứ tự ưu tiên.
+   Lần chạy thật đầu tiên (2026-09-17): VCI/Vietcap trả đủ 600 nến cho 31/31 mã; TCBS trả HTTP 403 từ máy Actions (chặn IP trung tâm dữ liệu) ⇒ VCI lên đầu. */
 const SOURCES = [
-  { key:'tcbs', async fetch(sym, kind, n){
-      const to = Math.floor(Date.now()/1000);
-      const j = await getJson(`https://apipubaws.tcbs.com.vn/stock-insight/v2/stock/bars-long-term?ticker=${sym}&type=${kind==='index'?'index':'stock'}&resolution=D&to=${to}&countBack=${n}`);
-      return (j.data||[]).map(r=>({ time:Date.parse(r.tradingDate), open:+r.open, high:+r.high, low:+r.low, close:+r.close, volume:+(r.volume||0) })); } },
   { key:'vci', async fetch(sym, kind, n){
       const to = Math.floor(Date.now()/1000);
       const j = await getJson('https://trading.vietcap.com.vn/api/chart/OHLCChart/gap-chart', { method:'POST', headers:{'Content-Type':'application/json', 'Referer':'https://trading.vietcap.com.vn/'},
@@ -34,6 +31,10 @@ const SOURCES = [
       const d = Array.isArray(j) ? j[0] : (j && j.data ? j.data[0] : null);
       if(!d || !Array.isArray(d.t)) return [];
       return d.t.map((t,i)=>({ time:Number(t)*1000, open:+d.o[i], high:+d.h[i], low:+d.l[i], close:+d.c[i], volume:+(d.v[i]||0) })); } },
+  { key:'tcbs', async fetch(sym, kind, n){
+      const to = Math.floor(Date.now()/1000);
+      const j = await getJson(`https://apipubaws.tcbs.com.vn/stock-insight/v2/stock/bars-long-term?ticker=${sym}&type=${kind==='index'?'index':'stock'}&resolution=D&to=${to}&countBack=${n}`);
+      return (j.data||[]).map(r=>({ time:Date.parse(r.tradingDate), open:+r.open, high:+r.high, low:+r.low, close:+r.close, volume:+(r.volume||0) })); } },
   { key:'ssi', async fetch(sym, kind, n){
       const to = Math.floor(Date.now()/1000), from = to - Math.round(n*1.6)*86400;
       const j = await getJson(`https://iboard.ssi.com.vn/dchart/api/history?resolution=D&symbol=${sym}&from=${from}&to=${to}`, { headers:{ 'Referer':'https://iboard.ssi.com.vn/' } });
