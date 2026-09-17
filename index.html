@@ -528,7 +528,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <input name="quantity" placeholder="Số tiền / số chỉ" inputmode="decimal">
             <select name="unit"></select>
             <input name="note" placeholder="Ghi chú">
-            <input name="rate" placeholder="Lãi %/năm (nếu có)" inputmode="decimal" title="Để trống nếu không tính lãi. App dùng số này cho card Chi phí vốn ở tab Tài sản.">
+            <input name="rate" placeholder="Lãi %/năm (nếu có)" inputmode="decimal" title="Để trống nếu không tính lãi. App dùng số này cho card Chi phí vốn ở tab Tài sản." hidden>
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
           </form>
           <div class="scroll"><table class="tbl"><tbody id="rowsRecv"></tbody></table></div>
@@ -541,7 +541,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <input name="quantity" placeholder="Số tiền / số chỉ" inputmode="decimal">
             <select name="unit"></select>
             <input name="note" placeholder="Ghi chú">
-            <input name="rate" placeholder="Lãi %/năm (nếu có)" inputmode="decimal" title="Để trống nếu không tính lãi. App dùng số này cho card Chi phí vốn ở tab Tài sản.">
+            <input name="rate" placeholder="Lãi %/năm (nếu có)" inputmode="decimal" title="Để trống nếu không tính lãi. App dùng số này cho card Chi phí vốn ở tab Tài sản." hidden>
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
           </form>
           <div class="scroll"><table class="tbl"><tbody id="rowsPay"></tbody></table></div>
@@ -571,7 +571,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
         </section>
       </div>
       <!-- Chi phí vốn (owner chốt 2026-09-17): lãi đang trả/thu mỗi tháng từ các khoản nợ có ghi lãi, so với tài sản đang nằm không. -->
-      <section class="card pad" id="capCard" style="margin-top:14px">
+      <section class="card pad" id="capCard" style="margin-top:14px" hidden>
         <div class="colhead" style="padding:0 0 10px"><h2>Chi phí vốn <small>lãi ghi trên từng khoản nợ ở tab Dòng tiền</small></h2><small class="mute" id="capUnrated"></small></div>
         <div class="stats three tight" id="capStats"></div>
         <div id="capSuggest" style="margin-top:10px"></div>
@@ -744,6 +744,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="hint" style="padding:8px 0 0">Mỗi coin có ngân sách, tỷ lệ và lịch Base riêng — đổi ô Coin ở trên để sửa coin còn lại. Ngân sách 0 thì card "Tháng này" của coin đó ở tab DCA tắt. Số ngày và số tỷ lệ của lịch Base phải bằng nhau; lệch thì tự chia đều. Opportunity Fund không có sổ riêng: số dư = số tháng đã góp × phần góp mỗi tháng − các lần chuyển đổi gắn nhãn Opportunity, chặn trên ở cap.</div>
         </section>
         <section class="card pad">
+          <h2>Trading — vốn dành cho trade</h2>
+          <div class="row"><input id="setTradeSleeve" inputmode="decimal" style="max-width:160px" placeholder="0"><span class="mute">nghìn đồng</span><button class="btn" id="saveTradeSleeve">Lưu</button></div>
+          <div class="hint" style="padding:8px 0 0">Số tiền tách riêng để trade swing, KHÔNG lấy từ phần DCA. Card "Tín hiệu hôm nay" ở tab Trading tính khối lượng lệnh từ đây: mỗi lệnh chỉ rủi ro 1–2% số này nếu chạm cắt lỗ. Để 0 nếu chưa muốn ra số.</div>
+        </section>
+        <section class="card pad">
           <h2>Tài khoản</h2>
           <div class="row"><span id="acctInfo" class="mute"></span><button class="btn" id="btnLogout">Đăng xuất</button></div>
         </section>
@@ -905,6 +910,14 @@ const SWING_SCORE_V1 = {
 /* Quy tắc lệnh: vào khi điểm ≥ entry; ra khi lãi ≥ tp, lỗ ≥ sl, điểm ≤ exit, hoặc giữ quá maxHoldBars (84 nến H4 = 14 ngày).
    Phí Binance spot 0,1% mỗi chiều. Backtest chạy lưới entry × (tp, sl) để loại bộ tệ, không để "tin" bộ tốt. */
 const SWING_RULES_V1 = { fee:0.001, entry:55, exit:25, tp:0.08, sl:0.05, maxHoldBars:84 };
+/* Khối lượng lệnh theo rủi ro (owner yêu cầu 2026-09-17 "vào bao nhiêu, điểm cao hơn thì sao"):
+   rủi ro mỗi lệnh = % vốn trade mất nếu chạm cắt lỗ ⇒ khối lượng = rủi ro% / cắt lỗ%. Điểm vượt ngưỡng vào
+   càng xa thì rủi ro cho phép càng cao, nhưng khối lượng một lệnh không quá maxPosPct và tối đa maxOpen lệnh.
+   monthlyStopPct: vốn trade sụt quá mức này trong tháng ⇒ dừng trade tháng đó, quay về DCA. */
+const SWING_SIZING_V1 = { riskTiers:[[20,2],[10,1.5],[0,1]], maxPosPct:40, maxOpen:2, monthlyStopPct:10 };
+/* Chi phí vốn tạm ẩn (owner 2026-09-17: nợ thẻ đảo liên tục bằng tiền mua hàng công ty nên gần như không mất lãi).
+   Bật lại = đổi true; code, test, trường `rate` vẫn giữ. */
+const CAPITAL_CARD_ENABLED = false;
 const SWING_GRID = { entries:[45,55,65], exits:[{tp:0.06,sl:0.04},{tp:0.10,sl:0.05},{tp:0.15,sl:0.07}] };
 
 /* Icon nhỏ cho các nút hành động trên từng dòng (tab Dòng tiền): sửa, xoá, đã nhận/tất toán, mở lại.
@@ -1120,6 +1133,9 @@ function normalizeSettings(){
 
   /* DCA (Khối B): thiếu hoặc sai thì về mặc định, không để card kế hoạch vốn tính trên rác. */
   st.dca = migrateDcaSettings(st.dca);
+  /* Trading: vốn dành cho trade (nghìn đồng) — 0 = chưa đặt, card Tín hiệu chỉ hiện quy tắc, không ra số lệnh. */
+  const tr = st.trade && typeof st.trade==='object' ? st.trade : {};
+  st.trade = { sleeve: Number(tr.sleeve)>0 ? Number(tr.sleeve) : 0 };
 
   /* Đồng bộ số dư từ Binance đã gỡ — Binance chặn IP trung tâm dữ liệu, xem nhật ký CLAUDE.md.
      Xoá hẳn khoá `binance` để lần lưu cài đặt tới gỡ luôn khoá API cũ khỏi Firestore. */
@@ -1558,6 +1574,21 @@ function simulateSwing(series, rules){
            buyHold: S.length ? S[S.length-1].close/S[0].close-1 : null, exposure: S.length ? barsIn/S.length : 0,
            avgBars: trades.length ? mean(trades.map(t=>t.bars)) : null, bars:S.length,
            from: S.length ? S[0].time : null, to: S.length ? S[S.length-1].time : null };
+}
+/* Kế hoạch một lệnh cụ thể từ điểm hiện tại + bộ quy tắc + vốn trade. Hàm thuần — testSwing().
+   score < entry ⇒ không có lệnh (chỉ trả tier null). sleeveK = 0 ⇒ có tỷ lệ % nhưng không có số tiền. */
+function tradePlan(score, priceUsd, rules, sleeveK, usdtRate, sizing){
+  const R = {...SWING_RULES_V1, ...(rules||{})}, Z = sizing || SWING_SIZING_V1;
+  if(score==null || score < R.entry) return { enter:false, entry:R.entry, gap:R.entry-(score==null?0:score) };
+  const over = score - R.entry;
+  const riskPct = tierAtLeast(Z.riskTiers, over);                       // % vốn trade chấp nhận mất nếu chạm cắt lỗ
+  const sizePct = Math.min(Z.maxPosPct, riskPct / (R.sl*100) * 100);   // khối lượng = rủi ro / cắt lỗ
+  const sizeK = sleeveK>0 ? sleeveK*sizePct/100 : null;
+  const sizeUsd = sizeK!=null && usdtRate>0 ? sizeK/usdtRate : null;
+  return { enter:true, entry:R.entry, over, riskPct, sizePct, sizeK, sizeUsd, riskK: sleeveK>0 ? sleeveK*riskPct/100 : null,
+           qty: sizeUsd!=null && priceUsd>0 ? sizeUsd/priceUsd : null,
+           slPrice: priceUsd>0 ? priceUsd*(1-R.sl) : null, tpPrice: priceUsd>0 ? priceUsd*(1+R.tp) : null,
+           exitScore: R.exit, maxHoldBars: R.maxHoldBars };
 }
 function backtestGrid(series, grid){
   const G = grid || SWING_GRID, rows = [];
@@ -2524,6 +2555,17 @@ function testSwing(){
     chk('9 dòng', g.rows.length, 9);
     chk('xếp giảm dần', g.rows.every((r,i)=>i===0 || r.netReturn<=g.rows[i-1].netReturn), true);
     chk('mua-giữ = 85/100 − 1', g.buyHold, -0.15); }
+  console.log('%c7 — tradePlan: khối lượng = rủi ro / cắt lỗ, điểm cao hơn ⇒ rủi ro cao hơn, kẹp 40%, giá cắt lỗ/chốt lời đúng','font-weight:600');
+  { const R = {entry:65, exit:25, tp:0.15, sl:0.07};
+    chk('điểm 60 < 65 ⇒ không vào, thiếu 5', [tradePlan(60, 2500, R, 20000, 25).enter, tradePlan(60, 2500, R, 20000, 25).gap], [false,5]);
+    const a = tradePlan(65, 2500, R, 20000, 25);
+    chk('điểm 65 ⇒ rủi ro 1%, khối lượng 1/7 ≈ 14,3% = 2.857k', [a.riskPct, Math.round(a.sizePct*10)/10, Math.round(a.sizeK)], [1, 14.3, 2857]);
+    chk('mất tối đa 200k nếu chạm cắt lỗ', Math.round(a.riskK), 200);
+    chk('cắt lỗ 2.325 · chốt lời 2.875', [a.slPrice, a.tpPrice], [2325, 2875]);
+    chk('quy ra USD và số coin', [Math.round(a.sizeUsd*100)/100, Math.round(a.qty*10000)/10000], [114.29, 0.0457]);
+    chk('điểm 75 ⇒ rủi ro 1,5%; điểm 85 ⇒ 2%', [tradePlan(75,2500,R,20000,25).riskPct, tradePlan(85,2500,R,20000,25).riskPct], [1.5, 2]);
+    chk('cắt lỗ 4% với rủi ro 2% ⇒ 50% nhưng kẹp 40%', tradePlan(85,2500,{...R, sl:0.04},20000,25).sizePct, 40);
+    chk('vốn trade 0 ⇒ có % nhưng không có tiền', [tradePlan(65,2500,R,0,25).sizePct>0, tradePlan(65,2500,R,0,25).sizeK], [true, null]); }
   console.log('%c6 — bản swing dùng chung buyScore(): thiếu nến ⇒ null; đủ nến ⇒ có điểm; chuỗi điểm dài đúng n − minCandles + 1','font-weight:600');
   { const flat = flatCandles(300, 100);
     chk('150 nến < 200 ⇒ null', buyScore(flatCandles(150,100), flatCandles(150,3000), {config:SWING_SCORE_V1}).score, null);
@@ -3586,14 +3628,27 @@ function renderTrade(){
     ? `Mua-giữ ${esc(coin.label)} cùng kỳ: <b>${pct(c.buyHold)}</b>. ${c.grid[0].netReturn > Math.max(0, c.buyHold||0) ? `Bộ tốt nhất thắng mua-giữ <b>${pct(c.grid[0].netReturn-(c.buyHold||0))}</b>.` : '<b>Không bộ nào thắng mua-giữ</b> trong kỳ này ⇒ chưa đáng trade, tiếp tục DCA.'} Kết quả quá khứ, một kỳ ~6 tháng, chưa tính trượt giá — dùng để <b>loại bộ tệ</b>, không để tin bộ tốt.`
     : 'Chưa chạy backtest. Kết quả sẽ là lãi ròng sau phí của từng bộ quy tắc trên ~6 tháng nến H4, so với mua-giữ cùng kỳ.';
 
-  /* Tín hiệu: so điểm hiện tại với ngưỡng vào của bộ tốt nhất. Chỉ là chữ, chưa có lệnh. */
+  /* Kế hoạch lệnh: bộ tốt nhất + điểm hiện tại + vốn trade ⇒ số cụ thể (khối lượng, cắt lỗ, chốt lời, hạn). Chỉ là chữ, chưa có lệnh. */
   if(!c){ el('tradeSignal').innerHTML = '<div class="mute">Chưa có dữ liệu — bấm "Cập nhật backtest".</div>'; return; }
-  const best = c.grid[0], worth = best.netReturn > Math.max(0, c.buyHold||0), p = c.priceUsd;
+  const best = c.grid[0], worth = best.netReturn > Math.max(0, c.buyHold||0), p = c.priceUsd, Z = SWING_SIZING_V1;
+  const sleeve = (settings().trade||{}).sleeve||0, u = price('usdt');
   const days = Math.round(SWING_RULES_V1.maxHoldBars/C.barsPerDay);
-  const rule = `Bộ tốt nhất: vào khi điểm ≥ <b>${best.entry}</b>, chốt lời <b>+${fmtNum(best.tp*100,0)}%</b>, cắt lỗ <b>−${fmtNum(best.sl*100,0)}%</b>, ra khi điểm ≤ ${best.exit} hoặc quá ${days} ngày.`;
-  const sig = c.score >= best.entry
-    ? `<div class="suggest" style="margin:0"><b>VÀO</b> — điểm ${c.score} ≥ ${best.entry}. Nếu vào tại ${fmtUsd(p)}: chốt lời ${fmtUsd(p*(1+best.tp))} · cắt lỗ ${fmtUsd(p*(1-best.sl))} · hạn ${fmtDay(Date.now()+days*86400e3)}.${worth?'':' <b>Nhưng</b> bộ này chưa thắng mua-giữ trong backtest — chỉ ghi giả, không tiền thật.'}</div>`
-    : `<div class="suggest one" style="margin:0"><b>CHỜ</b> — điểm ${c.score}, còn thiếu ${best.entry-c.score} điểm mới tới ngưỡng vào ${best.entry}.${worth?'':' Bộ tốt nhất cũng chưa thắng mua-giữ trong backtest.'}</div>`;
+  const plan = tradePlan(c.score, p, best, sleeve, u);
+  const k = x => fmtK(Math.round(x));
+  const rule = `Bộ tốt nhất: vào khi điểm ≥ <b>${best.entry}</b> · chốt lời <b>+${fmtNum(best.tp*100,0)}%</b> · cắt lỗ <b>−${fmtNum(best.sl*100,0)}%</b> · ra khi điểm ≤ ${best.exit} hoặc quá ${days} ngày.
+    Khối lượng theo rủi ro: ${Z.riskTiers.slice().reverse().map(([o,r])=>`điểm ≥ ${best.entry+o} ⇒ rủi ro ${fmtNum(r,1)}% (= ${fmtNum(Math.min(Z.maxPosPct, r/(best.sl*100)*100),0)}% vốn trade)`).join(' · ')} · tối đa ${Z.maxOpen} lệnh mở · vốn trade sụt ${Z.monthlyStopPct}% trong tháng ⇒ dừng.`;
+  const warn = worth ? '' : ` <b>Nhưng</b> bộ này chưa thắng mua-giữ trong backtest — chỉ ghi lệnh giả, không tiền thật.`;
+  let sig;
+  if(!plan.enter){
+    sig = `<div class="suggest one" style="margin:0"><b>CHỜ</b> — điểm ${c.score}, còn thiếu ${plan.gap} điểm mới tới ngưỡng vào ${plan.entry}.${warn}</div>`;
+  } else {
+    const money = plan.sizeK!=null
+      ? `Khối lượng <b>${k(plan.sizeK)}</b>${plan.sizeUsd!=null?` (≈ ${fmtUsd(plan.sizeUsd)}${plan.qty!=null?` = ${fmtNum(plan.qty, plan.qty>=1?4:6)} ${esc(coin.label)}`:''})`:''} · nếu chạm cắt lỗ mất <b>${k(plan.riskK)}</b> (${fmtNum(plan.riskPct,1)}% vốn trade ${k(sleeve)})`
+      : `Khối lượng <b>${fmtNum(plan.sizePct,0)}% vốn trade</b> (rủi ro ${fmtNum(plan.riskPct,1)}%) — đặt vốn trade ở Cài đặt để ra số tiền.`;
+    sig = `<div class="suggest" style="margin:0"><b>VÀO</b> — điểm ${c.score} ≥ ${plan.entry}${plan.over>=10?` (vượt ${plan.over} điểm ⇒ tăng rủi ro lên ${fmtNum(plan.riskPct,1)}%)`:''}.<br>
+      ${money}<br>
+      Vào tại <b>${fmtUsd(p)}</b> · đặt ngay OCO trên Binance: chốt lời <b>${fmtUsd(plan.tpPrice)}</b> · cắt lỗ <b>${fmtUsd(plan.slPrice)}</b> · nếu chưa chạm thì đóng khi điểm ≤ ${plan.exitScore} hoặc tới ${fmtDay(Date.now()+days*86400e3)}.${warn}</div>`;
+  }
   el('tradeSignal').innerHTML = `<div class="hint" style="padding:0 0 8px">${rule}</div>${sig}`;
 }
 el('tradeCoinPick').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.tradeCoin) return; state.tradeCoin=b.dataset.coin; renderTrade(); });
@@ -3625,6 +3680,9 @@ function capitalCost(debts, holdings, opts={}){
            unratedPayValue: sum(unrated.filter(d=>d.direction==='payable'), dv), unratedRecvValue: sum(unrated.filter(d=>d.direction==='receivable'), dv) };
 }
 function renderCapital(){
+  el('capCard').hidden = !CAPITAL_CARD_ENABLED;
+  document.querySelectorAll('#view-dongtien form.debt [name=rate]').forEach(i=>{ i.hidden = !CAPITAL_CARD_ENABLED; });
+  if(!CAPITAL_CARD_ENABLED) return;
   const c = capitalCost(D.debts, D.holdings);
   const k = x => fmtK(Math.round(x));
   el('capUnrated').textContent = (c.unratedPay+c.unratedRecv) ? `${c.unratedPay+c.unratedRecv} khoản chưa ghi lãi (mình nợ ${k(c.unratedPayValue)} · họ nợ ${k(c.unratedRecvValue)})` : 'mọi khoản nợ đều đã ghi lãi';
@@ -4357,6 +4415,7 @@ function renderSettings(){
   el('setDcaBase').value = String(dc.split.base); el('setDcaSmart').value = String(dc.split.smart); el('setDcaOpp').value = String(dc.split.opp);
   el('setDcaDays').value = dc.baseDays.join(', '); el('setDcaWeights').value = dc.baseWeights.map(x=>Math.round(x*100)/100).join(', ');
   el('setDcaStart').value = dc.startMonth; el('setDcaCap').value = String(dc.oppCapMonths);
+  el('setTradeSleeve').value = settings().trade && settings().trade.sleeve ? String(settings().trade.sleeve) : '';
   const used = new Set(D.transactions.map(t=>t.category));
   const tags = (list, kind) => list.map(c=>`<span>${esc(c)}<button data-kind="${kind}" data-cat="${esc(c)}" ${used.has(c)?'disabled title="Đã có giao dịch dùng nhóm này"':''} aria-label="xoá">×</button></span>`).join('');
   el('expCats').innerHTML = tags(settings().expenseCats,'exp'); el('incCats').innerHTML = tags(settings().incomeCats,'inc');
@@ -4385,6 +4444,8 @@ el('saveDca').onclick = ()=>{
     baseDays:days.sort((x,y)=>x-y), baseWeights:weights, startMonth:start, oppCapMonths:cap}}});
   toast(budget>0 ? `Đã lưu kế hoạch vốn ${coin.label} ${fmtK(budget)}/tháng` : `Đã lưu — ngân sách ${coin.label} bằng 0, card "Tháng này" tắt`);
 };
+el('saveTradeSleeve').onclick = ()=>{ const v = el('setTradeSleeve').value.trim()==='' ? 0 : parseNum(el('setTradeSleeve').value); if(isNaN(v)||v<0){ shake(el('setTradeSleeve')); return; } saveSettings({trade:{sleeve:v}}); toast(v>0 ? 'Đã đặt vốn trade '+fmtK(v) : 'Đã tắt số lệnh (vốn trade = 0)'); };
+el('setTradeSleeve').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveTradeSleeve').click(); } });
 el('saveTarget').onclick = ()=>{ const v=parseNum(el('setTarget').value); if(isNaN(v)||v<=0){ shake(el('setTarget')); return; } saveSettings({incomeTarget:v}); toast('Đã lưu mục tiêu '+fmtBig(v)); };
 el('setTarget').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); el('saveTarget').click(); } });
 el('saveMilestones').onclick = ()=>{
@@ -4676,7 +4737,7 @@ window.FinTrace = { state, data:D,
         ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
         sma, rsiWilder, pctRank, tierAtLeast, tierAtMost, buyScore, scoreBands, priceForScore, BUY_SCORE_V1,
-        SWING_SCORE_V1, SWING_RULES_V1, SWING_GRID, swingScoreSeries, simulateSwing, backtestGrid,
+        SWING_SCORE_V1, SWING_RULES_V1, SWING_GRID, SWING_SIZING_V1, swingScoreSeries, simulateSwing, backtestGrid, tradePlan,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS},
