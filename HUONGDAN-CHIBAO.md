@@ -533,11 +533,23 @@ Sau đó chia ba nhóm:
 | **THEO DÕI** | Rẻ nhưng chưa qua luật vào |
 | **LOẠI** | Có ghi rõ lý do: đang giữ · dữ liệu thiếu hoặc cũ · rớt quá sâu |
 
-**Luật vào đang dùng là "theo kiểu rẻ":**
+**Có hai luật vào, tự chọn ngay trên bảng.** Ngay dưới bộ chọn danh sách có thêm một hàng hai nút:
 
-- Nhãn **hoảng loạn** → vào ngay khi điểm ≥ 75.
-- Nhãn **cấu trúc** hoặc **hỗn hợp** → phải đã chạm 75 trong 21 phiên, hôm nay còn ≥ 65, **và** có
-  ít nhất 2 trên 3 dấu hồi.
+| Nút | Luật vào |
+|---|---|
+| **Kiểu rẻ** (mặc định) | Nhãn *hoảng loạn* vào ngay khi điểm ≥ 75. Nhãn *cấu trúc* và *hỗn hợp* phải đã chạm 75 trong 21 phiên, hôm nay còn ≥ 65, **và** có ít nhất 2 trên 3 dấu hồi |
+| **Điểm + Hồi** | Mọi mã, không phân biệt nhãn, đều phải đã chạm 75 trong 21 phiên, còn ≥ 65, **và** có ít nhất 2 trên 3 dấu hồi |
+
+Hai luật **chỉ khác nhau ở mã mang nhãn hoảng loạn**. Cạnh hai nút có một dòng cho biết luật còn
+lại đang ra bao nhiêu mã mua và mã nào khác nhau, nên xem được cả hai mà không phải bấm qua lại.
+Khi nhóm đang xét không có mã nào nhãn hoảng loạn thì hai luật cho cùng kết quả, và dòng đó nói rõ
+điều này.
+
+Chọn luật nào cũng áp luôn cho card **"Tháng này"** ở tab Chứng khoán, vì đó là cùng một phép lọc.
+
+Số đo để chọn nằm ở `HUONGDAN-CACHCHOI.md` mục 3.4 và 3.5. Tóm lại: trên 5 năm, phần "hoảng loạn
+vào ngay" thắng 73,7%, nhưng riêng năm 2022 chỉ **3 trong 11 lần**, và kế hoạch dùng luật *Kiểu rẻ*
+kém hơn luật *Điểm + Hồi* trên cùng dữ liệu.
 
 **Vì sao loại mã rớt quá 65% từ đỉnh:** rơi sâu tới mức đó thường không còn là chuyện định giá nữa.
 Buy Score không đọc được báo cáo tài chính nên không biết doanh nghiệp có đang hỏng thật không. App
@@ -545,8 +557,8 @@ chọn đứng ngoài và ghi rõ "kiểm tra doanh nghiệp".
 
 ## Kết quả thật hôm nay
 
-**0 mã đủ điều kiện mua · 20 mã theo dõi.** Cả 20 mã đều mang nhãn *cấu trúc*, và chưa mã nào có
-đủ dấu hồi.
+**0 mã đủ điều kiện mua · 20 mã theo dõi**, giống nhau ở cả hai luật. Cả 20 mã đều mang nhãn
+*cấu trúc*, và chưa mã nào có đủ dấu hồi — không có mã nào nhãn *hoảng loạn* nên hai luật trùng nhau.
 
 Đây là một kết quả tốt, không phải công cụ bị hỏng. Nó đang nói: *"Có 20 mã rẻ, nhưng tất cả đều
 thuộc kiểu rơi dài ngày, và chưa mã nào ngừng rơi."*

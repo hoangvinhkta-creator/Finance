@@ -337,6 +337,9 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .seg button{height:30px;padding:0 14px;font-size:13px;color:var(--ink2);border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}
 .seg button:hover{background:var(--soft)}
+.pickrule{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 0 6px}   /* hàng chọn luật vào của bộ Gợi ý — chỉ hiện khi đang ở bộ Gợi ý */
+.pickrule .seg button{height:26px;padding:0 10px;font-size:12px}
+.pickrule small{font-size:12px}
 .seg button.on{background:var(--ink);color:#fff;font-weight:600}
 
 /* Dòng tiền: cả tab cao đúng một màn hình (owner chốt 2026-09-13 "cuộn trong card"). Hàng thống kê giữ nguyên,
@@ -756,7 +759,9 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="scroll"><table class="tbl compact" id="tdHeroScoreTable"></table></div>
         </section>
         <section class="card pad" id="tdListCard">
-          <div class="colhead" style="padding:0 0 6px"><h2>Xếp theo điểm <small id="tdListSub"></small></h2><div class="seg" id="tdSetPick" style="flex:none"></div></div><div class="mute" id="tdListMeta" style="font-size:12px;padding:0 0 6px"></div>
+          <div class="colhead" style="padding:0 0 6px"><h2>Xếp theo điểm <small id="tdListSub"></small></h2><div class="seg" id="tdSetPick" style="flex:none"></div></div>
+          <div class="pickrule" id="tdPickRuleRow" hidden><div class="seg" id="tdPickRule"></div><small class="mute" id="tdPickCmp"></small></div>
+          <div class="mute" id="tdListMeta" style="font-size:12px;padding:0 0 6px"></div>
           <div class="scroll"><table class="tbl compact" id="tdTable"></table></div>
         </section>
       </div>
@@ -1213,7 +1218,7 @@ let store = null;
 const state = {
   uid:null, email:null, mode:'local',
   data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, snaps:{}, settings:{}},
-  month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth', stockSym:'FPT', tradeMkt:'stock', tradeSym:{stock:'FPT', coin:'BTC'}, tradeSet:{stock:'PICK', coin:'PICK'},
+  month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth', stockSym:'FPT', tradeMkt:'stock', tradeSym:{stock:'FPT', coin:'BTC'}, tradeSet:{stock:'PICK', coin:'PICK'}, pickRule:'kind',
   edit:{chi:null, thu:null, receivable:null, payable:null},
   period:'m0', exUnusual:false, scn:{prices:{}, name:'', key:null, cryptoPct:0}, holdOpen:{},
 };
@@ -3206,6 +3211,11 @@ function testStocks(){
     chk('bộ Gợi ý theo kiểu: L (đã chạm 82, hồi 3/3) xếp đầu, rồi M, P; S theo dõi; N không xét', [screenPicks(R2, []).buy.map(x=>x.sym), screenPicks(R2, []).watch.map(x=>x.sym)], [['L','M','P'], ['S']]);
     chk('cùng ranks, luật confirm: L và M mua (P hoảng loạn 0/3 phải chờ)', screenPicks(R2, [], {entryRule:'confirm'}).buy.map(x=>x.sym), ['L','M']);
     chk('luật cũ theo điểm: P, S, M mua ngay; L (68, đã chạm 82) chỉ theo dõi', [screenPicks(R2, [], {entryRule:'score'}).buy.map(x=>x.sym).sort(), screenPicks(R2, [], {entryRule:'score'}).watch.map(x=>x.sym)], [['M','P','S'], ['L']]);
+    /* Hai tab phụ của bộ Gợi ý (owner 2026-09-18): chọn luật vào ngay trên tab Trading để so rồi quyết. */
+    chk('PICK_RULES: đúng 2 luật, kiểu rẻ đứng trước, và mặc định của state khớp SCREEN_V1', [PICK_RULES.map(x=>x.key), PICK_RULES.length, state.pickRule, SCREEN_V1.entryRule], [['kind','confirm'], 2, 'kind', 'kind']);
+    chk('pickRuleText nói đúng luật đang chọn', [/hoảng loạn/.test(pickRuleText({entryRule:'kind'})), /Hồi ≥ 2\/3/.test(pickRuleText({entryRule:'kind'})), /hoảng loạn/.test(pickRuleText({entryRule:'confirm'})), /đã chạm 75 trong 21 phiên, còn ≥ 65 và Hồi ≥ 2\/3/.test(pickRuleText({entryRule:'confirm'})), pickRuleText({entryRule:'score'})], [true, true, false, true, 'điểm hôm nay ≥ 75']);
+    chk('hai luật cho hai danh sách mua khác nhau trên cùng ranks ⇒ có cái để so', [screenPicks(R2, [], {entryRule:'kind'}).buy.map(x=>x.sym), screenPicks(R2, [], {entryRule:'confirm'}).buy.map(x=>x.sym)], [['L','M','P'], ['L','M']]);
+    chk('card Tháng này đi theo luật được chọn, không kẹt ở kind', [stockPlanNow(R2, [], [], '2026-09', {...STOCK_PLAN_V1, entryRule:'kind'}).candidates.filter(c=>c.confirmed).map(c=>c.sym), stockPlanNow(R2, [], [], '2026-09', {...STOCK_PLAN_V1, entryRule:'confirm'}).candidates.filter(c=>c.confirmed).map(c=>c.sym)], [['L','M','P'], ['L','M']]);
     chk('stockScores gắn peak21 ≥ điểm hiện tại cho mã ≥ 65', stockScores(big).filter(r=>r.score>=65).every(r=>r.peak21!=null && r.peak21 >= r.score), true);
     chk('chuỗi điểm mang conf (0..3)', stockSeriesFor(big,'FPT').every(b=>b.conf>=0 && b.conf<=3), true);
     { const D0 = Date.UTC(2026,0,5), d = i => D0 + i*86400e3;
@@ -4401,6 +4411,13 @@ const SCREEN_V1 = { entryMin:75, needConfirm:2, maxDd:0.65, lowConf:'LOW', entry
 /* Ba cách vào, cùng một hàm để bộ Gợi ý và backtest không bao giờ nói khác nhau:
    'score' = chỉ điểm ≥ ngưỡng (bản cũ) · 'confirm' = điểm + Hồi ≥ 2/3 · 'kind' (bước 3, owner chốt 2026-09-17) = hoảng loạn vào ngay khi ≥ ngưỡng, cấu trúc/hỗn hợp phải có Hồi ≥ 2/3. */
 const ENTRY_RULES = [{key:'score', label:'điểm ≥ 75 (cũ)'}, {key:'confirm', label:'điểm + Hồi ≥ 2/3'}, {key:'kind', label:'theo kiểu rẻ (mới)'}];
+/* Hai luật vào cho bộ "Gợi ý", owner chọn trực tiếp trên tab Trading để so rồi quyết (yêu cầu 2026-09-18).
+   `kind` là luật app dùng từ trước; `confirm` là luật mà dữ liệu 5 năm ủng hộ (xem HUONGDAN-CACHCHOI.md mục 5.4).
+   Lựa chọn nằm ở `state.pickRule` và áp cho CẢ card "Tháng này" của tab Chứng khoán — cùng một bộ lọc thì phải cùng một luật. */
+const PICK_RULES = [{key:'kind', label:'Kiểu rẻ'}, {key:'confirm', label:'Điểm + Hồi'}];
+const pickRuleText = P => { const R = {...SCREEN_V1, ...(P||{})}, wait = `đã chạm ${R.entryMin} trong ${CONFIRM_V1.waitBars} phiên, còn ≥ ${R.entryMin-EVENT_V1.rearm} và Hồi ≥ ${R.needConfirm}/3`;
+  return R.entryRule==='confirm' ? wait : R.entryRule==='score' ? `điểm hôm nay ≥ ${R.entryMin}`
+    : `<i>hoảng loạn</i>: điểm ≥ ${R.entryMin} vào ngay · <i>cấu trúc</i>/<i>hỗn hợp</i>: ${wait}`; };
 /* Điều kiện vào cho một mã tại một thời điểm. `b` = {score, peak (điểm cao nhất trong waitBars phiên gần, kể cả hôm nay), kind, conf}.
    'score': điểm hôm nay ≥ entryMin (cũ). 'confirm': đã chạm ≥ entryMin trong waitBars phiên gần, hôm nay còn ≥ entryMin−rearm, và Hồi ≥ need — đúng cách "chờ xác nhận" của nghiên cứu sự kiện
    (đo lần đầu với điều kiện "điểm ≥ 75 VÀ Hồi cùng lúc" ⇒ 0 lệnh, vì xác nhận tới ~15 phiên sau khi điểm đã tụt). 'kind': hoảng loạn ⇒ như 'score'; còn lại ⇒ như 'confirm'. */
@@ -5056,7 +5073,9 @@ function bandTableHtml(M, st, sym, r){
 function stockPlanNow(ranks, mine, transfers, month, P){
   P = P || STOCK_PLAN_V1;
   const held = (mine||[]).map(s=>{ const r = (ranks||[]).find(x=>x.sym===s); return { sym:s, score: r && r.score!=null ? r.score : null }; });
-  const pk = screenPicks(ranks, mine, {entryMin:P.entryMin});   // cùng bộ lọc với bộ "Gợi ý" ở Trading: mua (có dấu hồi) xếp trước, theo dõi sau; mã bị loại không vào
+  /* Cùng bộ lọc VÀ cùng luật vào với bộ "Gợi ý" ở Trading: mua xếp trước, theo dõi sau; mã bị loại không vào.
+     `entryRule` chỉ truyền khi CÓ giá trị — spread một `undefined` sẽ đè mất mặc định của SCREEN_V1 và rơi về luật cũ theo điểm. */
+  const pk = screenPicks(ranks, mine, {entryMin:P.entryMin, ...(P.entryRule ? {entryRule:P.entryRule} : {})});
   const candidates = [...pk.buy.map(x=>({sym:x.sym, score:x.score, confirmed:true})), ...pk.watch.map(x=>({sym:x.sym, score:x.score, confirmed:false}))];
   const sellDue = held.filter(h=>h.score!=null && h.score<=P.exits[0]);
   const T = (transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock' && String(t.date||'').slice(0,7)===month);
@@ -5125,9 +5144,9 @@ function renderStocks(){
   el('stockBandNow').textContent = r && r.score!=null ? `hiện ${fmtK(r.price,2)} · Score ${r.score}` : 'chưa có điểm';
   el('stockBandTable').innerHTML = bandTableHtml(M, stockStore, sym, r);
   /* Tháng này — kế hoạch chọn mã (cùng luật Backtest mô phỏng), luôn 3 dòng + một dòng gợi ý như card Tháng này của DCA. */
-  const p = stockPlanNow(stockRanks, mine, D.transfers, thisMonth());
+  const p = stockPlanNow(stockRanks, mine, D.transfers, thisMonth(), {...STOCK_PLAN_V1, entryRule:state.pickRule});
   el('stockPlanSub').textContent = 'kế hoạch chọn mã · '+fmtMonthLong(thisMonth()).toLowerCase();
-  el('stockPlanMeta').textContent = `mua điểm ≥ ${p.entryMin} · bán khi ≤ ${p.exit} · tối đa ${p.picks} mã/tháng · giữ ≤ ${p.maxHold} phiên`;
+  el('stockPlanMeta').textContent = `mua điểm ≥ ${p.entryMin} (luật ${((PICK_RULES.find(x=>x.key===state.pickRule)||PICK_RULES[0]).label).toLowerCase()}, đổi ở Trading) · bán khi ≤ ${p.exit} · tối đa ${p.picks} mã/tháng · giữ ≤ ${p.maxHold} phiên`;
   const heldScores = p.held.filter(h=>h.score!=null).map(h=>h.score), cands = p.candidates.slice(0, 6);
   const row = (name, badge, mid, note) => `<tr><td class="first"><b>${name}</b>${badge?` <span class="badge">${badge}</span>`:''}</td><td class="cut" title="${esc(mid.replace(/<[^>]+>/g,''))}">${mid}</td><td class="last cut" title="${esc(note.replace(/<[^>]+>/g,''))}">${note}</td></tr>`;
   el('stockPlanBody').innerHTML = `<div class="suggest one" title="${esc(stockSuggestion(p, sym, r ? r.score : null))}">${esc(stockSuggestion(p, sym, r ? r.score : null))}</div>
@@ -5171,9 +5190,18 @@ function renderTrade(){
   el('tdHeroSub').textContent = M.sub;
   const mine = mktMine(M), sets = M.sets, set = sets.find(x=>x.key===state.tradeSet[M.key]) || sets[0];
   const all = st ? Object.keys(st.symbols) : (M.key==='coin' ? [] : VN100);
-  const pk = screenPicks(ranks, mine), pickSyms = [...pk.buy, ...pk.watch].map(x=>x.sym), tagOf = Object.fromEntries([...pk.buy.map(x=>[x.sym,'buy']), ...pk.watch.map(x=>[x.sym,'watch'])]);
+  const PR = PICK_RULES.find(x=>x.key===state.pickRule) || PICK_RULES[0], PRalt = PICK_RULES.find(x=>x.key!==PR.key);
+  const pk = screenPicks(ranks, mine, {entryRule:PR.key}), pkAlt = screenPicks(ranks, mine, {entryRule:PRalt.key});
+  const pickSyms = [...pk.buy, ...pk.watch].map(x=>x.sym), tagOf = Object.fromEntries([...pk.buy.map(x=>[x.sym,'buy']), ...pk.watch.map(x=>[x.sym,'watch'])]);
   const setSyms = set.key==='MINE' ? mine : set.key==='PICK' ? pickSyms : (set.syms || all);
   renderCoinPick('tdSetPick', sets, set.key);
+  /* Hàng chọn luật vào + đếm nhanh của luật kia, để so mà không phải bấm qua lại. */
+  el('tdPickRuleRow').hidden = set.key!=='PICK';
+  if(set.key==='PICK'){ renderCoinPick('tdPickRule', PICK_RULES, PR.key);
+    const dOnly = pk.buy.filter(x=>!pkAlt.buy.some(y=>y.sym===x.sym)).map(x=>x.sym), aOnly = pkAlt.buy.filter(x=>!pk.buy.some(y=>y.sym===x.sym)).map(x=>x.sym);
+    const diff = [dOnly.length?`chỉ ${esc(PR.label)}: ${dOnly.slice(0,3).map(esc).join(', ')}${dOnly.length>3?'…':''}`:'', aOnly.length?`chỉ ${esc(PRalt.label)}: ${aOnly.slice(0,3).map(esc).join(', ')}${aOnly.length>3?'…':''}`:''].filter(Boolean).join(' · ');
+    const nPanic = [...pk.buy, ...pk.watch].filter(x=>x.kind==='panic').length;   // hai luật CHỈ khác nhau ở mã nhãn hoảng loạn — không có mã nào thì chúng trùng nhau, nói thẳng để owner không tưởng là lỗi
+    el('tdPickCmp').innerHTML = !st ? '' : `luật <b>${esc(PRalt.label)}</b> cho <b>${pkAlt.buy.length}</b> mua · ${pkAlt.watch.length} theo dõi${diff?` — ${diff}`:` — hai luật đang trùng nhau (${nPanic} mã nhãn <i>hoảng loạn</i> trong nhóm xét)`}`; }
   const sym = tdSym(M), r = ranks.find(x=>x.sym===sym) || null, rank = r ? ranks.indexOf(r)+1 : null;
   const bt = btCacheOf(M), btSym = bt && bt.perSym[sym] ? stockBtBest(bt.perSym[sym]) : null;
   fillHero('td', { sym, r, C, stale: stale || !!(r && r.stale), busy, fmt:p=>fmtPx(M,p), src:tdSrc,
@@ -5189,7 +5217,7 @@ function renderTrade(){
   el('tdListSub').textContent = st && st.basket ? st.basket : (M.key==='coin' ? `top ${COIN_TOP_N} Binance theo khối lượng 24h` : `${VN30_BASKET} · giá nghìn đồng`);
   const setRanks = ranks.filter(x=>setSyms.includes(x.sym));
   el('tdListMeta').innerHTML = !st ? esc(set.key==='MINE' && !mine.length ? 'Chưa có vị thế nào — bấm "Mua / Bán"' : '')
-    : set.key==='PICK' ? `<b>${pk.buy.length}</b> đủ điều kiện mua (<i>hoảng loạn</i>: điểm ≥ ${pk.rule.entryMin} vào ngay · <i>cấu trúc</i>/<i>hỗn hợp</i>: đã chạm ${pk.rule.entryMin} trong ${CONFIRM_V1.waitBars} phiên, còn ≥ ${pk.rule.entryMin-EVENT_V1.rearm} và Hồi ≥ ${pk.rule.needConfirm}/3 · dữ liệu đủ và mới · rớt ≤ ${fmtPct(pk.rule.maxDd)}) · <b>${pk.watch.length}</b> theo dõi (rẻ nhưng chưa có dấu hồi)${pk.excluded.length?` · loại ${pk.excluded.length}: ${pk.excluded.slice(0,4).map(x=>`${esc(x.sym)} (${esc(x.why.join(', '))})`).join(', ')}${pk.excluded.length>4?'…':''}`:''} — phép lọc, không phải lệnh.`
+    : set.key==='PICK' ? `<b>${pk.buy.length}</b> đủ điều kiện mua (${pickRuleText(pk.rule)} · dữ liệu đủ và mới · rớt ≤ ${fmtPct(pk.rule.maxDd)}) · <b>${pk.watch.length}</b> theo dõi (rẻ nhưng chưa đủ điều kiện vào)${pk.excluded.length?` · loại ${pk.excluded.length}: ${pk.excluded.slice(0,4).map(x=>`${esc(x.sym)} (${esc(x.why.join(', '))})`).join(', ')}${pk.excluded.length>4?'…':''}`:''} — phép lọc, không phải lệnh.`
     : `${setRanks.length}/${setSyms.length} mã có điểm · bấm dòng để xem, bấm lại để tính PnL · cột Hồi = dấu xác nhận đã ngừng rớt${mine.length?` · ● = đang giữ`:''}`;
   const list0 = setRanks.length ? setRanks.concat(setSyms.filter(x=>!setRanks.some(y=>y.sym===x)).map(x=>({sym:x}))) : setSyms.map(x=>({sym:x}));
   const list = set.key==='PICK' ? pickSyms.map(s2=>list0.find(x=>x.sym===s2)).filter(Boolean) : list0;   // Gợi ý: đúng thứ tự mua trước, theo dõi sau
@@ -5220,6 +5248,7 @@ function renderTrade(){
   el('tdBookNote').innerHTML = `Lãi/lỗ nghìn đồng${u>0?` · coin quy theo tỷ giá USDT ${fmtK(u,4)}`:' · <b>chưa có tỷ giá USDT</b> nên coin chưa quy được'}. Phần này cũng hiện ở Tổng quan → Phân rã tăng trưởng (ghi chú dưới biểu đồ).`;
 }
 el('tdMkt').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.tradeMkt) return; state.tradeMkt=b.dataset.coin; renderTrade(); });
+el('tdPickRule').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.pickRule) return; state.pickRule=b.dataset.coin; renderTrade(); });
 el('tdSetPick').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b) return; const M = mktOf(state.tradeMkt); if(b.dataset.coin===state.tradeSet[M.key]) return; state.tradeSet[M.key]=b.dataset.coin; renderTrade(); });
 el('tdTable').addEventListener('click', e=>{ const tr = e.target.closest('tr[data-sym]'); if(!tr) return; const M = mktOf(state.tradeMkt);
   if(tr.dataset.sym===tdSym(M) && mktStore(M)){ openPnl(M, tr.dataset.sym); return; }   // bấm lại mã đang chọn ⇒ popup Tính PnL
@@ -6359,7 +6388,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
-        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1, screenPicks, SCREEN_V1, cheapKind, KIND_V1, ENTRY_RULES, entryOk},
+        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1, screenPicks, SCREEN_V1, cheapKind, KIND_V1, ENTRY_RULES, entryOk, PICK_RULES, pickRuleText},
   render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
   refreshDca, refreshStocks, refreshCoins, importStockHistory, reconcileStocks, openPnl, openBacktest, openTradeOrder, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
