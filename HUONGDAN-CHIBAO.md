@@ -437,6 +437,41 @@ Kết luận thẳng: **không chỉ báo nào trong app phân biệt được "
 mùa gấu.** Thứ bảo vệ được vốn trong 2022 là mua từng phần theo nhịp (cách DCA làm) và giữ khối
 lượng nhỏ, không phải tín hiệu vào lệnh.
 
+## Bắt dao rơi từng phần — đo trên 5 năm (18/09)
+
+Câu hỏi: khi điểm đã lên **85 trở lên** (rơi rất sâu), nếu chờ dấu hồi rồi mới vào, giá lên được bao
+nhiêu? Và chia tiền làm ba phần — **50% mua ngay, 30% khi có 1/3 dấu hồi, 20% khi có 2/3 dấu hồi** —
+thì có hơn mua một cục không? Đo trên 362 lần điểm chạm 85 trong 5 năm (239 lần rơi vào năm 2022).
+
+| | Kết quả |
+|---|---|
+| Có dấu hồi 1/3 trong 42 phiên | 100% số lần, thường sau 6 phiên |
+| Có dấu hồi 2/3 trong 42 phiên | 94% số lần, thường sau 15 phiên |
+| Từ lúc chạm 85 tới **đáy thật** | rơi thêm mức giữa **−12%**, sau 4 phiên (2022: −17%) |
+| Từ đáy lên **đỉnh** trong 6 tháng sau (nhìn lại) | trung bình **+58%**, mức giữa +49%, mất trung bình **73 phiên** (~3,5 tháng) |
+| Nếu mua khi có 2/3 dấu hồi, sau 63 phiên | có lãi **64%** số lần, mức giữa +7,4%; đỉnh trong 63 phiên so giá mua: +19% |
+
+Con số +58% là **nhìn lại**: phải mua đúng đáy và bán đúng đỉnh, không ai làm được. Phần thật sự
+giao dịch được là dòng cuối: mua khi có dấu hồi, sau ba tháng thắng 64% số lần, mức giữa +7%.
+
+Ba cách dùng cùng 100 đồng, đánh giá cùng một mốc (105 phiên sau lúc chạm 85), đã trừ phí:
+
+| Cách vào | Có lãi | Mức giữa | 10% xấu nhất | Sụt tối đa mức giữa | Riêng 2022: có lãi / sụt |
+|---|---|---|---|---|---|
+| Mua ngay 100% | 53% | +3,9% | −33% | −16,8% | 38% / −28% |
+| Chờ 2/3 dấu hồi rồi mua 100% | 55% | +3,0% | −29% | **−7,4%** | 42% / −13,6% |
+| **50% ngay · 30% nhịp 1 · 20% nhịp 2** | 55% | +4,8% | −30% | −15,2% | 40% / −24,7% |
+
+Ba điều rút ra:
+
+- **Chia nhịp không đổi được xác suất.** Cả ba cách đều quanh 53–55% có lãi, và cùng tụt về ~40%
+  trong năm 2022. "50:50" ở điểm 85 là đúng, và mua làm ba lần vẫn là 50:50.
+- **Chia nhịp chỉ đổi hình dạng của cú lỗ.** Chờ đủ 2/3 dấu hồi cắt được một nửa mức sụt (−7% thay
+  −17%) nhưng bỏ lỡ phần bật từ đáy. Cách 50/30/20 giữ gần hết phần lên của mua ngay, nhưng vì một
+  nửa tiền đã nằm trong cú rơi thêm −12% nên sụt tối đa gần như không đỡ được (−15% so −17%).
+- **Mẫu bị năm 2022 chi phối** (2/3 số lần) và có thiên lệch sống sót: mã rơi năm 2022 mà không hồi
+  đã rời VN100, không còn trong phép đo, nên "+58% từ đáy" đẹp hơn thật.
+
 ---
 
 # PHẦN 9 — VÙNG GIÁ MUA
