@@ -295,6 +295,9 @@ có 1 lần rơi thêm hơn 22%.
 
 Đó chính là cái mà dân trong nghề gọi là "bắt dao rơi".
 
+Con số này đo trên quãng thị trường tăng. Kéo dài về 2020 để gồm mùa gấu 2022 thì tệ hơn hẳn —
+xem mục cuối Phần 8.
+
 ## 6.3. Cách giải quyết của app
 
 Không nhồi thêm vào Buy Score. Thay vào đó **tách thành một cột riêng**, vì hai việc này kéo ngược
@@ -400,6 +403,39 @@ dài, và bạn cần lý do ngoài biểu đồ để mua, ví dụ bạn biế
 loạn* thì khả năng đây là phản ứng thái quá cao hơn.
 
 Nhãn này hiện dạng chữ nhỏ cạnh mã trong bộ Gợi ý, và trong dòng mô tả dưới hero của tab Trading.
+
+## Kiểm lại trên 5 năm, gồm mùa gấu 2022 (đo ngày 18/09)
+
+Mọi con số ở trên đo trên 2 năm 4 tháng gần nhất, một quãng **chỉ có thị trường tăng và vài lần
+nhúng rồi bật lại**. Để biết chúng có phải tính chất thật hay chỉ là hình dạng của quãng đó, app đã
+cào thêm lịch sử về 09/2020 (file nghiên cứu riêng, app không đọc) và đo lại theo từng năm. Năm 2022
+VN-Index rơi từ 1.529 xuống 912 (−40%), nằm dưới đường trung bình 200 phiên liên tục 279 phiên —
+đó là mùa gấu thật.
+
+| Điểm chạm 75, mua ngay | Số sự kiện | Rơi thêm, mức giữa | Sau 63 phiên có lãi | Mức lãi giữa |
+|---|---|---|---|---|
+| 2 năm 4 tháng gần nhất (bảng trên) | 235 | −7,3% | 73% | +9,3% |
+| **5 năm** | 663 | −10,3% | 62% | +5,9% |
+| Riêng **2022** | 322 | **−18,2%** | **52%** | +1,7% |
+| Riêng 2023 (hồi sau gấu) | 91 | −5,5% | 77% | +14,3% |
+| Riêng 2025 | 92 | −7,0% | 88% | +17,1% |
+
+Ba điều đổ khi kéo dài dữ liệu:
+
+- **"Thị trường chung đang xấu thì cổ phiếu rẻ mua tốt hơn" — sai.** Trên dữ liệu ngắn, sự kiện xảy
+  ra khi VN-Index dưới trung bình 200 phiên cho 89% có lãi. Trên 5 năm chỉ còn 65%, và riêng 2022
+  là **53%, rơi thêm mức giữa −17%**. Con số 89% là hình dạng của những lần nhúng rồi bật chữ V trong
+  thị trường tăng, không phải tính chất của "thị trường xấu". App vì thế **không** thêm điều kiện
+  này vào bộ Gợi ý.
+- **Nhãn hoảng loạn không còn "90% hồi".** Toàn 5 năm là 74% (57 sự kiện). Riêng 2022: **11 lần, chỉ
+  3 lần có lãi**, mức giữa −12,6%, rơi thêm −22,9%. Con số 90% ở bảng trên gần như toàn bộ đến từ
+  năm 2025.
+- **Chờ dấu hồi vẫn giảm rơi thêm ở mọi năm** (2022: −8,7% thay vì −18,2%) nhưng tỉ lệ có lãi
+  năm 2022 chỉ 54%. Nó giúp **mất ít hơn khi sai**, không giúp **đúng nhiều hơn**.
+
+Kết luận thẳng: **không chỉ báo nào trong app phân biệt được "đáy" với "giữa đường xuống" trong một
+mùa gấu.** Thứ bảo vệ được vốn trong 2022 là mua từng phần theo nhịp (cách DCA làm) và giữ khối
+lượng nhỏ, không phải tín hiệu vào lệnh.
 
 ---
 
@@ -748,7 +784,7 @@ Không cần mở hằng ngày. App tự lấy giá khi bạn mở, và tự ch�
 | 7 | "Bộ lọc không ra mã nào, chắc hỏng" | 0 mã mua là một câu trả lời hợp lệ, nghĩa là chưa mã nào đủ điều kiện |
 | 8 | "Mã rớt 70%, rẻ quá" | App cố tình loại mã rớt quá 65%. Rơi sâu thế thường không còn là chuyện định giá |
 | 9 | "Vùng giá mua là lệnh đặt sẵn" | Đó là bảng tra cứu, tính lại mỗi lần cập nhật, không lưu trạng thái gì |
-| 10 | "Nhãn hoảng loạn nghĩa là chắc hồi" | 90% trong 42 trường hợp. Còn 10% thì không, và app không biết lần này thuộc nhóm nào |
+| 10 | "Nhãn hoảng loạn nghĩa là chắc hồi" | 90% trong 42 trường hợp của quãng thị trường tăng; năm 2022 chỉ 3/11. App không biết lần này thuộc nhóm nào |
 
 ---
 
