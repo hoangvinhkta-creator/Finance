@@ -1,0 +1,41 @@
+name: Cào lịch sử sâu VN100 (nghiên cứu)
+
+# Một lần, bấm tay. Cào ngược về ~2020 để backtest qua mùa gấu 2022, ghi data/vn100-deep.json — file riêng, app KHÔNG đọc.
+# VCI chặn tốc độ sau vài chục mã nên có thể phải bấm Run 2–3 lần cách nhau 15 phút; script tự bù mã còn thiếu.
+on:
+  workflow_dispatch:
+    inputs:
+      bars:
+        description: 'Số nến mục tiêu mỗi mã (mặc định 1500 ≈ 6 năm)'
+        required: false
+        default: '1500'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stocks-data
+  cancel-in-progress: false
+
+jobs:
+  deep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Cào lịch sử sâu
+        env:
+          DEEP_BARS: ${{ inputs.bars }}
+        run: node scripts/crawl-deep.mjs
+      - name: Commit nếu có thay đổi
+        run: |
+          git config user.name "fintrace-bot"
+          git config user.email "fintrace-bot@users.noreply.github.com"
+          git add data/vn100-deep.json
+          if git diff --cached --quiet; then echo "Không có thay đổi."; else
+            git commit -m "data: lịch sử sâu VN100 $(TZ=Asia/Ho_Chi_Minh date +%Y-%m-%d\ %H:%M)"
+            git push
+          fi
