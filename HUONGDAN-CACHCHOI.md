@@ -607,19 +607,29 @@ Ba luật vốn app cảnh báo nhưng không chặn:
 - Tháng này đã chốt lỗ từ 10% vốn trade trở lên.
 - Mua vượt số dư khoản tiền đang chọn — cái này **chặn**.
 
-## 5.4. Một chỗ chưa khớp giữa tài liệu và app
+## 5.4. Hai luật vào, tự chọn trên bảng
 
-Bộ lọc Gợi ý trong app hiện đặt luật vào là **"theo kiểu rẻ"** (mục 3.5), không phải "điểm + Hồi"
-(mục 3.4). Nghĩa là một mã mang nhãn *hoảng loạn* với điểm ≥ 75 sẽ được xếp vào *mua* dù chưa có
-dấu hồi nào.
+Bộ Gợi ý có **hai nút chọn luật vào** ngay dưới bộ chọn danh sách, để so rồi quyết bằng dữ liệu
+thật thay vì quyết trước:
 
-Dữ liệu 5 năm không ủng hộ phần đó: nhãn hoảng loạn vào ngay chỉ thắng 3 trong 11 lần ở năm 2022,
-và kế hoạch dùng luật này kém hơn luật "điểm + Hồi" trên cùng dữ liệu. Hiện tại điều này chưa gây
-hậu quả vì ngày 17/09 không có mã nào mang nhãn hoảng loạn trong nhóm điểm cao — cả 20 mã đang
-theo dõi đều là *cấu trúc*.
+| Nút | Luật | Số đo 5 năm |
+|---|---|---|
+| **Kiểu rẻ** (mặc định, là luật app dùng từ trước) | Mục 3.5 | Nhãn hoảng loạn vào ngay thắng 73,7%, nhưng 2022 chỉ **3/11**; kế hoạch dùng luật này kém luật kia trên cùng dữ liệu |
+| **Điểm + Hồi** | Mục 3.4 | 33 lệnh, thắng **66,7%**, +20,6%, sụt 22,7%; dương ở **cả hai nửa kỳ** |
 
-**Đề xuất:** đổi luật vào của bộ Gợi ý về "điểm + Hồi". Đây là sửa một dòng cấu hình, chưa làm,
-chờ owner quyết.
+Hai luật **chỉ khác nhau ở mã mang nhãn hoảng loạn**. Mã nhãn *cấu trúc* và *hỗn hợp* đi theo cùng
+một điều kiện ở cả hai luật, nên khi nhóm đang xét không có mã hoảng loạn thì hai luật ra kết quả
+y hệt nhau. Dòng bên cạnh hai nút cho biết luật còn lại đang ra bao nhiêu mã mua, mã nào khác
+nhau, và đếm số mã nhãn hoảng loạn trong nhóm xét để giải thích khi chúng trùng nhau.
+
+Ngày 17/09 cả hai luật đều cho **0 mua và 20 theo dõi**, vì cả 20 mã đều nhãn *cấu trúc*.
+
+Lựa chọn áp cho cả card **"Tháng này"** ở tab Chứng khoán — cùng một phép lọc thì phải cùng một
+luật. Card đó ghi luật đang dùng trong dòng mô tả.
+
+**Khuyến nghị theo số đo:** chọn *Điểm + Hồi*. Phần "hoảng loạn vào ngay" là phần duy nhất khác
+nhau giữa hai luật, và nó là phần không đứng vững qua 2022. Mặc định vẫn để *Kiểu rẻ* để không
+đổi hành vi sau lưng owner.
 
 ## 5.5. Quy trình hằng tháng
 
