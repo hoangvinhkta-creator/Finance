@@ -1070,18 +1070,28 @@ const STOCK_PRICE_PREFIX = 'stk:';   // khoá giá của cổ phiếu trong D.pr
    trình duyệt đọc được không cần CORS. Đây là nguồn CHÍNH; 3 nguồn gọi thẳng chỉ còn là dự phòng/chẩn đoán khi kho không tải được. */
 const STOCK_STORE_URL = 'data/vn100.json';
 const STOCK_STORE_STALE_H = 30;   // kho cũ hơn 30 giờ (qua một phiên không cào) ⇒ nhãn "cũ"
+const STOCK_JUMP_PCT = 0.40, STOCK_JUMP_LOOKBACK = 250;   // bước giá đóng > 40% một phiên (biên HOSE ±7%, HNX ±10%) là bất thường; trong 250 phiên gần ⇒ loại khỏi Gợi ý (reaudit R03)
 function parseStockStore(j){
   if(!j || typeof j!=='object' || !j.symbols || typeof j.symbols!=='object') throw new Error('kho không đúng định dạng');
   /* Bỏ dòng hỏng (thời gian/giá không hữu hạn, close ≤ 0, khối lượng âm), xếp tăng theo thời gian, gộp trùng ngày (giữ dòng sau) — audit F10. */
-  const unpack = arr => { const m = new Map();
+  /* Reaudit R03: nến vi phạm quan hệ OHLC (high < max(open, close), low > min(open, close), high < low, open/high/low ≤ 0) bị LOẠI và đếm vào quality.dropped;
+     bước giá đóng |Δ| > STOCK_JUMP_PCT so phiên trước ghi vào quality.jumps (nghi điều chỉnh/ngừng giao dịch/đổi nguồn — cờ để xác minh, không tự sửa). */
+  const quality = { dropped:{}, jumps:[] };
+  const unpack = (arr, sym) => { const m = new Map(); let dropped = 0;
     for(const a of (Array.isArray(arr) ? arr : [])){ if(!Array.isArray(a) || a.length<5) continue; const [t,o,h,l,c] = a.map(Number), v = Number(a[5]||0);
       if(!isFinite(t) || !isFinite(c) || !(c>0) || !isFinite(o) || !isFinite(h) || !isFinite(l) || !isFinite(v) || v<0) continue;
+      if(!(o>0) || !(h>0) || !(l>0) || h < Math.max(o,c)-1e-9 || l > Math.min(o,c)+1e-9 || h < l){ dropped++; continue; }
       m.set(t, { time:t, open:o, high:h, low:l, close:c, volume:v }); }
-    return [...m.values()].sort((a,b)=>a.time-b.time); };
+    const rows = [...m.values()].sort((a,b)=>a.time-b.time);
+    if(dropped && sym) quality.dropped[sym] = dropped;
+    if(sym) for(let i=1;i<rows.length;i++){ const pct = rows[i].close/rows[i-1].close-1; if(Math.abs(pct) > STOCK_JUMP_PCT) quality.jumps.push({ sym, time:rows[i].time, pct, i }); }
+    return rows; };
   const symbols = {};
-  for(const [k,v] of Object.entries(j.symbols)) symbols[k] = { source: v && v.source || null, fetchedAt: v && v.fetchedAt || null, rows: unpack(v && v.rows) };
-  return { updatedAt: Number(j.updatedAt)||null, basket: j.basket||'', symbols,
-           index: j.index ? { source:j.index.source||null, rows: unpack(j.index.rows) } : null, errors: j.errors && typeof j.errors==='object' ? j.errors : {} };
+  for(const [k,v] of Object.entries(j.symbols)){ const rows = unpack(v && v.rows, k);
+    const recent = quality.jumps.filter(q=>q.sym===k && q.i >= rows.length - STOCK_JUMP_LOOKBACK);   // nhảy giá nằm trong cửa sổ chấm điểm ⇒ điểm của mã này không tin được
+    symbols[k] = { source: v && v.source || null, fetchedAt: v && v.fetchedAt || null, rows, flags: recent.map(q=>`nhảy giá ${(q.pct*100).toFixed(0)}% ${isoDay(q.time)}`) }; }
+  return { updatedAt: Number(j.updatedAt)||null, basket: j.basket||'', symbols, quality,
+           index: j.index ? { source:j.index.source||null, rows: unpack(j.index.rows, null) } : null, errors: j.errors && typeof j.errors==='object' ? j.errors : {} };
 }
 const probeErrorLabel = e => !e ? '' : e.name==='AbortError' ? 'quá 12 giây không trả lời' : (e instanceof TypeError) ? 'trình duyệt chặn (CORS) hoặc mất mạng' : String(e.message||e);
 
@@ -1656,6 +1666,8 @@ function buyScore(ethCandles, btcCandles, opts){
     if(prev>0){ ebChange = now/prev-1; ebPts = tierOf(C.ethbtc30, ebChange); }
   }
   add('ethbtc30', C.ethbtc30, ebPts, ebChange, pairs.length>C.windows.ethbtc ? '' : 'thiếu dữ liệu coin đối chiếu', o.ratioLabel);
+  /* Reaudit R06: thiếu tham chiếu (không đủ cặp) hay tham chiếu CŨ (nến cuối của mã không có nến chỉ số cùng ngày) là hai cờ riêng — bộ Gợi ý loại thẳng, không chỉ hạ Confidence xuống MEDIUM. */
+  const refMissing = pairs.length <= C.windows.ethbtc, refStale = btc.length > 0 && !btcAt.has(eth[n-1].time);
 
   const score = Math.max(0, Math.min(100, Math.round(comps.reduce((a,c)=>a+c.points, 0))));
   const st = C.states.find(([min])=>score>=min) || C.states[C.states.length-1];
@@ -1665,7 +1677,7 @@ function buyScore(ethCandles, btcCandles, opts){
   if(n < C.fullCandles || pairs.length <= C.windows.ethbtc || ma==null) confidence = 'MEDIUM';
   if(n < C.minCandles*1.25 || ageH > C.staleHours) confidence = 'LOW';
 
-  return { score, components:comps, marketState:{key:st[1], label:st[2]}, confidence,
+  return { score, components:comps, marketState:{key:st[1], label:st[2]}, confidence, refMissing, refStale,
            priceUsd:priceNow, candles:n, btcCandles:btc.length, version:C.version, reason:'' };
 }
 
@@ -1739,7 +1751,7 @@ function swingScoreSeries(candles, refCandles, cfg, opts){
     out.push({ time:cs[i].time, close:Number(cs[i].close), open: Number(cs[i].open)>0 ? Number(cs[i].open) : Number(cs[i].close),
                high: Number(cs[i].high)>0 ? Number(cs[i].high) : Number(cs[i].close), low: Number(cs[i].low)>0 ? Number(cs[i].low) : Number(cs[i].close),
                score:r.score==null ? 0 : r.score, sell:q.score==null ? 0 : q.score, kind: r.score==null ? 'mixed' : cheapKind(r.components).kind,
-               conf: confirmSignal(cs, i).count, confidence:r.confidence, dd: ddc ? ddc.value : null });   // open/confidence/dd để simulatePicks dùng ĐÚNG bộ lọc của bộ Gợi ý và khớp ở giá mở phiên sau (audit F02/F05)
+               conf: confirmSignal(cs, i).count, confidence:r.confidence, dd: ddc ? ddc.value : null, refStale: !!(r.refStale||r.refMissing) });   // open/confidence/dd/refStale để simulatePicks dùng ĐÚNG bộ lọc của bộ Gợi ý và khớp ở giá mở phiên sau (audit F02/F05/R06)
   }
   return out;
 }
@@ -1799,54 +1811,71 @@ function simulateLadder(series, rules){
   /* side: 'long' (mặc định, spot) · 'short' · 'both'. Short mô phỏng ở 1x: ký quỹ = giá trị vị thế lúc vào,
      giá trị đóng = units × (2·avg − P) (ký quỹ + lãi). fundingPerBar trừ mỗi nến đang giữ, trên giá trị vị thế theo giá hiện tại. */
   const side = R.side || 'long', canL = side!=='short', canS = side!=='long', fund = Number(R.fundingPerBar)||0;
-  /* Luật chứng khoán VN (không ảnh hưởng coin vì mặc định 0/undefined): minHoldBars = T+2 (mua xong 2 phiên mới bán được, tính từ lần mua CUỐI),
-     sellTax = thuế bán 0,1% cộng thêm phí, floorPct = phiên đóng cửa sát sàn/trần (±6,9% so với phiên trước) coi như không khớp được lệnh bán/mua. */
+  /* Luật chứng khoán VN (không ảnh hưởng coin vì mặc định 0/undefined): minHoldBars = T+2, sellTax = thuế bán, floorPct = biên trần/sàn ±6,9%.
+     Sửa theo reaudit 2026-09-18 (R01/R02/R04):
+     - Trần/sàn xét theo GIÁ MỞ so với giá đóng phiên trước — thứ biết được lúc đầu phiên; không dùng giá đóng của chính phiên đó để quyết định lệnh trong phiên.
+     - Nhịp 2 quyết định bằng ĐIỂM NẾN TRƯỚC (lệnh giới hạn đặt từ hôm trước), khớp khi giá trong phiên chạm mốc.
+     - T+2 theo LÔ: lô mua ở nến j bán được trong phiên từ nến j+minHold+1; đúng nến j+minHold chỉ bán được ở GIÁ ĐÓNG (hàng về buổi chiều). Lô cũ không bị khoá lại khi mua thêm.
+     - Nến cuối KHÔNG ép bán: vị thế còn mở tính vào equity theo giá đóng (đã trừ phí bán), không đếm vào n/tỷ lệ thắng, trả ở `open` và `exits.end`. */
   const minHold = Number(R.minHoldBars)||0, sellFee = R.fee + (Number(R.sellTax)||0), floorPct = Number(R.floorPct)||0;
-  /* Khớp lệnh (audit F05): mốc chốt lời/cắt lỗ/hoà vốn/nhịp 2 soi theo ĐÁY và ĐỈNH trong nến (chuỗi không có high/low ⇒ dùng close, y như cũ).
-     Một nến chạm cả cắt lỗ và chốt lời thì không biết cái nào trước ⇒ chọn bất lợi (cắt lỗ). Giá khớp = mốc, hoặc giá mở nếu nến mở cách xa mốc (gap).
-     execAt 'nextOpen': tín hiệu vào ở giá đóng nến t, mua ở giá MỞ nến t+1 (cổ phiếu/coin trading dùng); mặc định 'close' giữ cho lưới H4 cũ và test. */
   const nextOpen = R.execAt==='nextOpen';
-  let cash = 1, pos = null, peak = 1, maxDD = 0, barsIn = 0, fundingPaid = 0, pend = 0;
+  let cash = 1, pos = null, peak = 1, maxDD = 0, barsIn = 0, fundingPaid = 0, pend = 0, entries = 0;
   const val = (u, P) => pos.dir>0 ? u*P : u*(2*pos.avg - P);
   const openAt = (i, dir, px) => { const b = S[i], spend = cash*(R.addOn ? R.addOn.first : 1), units = spend*(1-R.fee)/px;
-    pos = { i, dir, time:b.time, firstPrice:px, units, unitsGross:spend/px, spent:spend, got:0, avg:px, funding:0, lastBuyI:i,
-            legs:[{time:b.time, price:px, why:'in'}], tpIdx:0, slIdx:0, be:false, added:false };
-    cash -= spend; };
+    pos = { i, dir, time:b.time, firstPrice:px, units, unitsGross:spend/px, spent:spend, got:0, avg:px, funding:0, lots:[{units, i}],
+            legs:[{time:b.time, price:px, why:'in'}], tpIdx:0, slIdx:0, be:false, added:false, queue:0, queueWhy:null };
+    cash -= spend; entries++; };
   for(let i=0;i<S.length;i++){
     const b = S[i], last = i===S.length-1; let closed = false;
     const H = b.high>0 ? b.high : b.close, Lo = b.low>0 ? b.low : b.close, O = b.open>0 ? b.open : b.close;
     const prevC = i>0 ? S[i-1].close : b.close;
-    const atFloor = floorPct>0 && b.close <= prevC*(1-floorPct)+1e-9, atCeil = floorPct>0 && b.close >= prevC*(1+floorPct)-1e-9;
+    const openCeil = floorPct>0 && O >= prevC*(1+floorPct)-1e-9, openFloor = floorPct>0 && O <= prevC*(1-floorPct)+1e-9;
     /* Lệnh vào chờ từ nến trước ⇒ khớp ở giá mở nến này (bỏ nếu mở cửa sát trần/sàn theo chiều vào). */
-    if(pend && !pos){ const openCeil = floorPct>0 && O >= prevC*(1+floorPct)-1e-9, openFloor = floorPct>0 && O <= prevC*(1-floorPct)+1e-9;
-      if(!(pend>0 ? openCeil : openFloor)) openAt(i, pend, O); pend = 0; }
+    if(pend && !pos){ if(!(pend>0 ? openCeil : openFloor)) openAt(i, pend, O); pend = 0; }
     if(pos){
       barsIn++;
       if(fund>0){ const f = fund*pos.units*b.close; pos.funding += f; fundingPaid += f; }
-      const sig = pos.dir>0 ? b.score : (b.sell||0);
       const lvl = at => pos.avg*(1+pos.dir*at);                                                   // giá tại mức lãi/lỗ `at`
-      const hitAdverse = at => pos.dir>0 ? Lo <= lvl(at)+1e-9 : H >= lvl(at)-1e-9;                 // cắt lỗ / hoà vốn
-      const hitFavor   = at => pos.dir>0 ? H >= lvl(at)-1e-9 : Lo <= lvl(at)+1e-9;                 // chốt lời
-      const fillAdverse = at => pos.dir>0 ? Math.min(lvl(at), O) : Math.max(lvl(at), O);
-      const fillFavor   = at => pos.dir>0 ? Math.max(lvl(at), O) : Math.min(lvl(at), O);
+      const blocked = pos.dir>0 ? openFloor : openCeil;                                            // mở cửa sát sàn (long) / trần (short) ⇒ không bán được phiên này
+      /* Số đơn vị bán được: 'intra' = trong phiên (lô đã qua T+2 hẳn), 'close' = kể cả lô vừa đủ T+2 (bán ở giá đóng). */
+      const settled = mode => minHold===0 ? pos.units : pos.lots.reduce((a,l)=>a + ((i-l.i > minHold || (mode==='close' && i-l.i >= minHold)) ? l.units : 0), 0);
+      const sellUnits = (u, why, P) => { const before = pos.units, got = val(u,P) - sellFee*u*P; cash += got; pos.got += got;
+        let rem = u; for(const l of pos.lots){ const d = Math.min(l.units, rem); l.units -= d; rem -= d; if(rem<=1e-12) break; } pos.lots = pos.lots.filter(l=>l.units>1e-12);
+        pos.units -= u; if(pos.units < 1e-12) pos.units = 0; pos.legs.push({time:b.time, price:P, frac: before>0 ? u/before : 1, why}); };
+      /* Bán `f` phần của vị thế còn lại tại giá `P`; phần chưa về (T+2) xếp hàng bán ở nến sau. */
+      const trySell = (f, why, P, mode) => { const want = Math.min(pos.units, pos.units*f + 1e-12), can = Math.min(want, settled(mode)); if(can>1e-12) sellUnits(can, why, P);
+        if(want-can > 1e-12){ pos.queue += want-can; pos.queueWhy = why; } };
+      /* 0) Hàng chờ bán từ nến trước: khớp ở giá mở khi lô đã về hẳn, còn lại ở giá đóng khi vừa đủ T+2. */
+      if(pos.queue > 1e-12 && !blocked){
+        const u1 = Math.min(pos.queue, settled('intra'), pos.units); if(u1>1e-12){ sellUnits(u1, pos.queueWhy||'queue', O); pos.queue -= u1; }
+        if(pos.queue > 1e-12){ const u2 = Math.min(pos.queue, settled('close'), pos.units); if(u2>1e-12){ sellUnits(u2, pos.queueWhy||'queue', b.close); pos.queue -= u2; } }
+        if(pos.queue < 1e-12) pos.queue = 0; }
+      /* 1) Nhịp 2 — quyết định từ điểm NẾN TRƯỚC, khớp khi giá trong phiên chạm mốc; không sau khi đã bắt đầu thoát, không cùng nến vào (audit F12/R01). */
+      const sigPrev = i>0 ? (pos.dir>0 ? S[i-1].score : (S[i-1].sell||0)) : -Infinity;
       const addTrig = R.addOn ? (pos.dir>0 ? pos.firstPrice*(1-R.addOn.drop) : pos.firstPrice*(1+R.addOn.drop)) : null;
       const addHit = addTrig!=null && (pos.dir>0 ? Lo <= addTrig+1e-9 : H >= addTrig-1e-9);
-      if(addHit && !pos.added && cash>0 && pos.tpIdx===0 && pos.slIdx===0 && !pos.be && sig >= R.entry && !(pos.dir>0 ? atCeil : atFloor) && i > pos.i){   // nhịp 2 chỉ trước khi bắt đầu thoát, không cùng nến vào (audit F12)
+      if(addHit && !pos.added && cash>0 && pos.tpIdx===0 && pos.slIdx===0 && !pos.be && pos.queue===0 && sigPrev >= R.entry && !(pos.dir>0 ? openCeil : openFloor) && i > pos.i){
         const px = pos.dir>0 ? Math.min(addTrig, O) : Math.max(addTrig, O), spend = cash, units = spend*(1-R.fee)/px;
-        pos.units += units; pos.spent += spend; pos.unitsGross += spend/px; pos.avg = pos.spent/pos.unitsGross; cash = 0; pos.added = true; pos.lastBuyI = i;
+        pos.units += units; pos.spent += spend; pos.unitsGross += spend/px; pos.avg = pos.spent/pos.unitsGross; cash = 0; pos.added = true; pos.lots.push({units, i});
         pos.legs.push({time:b.time, price:px, why:'add'});
       }
+      /* 2) Thoát theo bậc — soi đáy/đỉnh trong phiên khi có lô bán được trong phiên; chỉ có lô vừa đủ T+2 thì soi và khớp ở giá đóng. */
       const held = i - pos.i;
-      const canExit = last || ((i - pos.lastBuyI) >= minHold && !(pos.dir>0 ? atFloor : atCeil));   // nến cuối luôn đóng để chấm điểm; T+2 và phiên sàn chặn lệnh bán
-      const sellPart = (f, why, px) => { const P = px>0 ? px : b.close, u = pos.units*f, got = val(u, P) - sellFee*u*P; cash += got; pos.units -= u; pos.got += got; pos.legs.push({time:b.time, price:P, frac:f, why}); };
-      if(canExit && !last){
-        let sold = false;
-        if(pos.be){ if(hitAdverse(0)){ sellPart(1, 'be', fillAdverse(0)); sold = true; } }
-        else { for(let k=pos.slIdx; k<R.sl.length && pos.units>1e-12; k++){ if(hitAdverse(R.sl[k].at)){ sellPart(k===R.sl.length-1 ? 1 : R.sl[k].sell, 'sl'+(k+1), fillAdverse(R.sl[k].at)); pos.slIdx = k+1; sold = true; } else break; } }
-        if(!sold){ for(let k=pos.tpIdx; k<R.tp.length && pos.units>1e-12; k++){ if(hitFavor(R.tp[k].at)){ sellPart(k===R.tp.length-1 ? 1 : R.tp[k].sell, 'tp'+(k+1), fillFavor(R.tp[k].at)); pos.tpIdx = k+1; if(R.beAfterTp) pos.be = true; } else break; } }
-        if(pos.units > 1e-12 && held >= R.maxHoldBars) sellPart(1, 'time');
+      if(pos.units > 1e-12 && !blocked && pos.queue === 0){
+        const mode = settled('intra') > 1e-12 ? 'intra' : settled('close') > 1e-12 ? 'close' : null;
+        if(mode){
+          const hi = mode==='intra' ? H : b.close, lo = mode==='intra' ? Lo : b.close, op = mode==='intra' ? O : b.close;
+          const hitAdverse = at => pos.dir>0 ? lo <= lvl(at)+1e-9 : hi >= lvl(at)-1e-9;                // cắt lỗ / hoà vốn
+          const hitFavor   = at => pos.dir>0 ? hi >= lvl(at)-1e-9 : lo <= lvl(at)+1e-9;                // chốt lời
+          const fillAdverse = at => pos.dir>0 ? Math.min(lvl(at), op) : Math.max(lvl(at), op);
+          const fillFavor   = at => pos.dir>0 ? Math.max(lvl(at), op) : Math.min(lvl(at), op);
+          let sold = false;
+          if(pos.be){ if(hitAdverse(0)){ trySell(1, 'be', fillAdverse(0), mode); sold = true; } }
+          else { for(let k=pos.slIdx; k<R.sl.length && pos.units>1e-12; k++){ if(hitAdverse(R.sl[k].at)){ trySell(k===R.sl.length-1 ? 1 : R.sl[k].sell, 'sl'+(k+1), fillAdverse(R.sl[k].at), mode); pos.slIdx = k+1; sold = true; } else break; } }
+          if(!sold){ for(let k=pos.tpIdx; k<R.tp.length && pos.units>1e-12; k++){ if(hitFavor(R.tp[k].at)){ trySell(k===R.tp.length-1 ? 1 : R.tp[k].sell, 'tp'+(k+1), fillFavor(R.tp[k].at), mode); pos.tpIdx = k+1; if(R.beAfterTp) pos.be = true; } else break; } }
+          if(pos.units > 1e-12 && pos.queue === 0 && held >= R.maxHoldBars) trySell(1, 'time', b.close, 'close');
+        }
       }
-      if(pos.units > 1e-12 && last) sellPart(1, 'end');
       if(pos.units <= 1e-12){
         cash -= pos.funding;
         trades.push({ entryTime:pos.time, exitTime:b.time, dir:pos.dir, avg:pos.avg, spent:pos.spent, got:pos.got, funding:pos.funding,
@@ -1855,18 +1884,21 @@ function simulateLadder(series, rules){
       }
     }
     if(!pos && !closed && !last && cash>0 && !pend){
-      const ceilNow = floorPct>0 && b.close >= prevC*(1+floorPct)-1e-9, floorNow = floorPct>0 && b.close <= prevC*(1-floorPct)+1e-9;
+      const ceilNow = floorPct>0 && b.close >= prevC*(1+floorPct)-1e-9, floorNow = floorPct>0 && b.close <= prevC*(1-floorPct)+1e-9;   // tín hiệu ở giá đóng: đóng sát trần thì lệnh mua giá đóng không khớp
       const L = canL && b.score >= R.entry && !ceilNow, Sh = canS && (b.sell||0) >= R.entry && !floorNow;
       const dir = L && Sh ? (b.score >= (b.sell||0) ? 1 : -1) : L ? 1 : Sh ? -1 : 0;
       if(dir){ if(nextOpen) pend = dir; else openAt(i, dir, b.close); }
     }
-    const mtm = cash + (pos ? val(pos.units, b.close) - pos.funding : 0);
+    const mtm = cash + (pos ? val(pos.units, b.close) - sellFee*pos.units*b.close - pos.funding : 0);
     peak = Math.max(peak, mtm); maxDD = Math.max(maxDD, peak>0 ? 1-mtm/peak : 0);
   }
+  const lastC = S.length ? S[S.length-1].close : 0;
+  const endEq = cash + (pos ? val(pos.units, lastC) - sellFee*pos.units*lastC - pos.funding : 0);
+  const open = pos ? { entryTime:pos.time, dir:pos.dir, avg:pos.avg, spent:pos.spent, added:pos.added, bars:S.length-1-pos.i, legs:pos.legs, ret: (val(pos.units, lastC) - sellFee*pos.units*lastC + pos.got - pos.funding)/pos.spent - 1 } : null;
   const wins = trades.filter(t=>t.net>0).length;
-  return { rules:R, trades, n:trades.length, wins, winRate: trades.length ? wins/trades.length : null,
+  return { rules:R, trades, n:trades.length, entries, wins, winRate: trades.length ? wins/trades.length : null, open, exits:{ end: open ? 1 : 0 },
            nLong: trades.filter(t=>t.dir>0).length, nShort: trades.filter(t=>t.dir<0).length, fundingPaid,
-           netReturn: cash-1, avgNet: trades.length ? mean(trades.map(t=>t.net)) : null, maxDD,
+           netReturn: endEq-1, avgNet: trades.length ? mean(trades.map(t=>t.net)) : null, maxDD,
            buyHold: S.length ? S[S.length-1].close/S[0].close-1 : null, exposure: S.length ? barsIn/S.length : 0,
            avgBars: trades.length ? mean(trades.map(t=>t.bars)) : null, bars:S.length,
            from: S.length ? S[0].time : null, to: S.length ? S[S.length-1].time : null };
@@ -2892,11 +2924,11 @@ function testSwing(){
     chk('lãi = 50%×6% + 50%×(−1%) = 2,5%', r3.netReturn, 0.025);
     const LA = {...L, addOn:{first:0.5, drop:0.03}};
     const r4 = simulateLadder(S([100,70],[97,70],[97,70],[102.82,70],[102.82,70]), LA);
-    chk('nhịp 2 tại 97 ⇒ giá vốn TB 98,48 (bình quân theo tiền)', Math.round(r4.trades[0].avg*100)/100, 98.48);
-    chk('nhịp 1 chỉ tiêu 50% tiền, nhịp 2 tiêu hết', [r4.trades[0].spent, r4.trades[0].added], [1, true]);
-    chk('+6% trên giá vốn TB = 104,41 ⇒ 102,82 chưa chạm, ra "end"', r4.trades[0].legs.filter(l=>l.frac).map(l=>l.why), ['end']);
-    const r5 = simulateLadder(S([100,70],[97,20],[97,20],[97,20]), LA);
-    chk('điểm tụt dưới ngưỡng ⇒ KHÔNG vào nhịp 2, nửa tiền vẫn nằm không', [r5.trades[0].added, r5.trades[0].spent], [false, 0.5]);
+    chk('nhịp 2 tại 97 ⇒ giá vốn TB 98,48 (bình quân theo tiền); quyết định từ điểm nến trước (70 ≥ 65)', Math.round(r4.open.avg*100)/100, 98.48);
+    chk('nhịp 1 chỉ tiêu 50% tiền, nhịp 2 tiêu hết', [r4.open.spent, r4.open.added], [1, true]);
+    chk('+6% trên giá vốn TB = 104,41 ⇒ 102,82 chưa chạm ⇒ KHÔNG ép bán nến cuối: 0 lệnh đóng, 1 vị thế mở, equity theo giá đóng (reaudit R02)', [r4.n, r4.entries, r4.exits.end, r4.open.legs.filter(l=>l.frac).length, Math.round(r4.netReturn*1e4)/1e4], [0, 1, 1, 0, Math.round((102.82/98.48-1)*1e4)/1e4]);
+    const r5 = simulateLadder(S([100,70],[100,20],[97,20],[97,20]), LA);
+    chk('điểm nến TRƯỚC tụt dưới ngưỡng (20) ⇒ KHÔNG vào nhịp 2 khi chạm 97, nửa tiền vẫn nằm không (reaudit R01: quyết định từ t−1)', [r5.open.added, r5.open.spent], [false, 0.5]);
     chk('quá hạn 2 nến ⇒ "time"', simulateLadder(S([100,70],[100,70],[100,70],[100,70]), {...L, maxHoldBars:2}).trades[0].legs.filter(l=>l.frac)[0].why, 'time');
     const rf = simulateLadder(S([100,70],[106,40],[112,30]), {...L, fee:0.001});
     chk('có phí ⇒ lãi ròng nhỏ hơn 9%', rf.netReturn < 0.09 && rf.netReturn > 0.085, true); }
@@ -2925,10 +2957,10 @@ function testSwing(){
     const s2 = simulateLadder(T([100,0,70],[104,0,70],[108,0,70],[108,0,70]), {...L, side:'short'});
     chk('short 100, giá lên 104 rồi 108 ⇒ sl1, sl2; lỗ 6%', [s2.trades[0].legs.filter(l=>l.frac).map(l=>[l.why,l.price]), Math.round(s2.netReturn*1e4)/1e4], [[['sl1',104],['sl2',108]], -0.06]);
     const s3 = simulateLadder(T([100,0,70],[103,0,70],[103,0,70],[94,0,70],[94,0,70]), {...L, side:'short', addOn:{first:0.5, drop:0.03}});
-    chk('short nhịp 2 khi giá LÊN 3%: vào 100 và 103, giá vốn TB 101,48', [s3.trades[0].added, Math.round(s3.trades[0].avg*100)/100], [true, 101.48]);
+    chk('short nhịp 2 khi giá LÊN 3%: vào 100 và 103, giá vốn TB 101,48 (vị thế còn mở — không ép đóng cuối dữ liệu)', [s3.open.added, Math.round(s3.open.avg*100)/100], [true, 101.48]);
     chk('chế độ chỉ short bỏ qua điểm mua', simulateLadder(T([100,80,0],[100,80,0],[100,80,0]), {...L, side:'short'}).n, 0);
     chk('mặc định (long) bỏ qua điểm short', simulateLadder(T([100,0,80],[100,0,80],[100,0,80]), L).n, 0);
-    const s4 = simulateLadder(T([100,70,0],[106,0,0],[112,0,0],[112,0,70],[105,0,0],[99,0,0],[99,0,0]), {...L, side:'both'});
+    const s4 = simulateLadder(T([100,70,0],[106,0,0],[112,0,0],[112,0,70],[105,0,0],[98,0,0],[98,0,0]), {...L, side:'both'});
     chk('both: một long rồi một short, đếm riêng', [s4.n, s4.nLong, s4.nShort, s4.trades.map(t=>t.dir)], [2,1,1,[1,-1]]);
     const s5 = simulateLadder(T([100,70,0],[100,0,0],[100,0,0]), {...L, fundingPerBar:0.001});
     chk('funding 0,1%/nến × 2 nến giữ ⇒ lỗ 0,2%', Math.round(s5.netReturn*1e5)/1e5, -0.002);
@@ -2981,8 +3013,10 @@ function testStocks(){
   const qs = quotesFromStore(store);
   chk('quotes: FPT có giá và giá hôm trước; ACB ghi lý do; 101 mã thiếu', [qs.quotes.FPT.close, qs.quotes.FPT.prev, qs.quotes.ACB.err.startsWith('kho không lấy được'), qs.errors], [122, 121.5, true, 101]);
   let bad1 = false; try{ parseStockStore({}); }catch(e){ bad1 = true; } chk('kho sai định dạng ⇒ ném lỗi', bad1, true);
-  chk('dòng nén thiếu cột hoặc close 0 bị bỏ', parseStockStore({symbols:{X:{rows:[[T0,1,2],[T0,1,2,3,0,1],[T0,1,2,3,4,5]]}}}).symbols.X.rows.length, 1);
-  { const px = parseStockStore({symbols:{X:{rows:[[T0,1,2,3,4,5],[T0-86400e3,1,2,3,3,5],[T0,1,2,3,4.5,5],[T0+86400e3,1,Infinity,3,4,5],[T0+2*86400e3,1,2,3,4,-1]]}}}).symbols.X.rows;
+  chk('dòng nén thiếu cột hoặc close 0 bị bỏ', parseStockStore({symbols:{X:{rows:[[T0,1,2],[T0,1,5,1,0,1],[T0,1,5,1,4,5]]}}}).symbols.X.rows.length, 1);
+  { const q = parseStockStore({symbols:{Y:{rows:[[T0,1,5,1,4,5],[T0+86400e3,4,3,1,4,5],[T0+2*86400e3,4,6,5,4.2,5],[T0+3*86400e3,4,7,1,6.2,5]]}}});
+    chk('reaudit R03: nến high < close hoặc low > open bị loại và đếm vào quality.dropped; bước giá +55% ghi vào quality.jumps và flags của mã', [q.symbols.Y.rows.length, q.quality.dropped.Y, q.quality.jumps.length, Math.round(q.quality.jumps[0].pct*100), q.symbols.Y.flags.length], [2, 2, 1, 55, 1]); }
+  { const px = parseStockStore({symbols:{X:{rows:[[T0,1,5,1,4,5],[T0-86400e3,1,5,1,3,5],[T0,1,5,1,4.5,5],[T0+86400e3,1,Infinity,1,4,5],[T0+2*86400e3,1,5,1,4,-1]]}}}).symbols.X.rows;
     chk('kho: xếp tăng theo thời gian, gộp trùng ngày (giữ dòng sau), bỏ high vô hạn và khối lượng âm (audit F10)', [px.map(r=>r.close), px.length], [[3, 4.5], 2]); }
   { const now = Date.UTC(2026,8,17,10), rows = [[Date.UTC(2026,8,15),'1','2','0.5','1.5','100', Date.UTC(2026,8,15,23,59,59,999)],[Date.UTC(2026,8,16),'1','2','0.5','1.6','100', Date.UTC(2026,8,16,23,59,59,999)],[Date.UTC(2026,8,17),'1','2','0.5','1.7','40', Date.UTC(2026,8,17,23,59,59,999)]];
     const k = parseKlines(rows, now);
@@ -3014,12 +3048,18 @@ function testStocks(){
   const t1 = simulateLadder(S([100,70],[92,0],[92,0],[92,0]), {...L, minHoldBars:2});
   chk('T+2: rớt 8% ở phiên 1 chưa bán được, cả hai bậc cắt lỗ khớp ở phiên 2', t1.trades[0].legs.filter(l=>l.frac).map(l=>[l.why, l.time/86400e3]), [['sl1',2],['sl2',2]]);
   const t2 = simulateLadder(S([100,70],[95,0],[95,0]), L);
-  chk('không T+2 ⇒ bán ngay phiên 1', t2.trades[0].legs.filter(l=>l.frac)[0].time/86400e3, 1);
+  chk('không T+2 ⇒ bán ngay phiên 1', (t2.trades[0]||t2.open).legs.filter(l=>l.frac)[0].time/86400e3, 1);
   const t3 = simulateLadder(S([100,70],[93,0],[93,0],[93,0]), {...L, floorPct:0.069});
-  chk('phiên sàn (−7%) không bán được, phiên sau mới bán', t3.trades[0].legs.filter(l=>l.frac)[0].time/86400e3, 2);
-  chk('phiên trần (+7%) không mua', simulateLadder(S([100,0],[107,80],[107,80],[107,80]), {...L, floorPct:0.069}).trades.length, 1);
-  const t4 = simulateLadder(S([100,70],[100,0],[100,0]), {...L, fee:0.0015, sellTax:0.001});
-  chk('phí 0,15% + thuế bán 0,1% ⇒ ra hoà mất ≈ 0,4%', Math.round(t4.netReturn*1e4)/1e4, -0.004);
+  chk('phiên sàn (−7%) không bán được, phiên sau mới bán', (t3.trades[0]||t3.open).legs.filter(l=>l.frac)[0].time/86400e3, 2);
+  { const tc = simulateLadder(S([100,0],[107,80],[107,80],[107,80]), {...L, floorPct:0.069});
+    chk('phiên trần (+7%) không mua ở phiên 1, vào ở phiên 2; nến cuối không ép bán ⇒ vị thế còn mở', [tc.entries, tc.open ? tc.open.entryTime/86400e3 : null, tc.n], [1, 2, 0]); }
+  { const lot = [ {time:0, close:100, open:100, high:100, low:100, score:70}, {time:86400e3, close:97, open:99, high:99, low:96.5, score:70}, {time:2*86400e3, close:90, open:96, high:96, low:89, score:0}, {time:3*86400e3, close:90, open:90, high:90, low:89, score:0}, {time:4*86400e3, close:90, open:90, high:90, low:89, score:0} ];
+    const tl = simulateLadder(lot, {...L, minHoldBars:2, addOn:{first:0.5, drop:0.03}});
+    chk('T+2 theo LÔ (reaudit R01/R04): lô 1 mua nến 0, nhịp 2 mua nến 1 (điểm nến 0 = 70 ≥ 65, chạm 97) ⇒ nến 2 lô 1 đủ T+2 bán được ở GIÁ ĐÓNG (bậc 1 bán hết phần đã về), lô 2 chưa ⇒ xếp hàng theo bậc 2, khớp ở giá mở nến 3', [tl.open ? null : tl.trades[0].legs.filter(l=>l.frac).map(l=>[l.why, l.time/86400e3, l.price]), tl.n], [[['sl1',2,90],['sl2',3,90]], 1]);
+    const noAdd = simulateLadder([ {time:0, close:100, open:100, high:100, low:100, score:70}, {time:86400e3, close:96, open:99, high:99, low:96.5, score:0}, {time:2*86400e3, close:96, open:96, high:96, low:96, score:0} ], {...L, addOn:{first:0.5, drop:0.03}});
+    chk('nhịp 2 dùng điểm nến TRƯỚC: nến 1 chạm 97 nhưng điểm nến 0 là 70 ≥ 65 ⇒ vẫn mua thêm; đổi điểm nến 0 thành 60 ⇒ không mua thêm', [noAdd.open ? noAdd.open.added : noAdd.trades[0].added, (()=>{ const r = simulateLadder([ {time:0, close:100, open:100, high:100, low:100, score:60}, {time:86400e3, close:96, open:99, high:99, low:96.5, score:70}, {time:2*86400e3, close:96, open:96, high:96, low:96, score:70} ], {...L, entry:60, addOn:{first:0.5, drop:0.03}}); return r.open ? r.open.added : r.trades[0].added; })()], [true, true]); }
+  const t4 = simulateLadder(S([100,70],[100,0],[100,0]), {...L, maxHoldBars:1, fee:0.0015, sellTax:0.001});
+  chk('phí 0,15% + thuế bán 0,1% ⇒ ra hoà mất ≈ 0,4% (equity cuối cũng trừ phí bán khi còn mở)', Math.round(t4.netReturn*1e4)/1e4, -0.004);
   chk('mặc định coin không đổi (không T+2, không thuế)', simulateLadder(S([100,70],[95,0],[95,0]), L).netReturn, simulateLadder(S([100,70],[95,0],[95,0]), {...L, minHoldBars:0, sellTax:0, floorPct:0}).netReturn);
   console.log('%c5 — backtest toàn rổ trên kho tổng hợp','font-weight:600');
   const bt = stockBacktestAll(big, ['FPT','VCB','HPG']);
@@ -3151,7 +3191,7 @@ function testStocks(){
     chk('ứng viên mua = điểm ≥75 chưa giữ, theo thứ tự điểm (CII đang giữ ⇒ loại)', pl.candidates.map(c=>c.sym), ['KDH','PDR']);
     chk('đang giữ 3 mã; về ≤65 chỉ TCB', [pl.held.length, pl.sellDue.map(h=>h.sym)], [3, ['TCB']]);
     chk('lệnh cổ phiếu tháng 9: 0 mua, 1 bán (FPT 100@77), đã chốt +700k; lệnh coin không tính', [pl.buysM, pl.sellsM, Math.round(pl.realizedM)], [0, 1, 700]);
-    chk('gợi ý một dòng: chưa mã nào có dấu hồi ⇒ chỉ theo dõi', stockSuggestion(pl, 'VIX', 70), 'Score 70 VIX · chưa mã nào đủ điều kiện mua · theo dõi: KDH 87, PDR 78 · 1 mã đang giữ đã về ≤ 65');
+    chk('gợi ý một dòng: chưa mã nào có dấu hồi ⇒ chỉ theo dõi', stockSuggestion(pl, 'VIX', 70), 'Score 70 VIX · chưa mã nào đủ điều kiện mua · theo dõi: KDH 87, PDR 78 · 1 mã nên bán (TCB ≤ 65)');
     chk('không kho, không giữ ⇒ rỗng không lỗi', [stockPlanNow([], [], [], '2026-09').candidates.length, stockPlanNow(null, null, null, '2026-09').held.length], [0, 0]); }
   console.log('%c7c — xác nhận hồi (tách khỏi điểm) và nghiên cứu sự kiện','font-weight:600');
   { const mkc = (fn, vf) => Array.from({length:60},(_,i)=>({ time:T0+i*86400e3, close:fn(i), volume: vf ? vf(i) : 1000 }));
@@ -3232,14 +3272,14 @@ function testStocks(){
       const wick = [ {time:T(0), close:100, open:100, high:100, low:100, score:80}, {time:T(1), close:100, open:100, high:101, low:95, score:80}, {time:T(2), close:100, open:100, high:100, low:100, score:80}, {time:T(3), close:100, open:100, high:100, low:100, score:80} ];
       const flat = wick.map(b=>({time:b.time, close:b.close, score:b.score}));
       const rules = { entry:75, tp:[{at:0.08, sell:0.5},{at:0.15, sell:1}], sl:[{at:-0.04, sell:0.5},{at:-0.08, sell:1}], maxHoldBars:15, fee:0, addOn:null, beAfterTp:true };
-      const rw = simulateLadder(wick, rules), rf = simulateLadder(flat, rules);
-      chk('bóng dưới chạm −4% ⇒ bán 50% ở đúng mốc 96 (không phải giá đóng 100); chuỗi chỉ có close thì không chạm', [rw.trades[0].legs.find(l=>l.why==='sl1') ? Math.round(rw.trades[0].legs.find(l=>l.why==='sl1').price*100)/100 : null, rf.trades[0].legs.some(l=>l.why==='sl1')], [96, false]);
+      const rw = simulateLadder(wick, rules), rf = simulateLadder(flat, rules), posOf = r => r.trades[0] || r.open;
+      chk('bóng dưới chạm −4% ⇒ bán 50% ở đúng mốc 96 (không phải giá đóng 100); chuỗi chỉ có close thì không chạm', [posOf(rw).legs.find(l=>l.why==='sl1') ? Math.round(posOf(rw).legs.find(l=>l.why==='sl1').price*100)/100 : null, posOf(rf).legs.some(l=>l.why==='sl1')], [96, false]);
       const gap = [ {time:T(0), close:100, open:100, high:100, low:100, score:80}, {time:T(1), close:92, open:92, high:93, low:90, score:80}, {time:T(2), close:92, open:92, high:92, low:92, score:80} ];
       chk('mở cửa gap xuống 92 dưới cả hai mốc ⇒ khớp ở giá mở 92 (không phải 96/92 lý tưởng), bán hết', [simulateLadder(gap, rules).trades[0].legs.filter(l=>/^sl/.test(l.why)).map(l=>[l.why, l.price]), simulateLadder(gap, rules).trades[0].legs.length], [[['sl1',92],['sl2',92]], 3]);
       const both = [ {time:T(0), close:100, open:100, high:100, low:100, score:80}, {time:T(1), close:100, open:100, high:109, low:95, score:80}, {time:T(2), close:100, open:100, high:100, low:100, score:80} ];
-      chk('một phiên chạm cả chốt lời +8% và cắt lỗ −4% ⇒ tính cắt lỗ trước, không chốt lời phiên đó', simulateLadder(both, rules).trades[0].legs.filter(l=>l.why!=='in'&&l.why!=='end').map(l=>l.why), ['sl1']);
+      chk('một phiên chạm cả chốt lời +8% và cắt lỗ −4% ⇒ tính cắt lỗ trước, không chốt lời phiên đó', posOf(simulateLadder(both, rules)).legs.filter(l=>l.why!=='in'&&l.why!=='end').map(l=>l.why), ['sl1']);
       const nx = [ {time:T(0), close:100, open:100, high:100, low:100, score:80}, {time:T(1), close:104, open:103, high:105, low:102, score:80}, {time:T(2), close:104, open:104, high:104, low:104, score:80} ];
-      chk('execAt nextOpen: tín hiệu phiên 0, mua ở giá MỞ phiên 1 = 103 (mặc định close = 100)', [simulateLadder(nx, {...rules, execAt:'nextOpen'}).trades[0].avg, simulateLadder(nx, rules).trades[0].avg], [103, 100]);
+      chk('execAt nextOpen: tín hiệu phiên 0, mua ở giá MỞ phiên 1 = 103 (mặc định close = 100)', [posOf(simulateLadder(nx, {...rules, execAt:'nextOpen'})).avg, posOf(simulateLadder(nx, rules)).avg], [103, 100]);
       chk('STOCK_SWING_RULES và COIN_SWING_RULES đều vào ở giá mở phiên sau', [STOCK_SWING_RULES.execAt, COIN_SWING_RULES.execAt], ['nextOpen', 'nextOpen']); }
     { const wf = walkForward(big, ['FPT','VCB','HPG']);
       chk('walkForward: chia đôi kỳ, 9 bộ lưới có train/test, kế hoạch 3 cũ + 9 mới, chọn theo nửa đầu và "biết trước" theo nửa sau', [wf.grid.rows.length, wf.plan.rows.length, wf.cut > wf.from && wf.cut < wf.to, wf.grid.best.train >= Math.max(...wf.grid.rows.map(r=>r.train)) - 1e-12, wf.grid.oracle.test >= Math.max(...wf.grid.rows.map(r=>r.test)) - 1e-12, wf.plan.rows.filter(r=>r.cadence==='month').length], [9, 12, true, true, true, 3]);
@@ -3538,10 +3578,10 @@ async function fetchKlinesDeep(symbol, interval, total, page=1000){
   let all = [], end = null;
   while(all.length < total){
     const lim = Math.min(page, total-all.length);
-    const rows = parseKlines(await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${lim}`+(end?`&endTime=${end}`:'')));
+    const raw = await fetchJson(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${lim}`+(end?`&endTime=${end}`:'')), rows = parseKlines(raw);
     if(!rows.length) break;
     all = rows.concat(all); end = rows[0].time - 1;
-    if(rows.length < lim) break;
+    if((raw||[]).length < lim) break;   // hết dữ liệu xét theo số hàng THÔ — trang đầu luôn có 1 nến đang mở bị parseKlines bỏ, đếm sau lọc sẽ dừng oan sau đúng một trang (reaudit R07)
   }
   const seen = new Set(); return all.filter(c=>{ if(seen.has(c.time)) return false; seen.add(c.time); return true; }).sort((a,b)=>a.time-b.time);
 }
@@ -4312,6 +4352,7 @@ function stockScoreOf(store, sym){
   return { sym, score:r.score, marketState:r.marketState, confidence:r.confidence, components:r.components, candles:r.candles, reason:r.reason||'',
            price: live ? live.close : L.close, prev: live ? L.close : (P ? P.close : null), chg: live ? (L.close>0 ? live.close/L.close-1 : null) : (P && P.close>0 ? L.close/P.close-1 : null),
            time:L.time, n:rows.length, source:rec.source, dd365: dd ? dd.value : null, ageH, stale: ageH > C.staleHours,
+           refStale: !!(r.refStale||r.refMissing), flags: rec.flags||[],
            confirm: confirmSignal(rows), kind: cheapKind(r.components) };
 }
 function stockScores(store, syms){
@@ -4432,6 +4473,8 @@ const planCmpNote = (cmp, events, old) => {
     + (small ? `Dưới 10 lệnh thì lãi/thua chưa nói được gì; chỉ so được sụt tối đa. ` : `Cách nào thắng cả toàn kỳ và 12 tháng với sụt nhỏ hơn thì đáng dùng; bằng nhau thì chọn cách ít lệnh hơn. `)
     + `Mọi dòng khớp ở giá mở phiên sau tín hiệu, cùng bộ lọc với Gợi ý; tham số được chọn và đánh giá trên cùng dữ liệu (xem "Kiểm định ngoài mẫu" ngay dưới), rổ mã lấy theo danh sách hiện tại — kết quả dễ đẹp hơn thật.`;
 };
+/* Thứ tự chọn mã dùng CHUNG cho bộ Gợi ý (live) và simulatePicks (backtest): Hồi nhiều trước, rồi điểm — reaudit R05 (trước: live xếp Hồi, backtest xếp điểm). */
+const pickOrder = (a, b) => ((b.conf||0)-(a.conf||0)) || ((b.score||0)-(a.score||0));
 const entryOk = (rule, b, P) => {
   const need = (P && P.needConfirm) || SCREEN_V1.needConfirm, min = (P && P.entryMin) || SCREEN_V1.entryMin, rearm = (P && P.rearm) || EVENT_V1.rearm;
   const now = b.score!=null && b.score >= min, confirmed = (b.peak!=null ? b.peak : b.score) >= min && b.score >= min - rearm && (b.conf||0) >= need;
@@ -4442,6 +4485,8 @@ const entryOk = (rule, b, P) => {
 function entryDecision(b, P){
   const why = [], rearm = P.rearm || EVENT_V1.rearm;
   if(b.stale) why.push('dữ liệu cũ'); else if(b.confidence===P.lowConf) why.push('dữ liệu thiếu hoặc cũ');
+  if(b.refStale) why.push('thiếu/cũ tham chiếu');                                      // reaudit R06: chỉ số tham chiếu thiếu hay không cùng ngày với nến cuối ⇒ loại
+  if(b.flags && b.flags.length) why.push('dữ liệu bất thường: '+b.flags[0]);            // reaudit R03: nhảy giá > 40% trong cửa sổ chấm điểm ⇒ loại tới khi xác minh
   if(b.dd!=null && b.dd > P.maxDd) why.push(`rớt ${fmtPct(b.dd)} từ đỉnh — kiểm tra doanh nghiệp`);
   const eligible = b.score!=null && (b.score >= P.entryMin || (b.peak!=null && b.peak >= P.entryMin && b.score >= P.entryMin - rearm));   // rẻ hôm nay, hoặc vừa rẻ trong 21 phiên và chưa hết rẻ
   return { eligible, why, ok: eligible && !why.length && entryOk(P.entryRule||'score', b, P) };
@@ -4450,15 +4495,14 @@ function screenPicks(ranks, mine, P){
   P = {...SCREEN_V1, ...(P||{})}; const held = new Set(mine||[]), buy = [], watch = [], excluded = [];
   for(const r of (ranks||[])){
     const peak = r.peak21!=null ? r.peak21 : r.score, c = r.confirm ? r.confirm.count : 0, kind = r.kind ? r.kind.kind : 'mixed';
-    const d = entryDecision({score:r.score, peak, kind, conf:c, confidence:r.confidence, dd:r.dd365, stale:r.stale}, P);
+    const d = entryDecision({score:r.score, peak, kind, conf:c, confidence:r.confidence, dd:r.dd365, stale:r.stale, refStale:r.refStale, flags:r.flags}, P);
     if(!d.eligible) continue;
-    const why = (held.has(r.sym) ? ['đang giữ'] : []).concat(d.why), item = { sym:r.sym, score:r.score, peak, confirm:c, kind, dd365:r.dd365, why };
+    const why = (held.has(r.sym) ? ['đang giữ'] : []).concat(d.why), item = { sym:r.sym, score:r.score, peak, confirm:c, conf:c, kind, dd365:r.dd365, why };
     if(why.length) excluded.push(item);
     else if(d.ok) buy.push(item);
     else watch.push(item);
   }
-  const bySc = (a,b)=>(b.confirm-a.confirm) || (b.score-a.score);   // hoảng loạn vào ngay vẫn xếp theo Hồi rồi điểm
-  return { buy: buy.sort(bySc), watch: watch.sort(bySc), excluded, rule:P };
+  return { buy: buy.sort(pickOrder), watch: watch.sort(pickOrder), excluded, rule:P };
 }
 const STOCK_BT_VERSION = 'stock-bt-v7';   // v7: khớp bậc TP/SL theo đáy/đỉnh trong phiên, vào ở giá mở phiên sau, kiểm định ngoài mẫu (walk-forward)   // v6 (audit 2026-09-17): khớp giá mở phiên sau, cùng bộ lọc với Gợi ý, soi từng phiên, vị thế mở không ép bán, sự kiện chỉ tính rớt thêm khi đủ 63 phiên   // v5: kế hoạch tháng so ba cách vào (điểm · điểm+Hồi · theo kiểu rẻ)   // v4: sự kiện tách theo kiểu rẻ (cấu trúc / hoảng loạn / hỗn hợp)   // v3: thêm nghiên cứu sự kiện (điểm chạm mốc ⇒ rớt thêm / lợi suất sau); v2: kế hoạch chọn mã + VN-Index
 /* Chuỗi điểm từng phiên của một mã, tính một lần cho mỗi bản kho (38k lần chấm cho 100 mã) — backtest lưới và mô phỏng kế hoạch dùng chung. */
@@ -4545,14 +4589,19 @@ function simulatePicks(seriesMap, opts){
      mở cửa sát sàn (floorPct, cổ phiếu 6,9%; coin 0). Vị thế còn mở ở nến cuối KHÔNG ép bán — tính theo giá cuối vào equity, đếm ở exits.end, không vào n/winRate.
      cadence 'month' (cũ) = chỉ chọn ở phiên đầu tháng; 'day' = soi từng phiên như bộ Gợi ý, tối đa `picks` lệnh mua mới mỗi tháng và `picks` vị thế cùng lúc. */
   const daily = P.cadence==='day', fillOpen = P.execAt!=='close', floorPct = Number(P.floorPct)||0, maxBuys = P.maxBuysPerMonth || P.picks;
+  /* Reaudit R04: `capital` (đơn vị giá: nghìn đồng với cổ phiếu) + `lot` ⇒ số lượng làm tròn xuống lô, tiền lẻ giữ lại; `ddStop` ⇒ sụt từ đỉnh đường vốn ≥ ngưỡng thì
+     KHÔNG mở lệnh mới tới khi sụt còn ≤ nửa ngưỡng (vẫn bán theo luật). Mặc định capital 1 / lot 0 / ddStop 0 ⇒ chạy y như bản chuẩn hoá. */
+  const cap = Number(P.capital)>0 ? Number(P.capital) : 1, lot = Number(P.lot)||0, ddStop = Number(P.ddStop)||0; let halted = false, haltedDays = 0;
   const syms = Object.keys(seriesMap||{}).filter(k=>Array.isArray(seriesMap[k]) && seriesMap[k].length);
   const dates = [...new Set(syms.flatMap(k=>seriesMap[k].map(b=>b.time)))].sort((a,b)=>a-b);
   const W = (P.waitBars || CONFIRM_V1.waitBars);
   const at = Object.fromEntries(syms.map(k=>[k, new Map(seriesMap[k].map((b,i,arr)=>{ let pk = b.score; for(let q=Math.max(0,i-W+1); q<i; q++) if(arr[q].score > pk) pk = arr[q].score;
     return [b.time, {...b, peak:pk, open: b.open>0 ? b.open : b.close, prevClose: i>0 ? arr[i-1].close : null}]; }))]));
-  let cash = 1, pos = {}, peak = 1, maxDD = 0, prevMonth = null, months = 0, inMarket = 0, buysThisMonth = 0, entries = 0;
+  let cash = cap, pos = {}, peak = cap, maxDD = 0, prevMonth = null, months = 0, inMarket = 0, buysThisMonth = 0, entries = 0;
   const trades = [], eq = [], pendBuy = [], pendSell = [];
-  const buy = (k, t, px, score, spend) => { pos[k] = { time:t, score, units: spend*(1-P.fee)/px, spent:spend, held:0, lastClose:px }; entries++; };
+  const buy = (k, t, px, score, spend) => { let units = spend*(1-P.fee)/px, real = spend;
+    if(lot>0){ units = Math.floor(units/lot + 1e-9)*lot; if(units<=0){ cash += spend; return false; } real = units*px*(1+P.fee); cash += spend - real; }   // lô 100: không đủ một lô ⇒ bỏ lệnh, trả tiền
+    pos[k] = { time:t, score, units, spent:real, held:0, lastClose:px }; entries++; return true; };
   const sell = (k, t, px, exitScore, why, heldAdd) => { const p = pos[k], got = p.units*px*(1-sellFee); cash += got;
     trades.push({ sym:k, entryTime:p.time, exitTime:t, entryScore:p.score, exitScore, held:p.held+heldAdd, spent:p.spent, ret:got/p.spent-1, why }); delete pos[k]; };
   dates.forEach((t, di) => {
@@ -4574,24 +4623,30 @@ function simulatePicks(seriesMap, opts){
       if(!why) continue;
       if(!fillOpen) sell(k, t, b.close, b.score, why, 0); else if(!last) pendSell.push({k, why}); }
     /* 3) cuối phiên: tín hiệu mua (khớp phiên sau) */
-    const canPick = !last && (daily ? buysThisMonth < maxBuys : monthStart);
+    const canPick = !last && !halted && (daily ? buysThisMonth < maxBuys : monthStart);
     if(canPick){
       const slots = P.picks - Object.keys(pos).length - pendBuy.length, room = daily ? Math.min(slots, maxBuys - buysThisMonth) : slots;
       if(room > 0){
         const cands = syms.filter(k=>!pos[k] && !pendBuy.some(o=>o.k===k)).map(k=>({k, b:at[k].get(t)}))
-          .filter(x=>x.b && x.b.score <= P.entryMax && entryDecision(x.b, Q).ok).sort((a,b)=>b.b.score-a.b.score).slice(0, room);
+          .filter(x=>x.b && x.b.score <= P.entryMax && entryDecision(x.b, Q).ok).sort((a,b)=>pickOrder(a.b, b.b)).slice(0, room);   // cùng thứ tự với bộ Gợi ý (reaudit R05)
         const per = cash/slots;
         for(const x of cands){ const spend = Math.min(per, cash); if(!(spend>0)) break; cash -= spend; buysThisMonth++;
           if(fillOpen) pendBuy.push({k:x.k, score:x.b.score, spend}); else buy(x.k, t, x.b.close, x.b.score, spend); } } }
     const mtm = cash + pendBuy.reduce((a,o)=>a+o.spend,0) + Object.values(pos).reduce((a,p)=>a+p.units*p.lastClose, 0);
     if(Object.keys(pos).length) inMarket++;
-    peak = Math.max(peak, mtm); maxDD = Math.max(maxDD, peak>0 ? 1-mtm/peak : 0); eq.push({time:t, eq:mtm});
+    peak = Math.max(peak, mtm); const ddNow = peak>0 ? 1-mtm/peak : 0; maxDD = Math.max(maxDD, ddNow); eq.push({time:t, eq:mtm});
+    if(ddStop>0){ if(ddNow >= ddStop) halted = true; else if(ddNow <= ddStop/2) halted = false; if(halted) haltedDays++; }
   });
-  const end = eq.length ? eq[eq.length-1].eq : 1, cutoff = dates.length ? dates[dates.length-1]-365*86400e3 : 0;
+  const end = eq.length ? eq[eq.length-1].eq : cap, cutoff = dates.length ? dates[dates.length-1]-365*86400e3 : 0;
   const base = eq.find(e=>e.time >= cutoff);
+  /* Đại lượng reaudit ưu tiên 2: CAGR, cửa sổ 12 tháng xấu nhất (chồng lấn, không độc lập), số ngày lịch dài nhất chưa lấy lại đỉnh. */
+  const days = dates.length>1 ? (dates[dates.length-1]-dates[0])/86400e3 : 0, cagr = days>30 && end>0 ? Math.pow(end/cap, 365.25/days)-1 : null;
+  let worstY1 = null, j = 0; for(let i=0;i<eq.length;i++){ while(j<eq.length && eq[j].time < eq[i].time-365*86400e3) j++; if(j<i && eq[i].time-eq[j].time >= 350*86400e3){ const r = eq[i].eq/eq[j].eq-1; if(worstY1==null || r<worstY1) worstY1 = r; } }
+  let pk = -Infinity, pkT = null, underwater = 0; for(const e of eq){ if(e.eq >= pk-1e-12){ pk = e.eq; pkT = e.time; } else if(pkT!=null) underwater = Math.max(underwater, (e.time-pkT)/86400e3); }
   const wins = trades.filter(x=>x.ret>0).length, by = k => trades.filter(x=>x.why===k).length;
   const open = Object.entries(pos).map(([k,p])=>({ sym:k, entryTime:p.time, held:p.held, spent:p.spent, ret: p.units*p.lastClose*(1-sellFee)/p.spent-1 }));
-  return { exitScore:X, n:trades.length, entries, wins, winRate: trades.length ? wins/trades.length : null, netReturn:end-1, netY1: base ? end/base.eq-1 : null, maxDD,
+  return { exitScore:X, maxHold:P.maxHold, n:trades.length, entries, wins, winRate: trades.length ? wins/trades.length : null, netReturn:end/cap-1, netY1: base ? end/base.eq-1 : null, maxDD,
+           capital:cap, lot, ddStop, haltedDays, cagr, worstY1, underwaterDays: Math.round(underwater), eq,
            avgHold: trades.length ? trades.reduce((a,x)=>a+x.held,0)/trades.length : null, avgRet: trades.length ? trades.reduce((a,x)=>a+x.ret,0)/trades.length : null,
            exits:{ score:by('score'), time:by('time'), end:open.length }, open, months, exposure: dates.length ? inMarket/dates.length : 0, trades, bars:dates.length,
            cadence: daily ? 'day' : 'month', execAt: fillOpen ? 'nextOpen' : 'close' };
@@ -4956,8 +5011,10 @@ function openTradeOrder(M, sym, side0){
   /* Cảnh báo luật vốn trade (SWING_SIZING_V1): quá số vị thế mở, hay tháng này đã sụt quá 10% vốn trade — nhắc, không chặn (owner quyết). */
   const riskNote = () => { if(side!=='buy') return ''; const L = tradeLedger(D.transfers), sleeve = Number((settings().trade||{}).sleeve)||0, m0 = thisMonth();
     const realM = L.closed.filter(c=>c.date && c.date.slice(0,7)===m0).reduce((a,c)=>a+(c.pnlK||0),0), bits = [];
+    /* Reaudit R04: mức dừng tháng tính CẢ lỗ tạm tính của vị thế đang mở, không chỉ phần đã chốt. */
+    const openK = L.positions.reduce((a,P)=>{ const px = tradePxNow(P.mkt, P.sym), k = px!=null ? tradeToK(P.mkt, (px-P.avgPx)*P.qty) : null; return a + (k||0); }, 0), totM = realM + Math.min(0, openK);
     if(L.positions.length >= SWING_SIZING_V1.maxOpen && !L.positions.some(P=>P.sym===sym && P.mkt===M.key)) bits.push(`đang mở ${L.positions.length} vị thế — luật vốn trade tối đa ${SWING_SIZING_V1.maxOpen}`);
-    if(sleeve>0 && realM <= -sleeve*SWING_SIZING_V1.monthlyStopPct/100) bits.push(`tháng này đã chốt ${signed(Math.round(realM), fmtK)} (≤ −${SWING_SIZING_V1.monthlyStopPct}% vốn trade) — luật nói dừng tới tháng sau`);
+    if(sleeve>0 && totM <= -sleeve*SWING_SIZING_V1.monthlyStopPct/100) bits.push(`tháng này đã chốt ${signed(Math.round(realM), fmtK)}${openK<0?` và đang âm tạm tính ${signed(Math.round(openK), fmtK)}`:''} (≤ −${SWING_SIZING_V1.monthlyStopPct}% vốn trade) — luật nói dừng tới tháng sau`);
     return bits.length ? ` <span class="neg">⚠ ${bits.join(' · ')}.</span>` : ''; };
   const prev = () => { const q = parseNum(el('odQty').value), px = parseNum(el('odPx').value), v = q>0 && px>0 ? q*px : null, avail = cashAvail();
     el('odPreview').innerHTML = v==null ? 'Nhập số lượng và giá.'+riskNote() : `${side==='buy'?'Mua':'Bán'} <b>${fmtQtyM(M, q)} ${esc(sym)}</b> @ ${fmtPx(M, px)} = <b>${fmtMoneyM(M, v)}</b>${side==='sell'&&q>held+1e-9?` <span class="neg">— vượt số đang giữ (${fmtQtyM(M, held)})</span>`:''}${side==='buy'&&v>avail+1e-9?` <span class="neg">— vượt số dư (có ${fmtMoneyM(M, avail)})</span>`:''}. Ghi là một Chuyển đổi có nhãn trade ⇒ Tài sản, Danh mục và Sổ lệnh cùng đổi. Phí/thuế không tự trừ — ghi giá đã gồm phí nếu muốn sổ khớp sàn.${riskNote()}`; };
@@ -5070,25 +5127,27 @@ function bandTableHtml(M, st, sym, r){
 
 /* ---- Tab Cổ phiếu: cùng khung với DCA — hàng 1: Buy Score | Giá vốn & Danh mục (bộ chọn mã trên tiêu đề); hàng 2: Vùng giá mua | Tháng này (kế hoạch chọn mã). Lịch sử là popup. ---- */
 /* Kế hoạch tháng cho cổ phiếu — cùng luật STOCK_PLAN_V1 mà Backtest mô phỏng: mua tối đa `picks` mã điểm ≥ entryMin chưa giữ, bán khi điểm ≤ exits[0]. Hàm thuần theo (ranks, mine, trades, month). */
-function stockPlanNow(ranks, mine, transfers, month, P){
-  P = P || STOCK_PLAN_V1;
-  const held = (mine||[]).map(s=>{ const r = (ranks||[]).find(x=>x.sym===s); return { sym:s, score: r && r.score!=null ? r.score : null }; });
+function stockPlanNow(ranks, mine, transfers, month, P, ageOf){
+  P = P || STOCK_PLAN_V1; const X = P.exitScore!=null ? P.exitScore : P.exits[0];
+  /* `ageOf(sym)` = số phiên đã giữ (từ kho) — để dòng "nên bán" xét cả HẠN GIỮ như engine, không chỉ điểm (reaudit R05). */
+  const held = (mine||[]).map(s=>{ const r = (ranks||[]).find(x=>x.sym===s), age = ageOf ? ageOf(s) : null; return { sym:s, score: r && r.score!=null ? r.score : null, held:age }; });
   /* Cùng bộ lọc VÀ cùng luật vào với bộ "Gợi ý" ở Trading: mua xếp trước, theo dõi sau; mã bị loại không vào.
      `entryRule` chỉ truyền khi CÓ giá trị — spread một `undefined` sẽ đè mất mặc định của SCREEN_V1 và rơi về luật cũ theo điểm. */
   const pk = screenPicks(ranks, mine, {entryMin:P.entryMin, ...(P.entryRule ? {entryRule:P.entryRule} : {})});
   const candidates = [...pk.buy.map(x=>({sym:x.sym, score:x.score, confirmed:true})), ...pk.watch.map(x=>({sym:x.sym, score:x.score, confirmed:false}))];
-  const sellDue = held.filter(h=>h.score!=null && h.score<=P.exits[0]);
+  const sellDue = held.filter(h=>(h.score!=null && h.score<=X) || (h.held!=null && h.held>=P.maxHold)).map(h=>({ ...h, why: h.score!=null && h.score<=X ? 'điểm' : 'hạn' }));
   const T = (transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock' && String(t.date||'').slice(0,7)===month);
   const L = tradeLedger((transfers||[]).filter(t=>t.trade && t.trade.mkt==='stock')), closedM = L.closed.filter(c=>String(c.date||'').slice(0,7)===month);
-  return { candidates, picks:P.picks, held, sellDue, buysM: T.filter(t=>t.trade.side==='buy').length, sellsM: T.filter(t=>t.trade.side==='sell').length,
-           realizedM: closedM.reduce((a,c)=>a+(c.pnlK||0),0), entryMin:P.entryMin, exit:P.exits[0], maxHold:P.maxHold };
+  const buysM = T.filter(t=>t.trade.side==='buy').length;
+  return { candidates, picks:P.picks, held, sellDue, buysM, buyBlocked: buysM >= P.picks, sellsM: T.filter(t=>t.trade.side==='sell').length,
+           realizedM: closedM.reduce((a,c)=>a+(c.pnlK||0),0), entryMin:P.entryMin, exit:X, maxHold:P.maxHold };
 }
 function stockSuggestion(p, sym, score){
   const bits = [score==null ? 'Chưa có điểm' : `Score ${score} ${sym}`];
   const buys = p.candidates.filter(c=>c.confirmed), watch = p.candidates.filter(c=>!c.confirmed);
-  bits.push(buys.length ? `đủ điều kiện mua: ${buys.slice(0,p.picks).map(c=>`${c.sym} ${c.score} ✓`).join(', ')}`
+  bits.push(p.buyBlocked ? `đã mua ${p.buysM}/${p.picks} lệnh tháng này — luật không mua thêm` : buys.length ? `đủ điều kiện mua: ${buys.slice(0,p.picks).map(c=>`${c.sym} ${c.score} ✓`).join(', ')}`
     : watch.length ? `chưa mã nào đủ điều kiện mua · theo dõi: ${watch.slice(0,p.picks).map(c=>`${c.sym} ${c.score}`).join(', ')}` : `chưa mã nào ≥ ${p.entryMin}`);
-  bits.push(p.sellDue.length ? `${p.sellDue.length} mã đang giữ đã về ≤ ${p.exit}` : 'chưa mã nào tới ngưỡng bán');
+  bits.push(p.sellDue.length ? `${p.sellDue.length} mã nên bán (${p.sellDue.map(h=>`${h.sym} ${h.why==='hạn' ? 'quá '+p.maxHold+' phiên' : '≤ '+p.exit}`).join(', ')})` : 'chưa mã nào tới ngưỡng bán');
   return bits.join(' · ');
 }
 function renderStocks(){

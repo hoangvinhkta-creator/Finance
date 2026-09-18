@@ -64,7 +64,9 @@ const SOURCES = [
 ];
 
 function normalize(rows, kind){
-  const ok = (rows||[]).filter(r=>r && isFinite(r.time) && isFinite(r.close) && r.close>0).sort((a,b)=>a.time-b.time);
+  /* Loại nến vi phạm quan hệ OHLC (high < max(open,close), low > min(open,close), high < low, giá ≤ 0) — cùng luật với parseStockStore trong app (reaudit R03). */
+  const ok = (rows||[]).filter(r=>r && isFinite(r.time) && isFinite(r.close) && r.close>0 && r.open>0 && r.high>0 && r.low>0 && r.high >= Math.max(r.open,r.close)-1e-9 && r.low <= Math.min(r.open,r.close)+1e-9 && r.high >= r.low).sort((a,b)=>a.time-b.time);
+  const bad = (rows||[]).length - ok.length; if(bad>0) normalize.dropped = (normalize.dropped||0) + bad;
   const byDay = new Map(); for(const r of ok) byDay.set(isoDay(r.time), r);
   let out = [...byDay.values()].map(r=>({ ...r, time: Date.parse(isoDay(r.time)) }));
   if(kind!=='index' && out.length){
@@ -148,6 +150,6 @@ for(const sym of ALL){
 if(stopped) console.log(`\n⏱  Dừng tải giữa chừng: ${stopped}. Mã chưa kịp làm mới giữ nguyên nến cũ.`);
 mkdirSync('data', { recursive:true });
 writeFileSync(OUT, JSON.stringify(out));
-console.log(`\n${okCount}/${ALL.length} mã lấy được hôm nay · ${miss} mã giữ nến cũ · ghi ${OUT} (${(JSON.stringify(out).length/1024).toFixed(0)} KB) · ${Math.round((Date.now()-startedAt)/1000)} giây`);
+console.log(`\n${okCount}/${ALL.length} mã lấy được hôm nay · ${miss} mã giữ nến cũ${normalize.dropped?` · loại ${normalize.dropped} nến OHLC sai`:''} · ghi ${OUT} (${(JSON.stringify(out).length/1024).toFixed(0)} KB) · ${Math.round((Date.now()-startedAt)/1000)} giây`);
 if(dead.size) console.log(`Nguồn bỏ giữa chừng vì hỏng ${DEAD_AFTER} lần liên tiếp: ${[...dead].join(', ')}`);
 if(okCount===0){ console.error('Không nguồn nào trả dữ liệu cho bất kỳ mã nào — xem log từng mã ở trên.'); process.exit(1); }
