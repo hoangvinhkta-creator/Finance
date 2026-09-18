@@ -540,7 +540,7 @@ Sau đó chia ba nhóm:
 loạn* vào ngay khi ≥ 75) đã bỏ khỏi giao diện vì dữ liệu 5 năm không ủng hộ (2022 chỉ 3/11 lần có
 lãi); nó vẫn được tính trong phần gấp của popup Backtest.
 
-**Hai phương án A / B, chọn ngay dưới bộ chọn danh sách.** Cùng luật vào, chỉ khác lúc bán:
+**Hai phương án A / B, chọn ở tiêu đề card "Sổ lệnh giả" (tab Trading).** Cùng luật vào, chỉ khác lúc bán:
 
 | Nút | Bán khi điểm ≤ | Giữ tối đa | 5 năm |
 |---|---|---|---|
@@ -809,7 +809,11 @@ Mục đích: xem hai phương án "nói gì" bằng thời gian thật, thay v�
 - Bán: điểm về ≤ ngưỡng của phương án sau T+2, hoặc đã giữ đủ hạn; khớp giá mở phiên sau; mở sát sàn
   thì dời sang phiên sau. Đường vốn sụt ≥ 15% từ đỉnh thì tạm không mua mới.
 - Bảng luôn 8 dòng: vị thế mở (kèm số phiên đã giữ và điểm hôm nay), lệnh chờ khớp, lệnh đã bán gần
-  nhất, và dòng Tổng (tiền mặt, tài sản, lãi/lỗ đã chốt). Nút **Đóng** bán tay ở giá hiện tại.
+  nhất, và dòng Tổng (tiền mặt, tài sản, lãi/lỗ đã chốt).
+- **Ghi lệnh tay được:** nút **+ Mua** ở tiêu đề card (cạnh hai nút A / B), nút **Bán** ở cuối mỗi
+  dòng vị thế (bán cả hoặc một phần, sửa được giá). Popup tự điền số lượng và giá hiện tại, nói rõ
+  tiêu/về bao nhiêu sau phí; không cho mua vượt tiền trong sổ hay vượt 2 vị thế. Mua tay rồi thì vị
+  thế đó **vẫn do luật quản** — lần Cập nhật kế, điểm về ≤ ngưỡng hoặc hết hạn giữ là sổ tự bán.
 - Sổ chỉ chạy khi mở app; ngày không mở thì tín hiệu mua ngày đó bỏ qua. Cài đặt → Nâng cao có nút
   **Xoá sổ lệnh giả** để bắt đầu lại.
 

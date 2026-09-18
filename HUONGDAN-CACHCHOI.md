@@ -624,10 +624,10 @@ trên kho 5 năm B là bộ duy nhất thắng VN-Index toàn kỳ, nhưng ở n
 +53,7%) nó chỉ +18,1%. Chưa đủ để chọn một bỏ một — vì thế mới giữ cả hai để chạy **sổ lệnh giả**
 (mục 5.6) song song.
 
-Bộ chọn **A / B** nằm trên card xếp hạng của tab Trading (hàng ngay dưới bộ chọn danh sách). Đổi
-phương án **không đổi danh sách Gợi ý** (luật vào chung), chỉ đổi ba chỗ: card "Tháng này" ở tab
-Chứng khoán (ngưỡng bán và hạn giữ của mã đang giữ), chip ngưỡng bán trong popup Tính PnL, và sổ
-lệnh giả đang hiện.
+Bộ chọn **A / B** nằm ngay trên tiêu đề card **Sổ lệnh giả** (tab Trading). Đổi phương án **không
+đổi danh sách Gợi ý** (luật vào chung) — vì thế nó không còn đặt ở card xếp hạng nữa — chỉ đổi ba
+chỗ: sổ lệnh giả đang hiện, card "Tháng này" ở tab Chứng khoán (ngưỡng bán và hạn giữ của mã đang
+giữ), và chip ngưỡng bán trong popup Tính PnL.
 
 Popup Backtest cho mỗi phương án **hai dòng**: dòng chuẩn hoá (vốn 1, không lô) và dòng "tài khoản"
 (vốn 30.000k, lô 100, dừng mở lệnh mới khi đường vốn sụt ≥ 15% từ đỉnh, mở lại khi còn ≤ 7,5%) —
@@ -661,8 +661,28 @@ Sổ chạy **đúng luật của phương án** mỗi lần bấm Cập nhật,
    không mở app thì tín hiệu mua ngày đó bị bỏ qua (bán vẫn được xét đủ vì chuỗi điểm của mã đang
    giữ được chấm lại cho mọi phiên đã trôi) — sổ này đo "nếu mở app đều" chứ không đo máy chạy 24/7.
 
-Nút **Đóng** trên mỗi vị thế bán tay ở giá hiện tại (ghi lý do "tay"). Cài đặt → Nâng cao có nút
-**Xoá sổ lệnh giả** để bắt đầu lại. Ngày 18/09 cả hai sổ đều trống vì bộ Gợi ý ra 0 mua.
+### Mua bán tay trên sổ lệnh giả
+
+Sổ tự chạy theo luật, nhưng vẫn ghi được lệnh tay để thử một ý riêng:
+
+| Muốn gì | Bấm đâu |
+|---|---|
+| Mua một mã vào sổ giả | Nút **+ Mua** ở tiêu đề card Sổ lệnh giả (cạnh hai nút A / B) |
+| Bán (cả hoặc một phần) | Nút **Bán** ở cuối dòng vị thế đang mở |
+| Bắt đầu lại từ đầu | Cài đặt → Nâng cao → **Xoá sổ lệnh giả** |
+
+Popup mua/bán có ba ô: **mã** (mua: cả bảng xếp hạng kèm điểm; bán: chỉ mã đang giữ), **số lượng**
+(tự điền = tiền trong sổ chia cho số chỗ trống, làm tròn lô 100; bán tự điền = bán hết, sửa nhỏ hơn
+để bán một phần) và **giá** (mặc định giá hiện tại, sửa được để thử giá khác). Dòng ngay dưới cho
+biết tiêu/về bao nhiêu sau phí và lãi/lỗ nếu bán.
+
+Luật chặn: không mua vượt số tiền trong sổ, không vượt 2 vị thế, không bán mã chưa giữ. Mua thêm mã
+đang giữ thì giá vào thành bình quân theo số lượng và T+2 tính lại từ lần mua sau. **Mua tay rồi thì
+vị thế đó vẫn do luật của phương án quản**: lần Cập nhật kế, điểm về ≤ ngưỡng (A: 65 · B: 55) hoặc
+giữ quá hạn (42 · 63 phiên) là sổ tự bán. Lệnh tay ghi lý do "tay" trong cột Trạng thái nên vẫn tách
+được khỏi lệnh do luật sinh ra.
+
+Ngày 18/09 cả hai sổ đều trống vì bộ Gợi ý ra 0 mua — muốn thử thì dùng **+ Mua**.
 
 ## 5.5. Quy trình hằng tháng
 
