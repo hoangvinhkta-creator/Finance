@@ -337,7 +337,16 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .seg button{height:30px;padding:0 14px;font-size:13px;color:var(--ink2);border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}
 .seg button:hover{background:var(--soft)}
-.pickrule{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 0 6px}   /* hàng chọn luật vào của bộ Gợi ý — chỉ hiện khi đang ở bộ Gợi ý */
+.pickrule{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 0 6px}   /* hàng chọn phương án A/B (ngưỡng bán · hạn giữ) trên card xếp hạng — card này height:0 nên không đổi chiều cao hàng */
+/* Phân rã điểm thành panel nhỏ hiện khi di chuột / chạm vào ô Buy Score (owner 2026-09-18) — chỗ cũ dành cho Sổ lệnh giả, card giữ nguyên kích thước. */
+.pop{position:relative;cursor:help}
+.pop .popi{display:inline-block;width:14px;height:14px;line-height:13px;text-align:center;border:1px solid var(--faint);border-radius:50%;font-size:10px;font-style:italic;color:var(--mute);margin-left:2px;vertical-align:1px}
+.pop .popover{display:none;position:absolute;left:-12px;top:calc(100% + 8px);z-index:40;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:min(560px,calc(100vw - 40px));box-shadow:0 10px 30px rgba(0,0,0,.14);cursor:default;text-align:left}
+.pop:hover .popover,.pop.open .popover{display:block}
+@media (max-width:820px){ .pop .popover{position:fixed;left:16px;right:16px;top:auto;width:auto;margin-top:8px} }   /* điện thoại: neo theo màn hình để không tràn phải */
+.pop .popover .tbl.compact tbody tr{height:auto}
+.dialog details.more{margin-top:12px;border-top:1px solid var(--line);padding-top:6px}
+.dialog details.more>summary{font-size:12px;padding:4px 0}
 .pickrule .seg button{height:26px;padding:0 10px;font-size:12px}
 .pickrule small{font-size:12px}
 .seg button.on{background:var(--ink);color:#fff;font-weight:600}
@@ -750,13 +759,14 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <div class="colhead" style="padding:0 0 10px"><h2>Buy Score <small id="tdHeroSub"></small></h2><div style="display:flex;align-items:center;gap:10px;flex:none"><small class="mute" id="tdHeroSrc"></small><div class="seg" id="tdMkt"></div></div></div>
           <div class="hero">
             <div><div class="lbl mute" id="tdHeroLbl" style="font-size:12px;margin-bottom:6px">Giá</div><div class="big" id="tdHeroPrice">—</div></div>
-            <div><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Buy Score</div><div class="big" id="tdHeroScore">—</div></div>
+            <div class="pop" id="tdScorePop" title="Di chuột hoặc chạm để xem phân rã 7 thành phần"><div class="lbl mute" style="font-size:12px;margin-bottom:6px">Buy Score <span class="popi">i</span></div><div class="big" id="tdHeroScore">—</div>
+              <div class="popover"><div class="colhead" style="padding:0 0 4px"><h2>Phân rã điểm <small>7 thành phần, cùng khung Buy Score</small></h2><small class="mute" id="tdAlgo"></small></div><table class="tbl compact" id="tdHeroScoreTable"></table></div></div>
             <div class="vs" id="tdHeroState"></div>
           </div>
           <div class="split one" id="tdHeroMeta"></div>
           <div class="warnline" id="tdWarn" hidden></div>
-          <div class="colhead" style="padding:10px 0 4px"><h2>Phân rã điểm <small>7 thành phần, cùng khung Buy Score</small></h2><small class="mute" id="tdAlgo"></small></div>
-          <div class="scroll"><table class="tbl compact" id="tdHeroScoreTable"></table></div>
+          <div class="colhead" style="padding:10px 0 4px"><h2>Sổ lệnh giả <small id="tdPaperSub"></small></h2><small class="mute" id="tdPaperMeta"></small></div>
+          <div class="scroll"><table class="tbl compact" id="tdPaperTable"></table></div>
         </section>
         <section class="card pad" id="tdListCard">
           <div class="colhead" style="padding:0 0 6px"><h2>Xếp theo điểm <small id="tdListSub"></small></h2><div class="seg" id="tdSetPick" style="flex:none"></div></div>
@@ -847,6 +857,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
             <div class="row"><button class="btn" id="btnImportDcaHistory">Nạp lịch sử mua coin (file cũ)</button><span class="mute" id="dcaHistoryInfo"></span></div>
             <div class="row"><button class="btn" id="btnImportStockHistory">Nạp lịch sử lệnh VCBS (ảnh 17/09/2026)</button><span class="mute" id="stockHistoryInfo"></span></div>
             <div class="row"><button class="btn" id="btnReconcileStocks">Đối chiếu danh mục VCBS (ảnh 17/09/2026)</button><span class="mute" id="stockReconInfo"></span></div>
+            <div class="row"><button class="btn" id="btnPaperReset">Xoá sổ lệnh giả (Trading)</button><span class="mute" id="paperInfo"></span></div>
             <div class="hint" style="padding:8px 0 0">29 lần mua BTC/ETH/ADA và 39 lần nạp/rút USDT từ file Excel theo dõi cũ. Mua coin quy đổi VNĐ theo tỷ giá của lần nạp USDT gần ngày đó nhất. Chỉ ghi vào lịch sử Chuyển đổi để tính giá vốn — <b>không đụng số lượng đang có</b>. Hai mẻ tách riêng, mỗi mẻ chỉ nạp một lần.</div>
           </details>
         </section>
@@ -1148,7 +1159,7 @@ const el = id => document.getElementById(id);
    STORE — hai adapter cùng API: Firestore (thật) và localStorage (thử cục bộ).
    Mọi document được nạp về state khi đăng nhập; UI render từ state; ghi nền.
    ===================================================================== */
-const COLLECTIONS = ['transactions','debts','holdings','transfers','months','snaps','prices','settings'];
+const COLLECTIONS = ['transactions','debts','holdings','transfers','months','snaps','paper','prices','settings'];   // paper = sổ lệnh giả (Trading), một document mỗi thị trường × phương án
 
 function makeLocalStore(){
   const KEY = 'fintrace.local.v1';
@@ -1164,7 +1175,7 @@ function makeLocalStore(){
     async signIn(){ return {uid:'local', email:'chế độ thử cục bộ'}; },
     async signOut(){},
     async loadAll(){ return {transactions:list('transactions'), debts:list('debts'), holdings:list('holdings'), transfers:list('transfers'),
-      months:Object.fromEntries(list('months').map(m=>[m.id,m])), snaps:Object.fromEntries(list('snaps').map(x=>[x.id,x])),
+      months:Object.fromEntries(list('months').map(m=>[m.id,m])), snaps:Object.fromEntries(list('snaps').map(x=>[x.id,x])), paper:Object.fromEntries(list('paper').map(x=>[x.id,x])),
       prices:(db.prices.current||{}), settings:(db.settings.main||null)}; },
     newId(){ return 'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); },
     async set(c,id,data){ db[c][id] = JSON.parse(JSON.stringify(data)); save(); },
@@ -1195,11 +1206,11 @@ async function makeFirestoreStore(){
     async signOut(){ await authM.signOut(auth); uid=null; },
     async loadAll(){
       const get = async c => (await fsM.getDocs(colRef(c))).docs.map(fromFs);
-      const [transactions,debts,holdings,transfers,months,snaps] = await Promise.all(['transactions','debts','holdings','transfers','months','snaps'].map(get));
+      const [transactions,debts,holdings,transfers,months,snaps,paper] = await Promise.all(['transactions','debts','holdings','transfers','months','snaps','paper'].map(get));
       const prices = await fsM.getDoc(docRef('prices','current'));
       const settings = await fsM.getDoc(docRef('settings','main'));
       return {transactions,debts,holdings,transfers, months:Object.fromEntries(months.map(m=>[m.id,m])),
-        snaps:Object.fromEntries(snaps.map(x=>[x.id,x])),
+        snaps:Object.fromEntries(snaps.map(x=>[x.id,x])), paper:Object.fromEntries(paper.map(x=>[x.id,x])),
         prices: prices.exists()?prices.data():{}, settings: settings.exists()?settings.data():null};
     },
     newId(){ return fsM.doc(colRef('transactions')).id; },
@@ -1227,8 +1238,8 @@ async function makeFirestoreStore(){
 let store = null;
 const state = {
   uid:null, email:null, mode:'local',
-  data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, snaps:{}, settings:{}},
-  month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth', stockSym:'FPT', tradeMkt:'stock', tradeSym:{stock:'FPT', coin:'BTC'}, tradeSet:{stock:'PICK', coin:'PICK'}, pickRule:'kind',
+  data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, snaps:{}, paper:{}, settings:{}},
+  month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth', stockSym:'FPT', tradeMkt:'stock', tradeSym:{stock:'FPT', coin:'BTC'}, tradeSet:{stock:'PICK', coin:'PICK'}, planVariant:'A',
   edit:{chi:null, thu:null, receivable:null, payable:null},
   period:'m0', exUnusual:false, scn:{prices:{}, name:'', key:null, cryptoPct:0}, holdOpen:{},
 };
@@ -3248,11 +3259,12 @@ function testStocks(){
     const R2 = [{sym:'P', score:80, confidence:'HIGH', dd365:0.3, confirm:{ok:false, count:0}, kind:{kind:'panic'}}, {sym:'S', score:86, confidence:'HIGH', dd365:0.5, confirm:{ok:false, count:1}, kind:{kind:'struct'}}, {sym:'M', score:78, confidence:'HIGH', dd365:0.4, confirm:{ok:true, count:2}, kind:{kind:'mixed'}},
                 {sym:'L', score:68, peak21:82, confidence:'HIGH', dd365:0.4, confirm:{ok:true, count:3}, kind:{kind:'struct'}},   // vừa chạm 82, đã hồi, còn 68 ⇒ mua theo cách chờ xác nhận
                 {sym:'N', score:68, peak21:70, confidence:'HIGH', dd365:0.4, confirm:{ok:true, count:3}, kind:{kind:'struct'}}];  // chưa từng chạm 75 ⇒ không xét
-    chk('bộ Gợi ý theo kiểu: L (đã chạm 82, hồi 3/3) xếp đầu, rồi M, P; S theo dõi; N không xét', [screenPicks(R2, []).buy.map(x=>x.sym), screenPicks(R2, []).watch.map(x=>x.sym)], [['L','M','P'], ['S']]);
+    chk('bộ Gợi ý theo kiểu: L (đã chạm 82, hồi 3/3) xếp đầu, rồi M, P; S theo dõi; N không xét', [screenPicks(R2, [], {entryRule:'kind'}).buy.map(x=>x.sym), screenPicks(R2, [], {entryRule:'kind'}).watch.map(x=>x.sym)], [['L','M','P'], ['S']]);
+    chk('mặc định SCREEN_V1 là confirm (2026-09-18): P hoảng loạn 0/3 rơi về theo dõi, xếp Hồi nhiều trước', [screenPicks(R2, []).buy.map(x=>x.sym), screenPicks(R2, []).watch.map(x=>x.sym)], [['L','M'], ['S','P']]);
     chk('cùng ranks, luật confirm: L và M mua (P hoảng loạn 0/3 phải chờ)', screenPicks(R2, [], {entryRule:'confirm'}).buy.map(x=>x.sym), ['L','M']);
     chk('luật cũ theo điểm: P, S, M mua ngay; L (68, đã chạm 82) chỉ theo dõi', [screenPicks(R2, [], {entryRule:'score'}).buy.map(x=>x.sym).sort(), screenPicks(R2, [], {entryRule:'score'}).watch.map(x=>x.sym)], [['M','P','S'], ['L']]);
-    /* Hai tab phụ của bộ Gợi ý (owner 2026-09-18): chọn luật vào ngay trên tab Trading để so rồi quyết. */
-    chk('PICK_RULES: đúng 2 luật, kiểu rẻ đứng trước, và mặc định của state khớp SCREEN_V1', [PICK_RULES.map(x=>x.key), PICK_RULES.length, state.pickRule, SCREEN_V1.entryRule], [['kind','confirm'], 2, 'kind', 'kind']);
+    /* Hai phương án đang nghiên cứu (owner chốt 2026-09-18): A bán ≤ 65 · giữ 42, B bán ≤ 55 · giữ 63; cùng luật vào confirm. */
+    chk('PLAN_VARIANTS: đúng hai phương án A/B, mặc định A, luật vào chung là confirm', [PLAN_VARIANTS.map(v=>[v.key, v.exitScore, v.maxHold]), state.planVariant, SCREEN_V1.entryRule, variantPlan(STOCK_PLAN_V1, planVariant('B')).maxHold, variantPlan(STOCK_PLAN_V1, planVariant('B')).entryRule, planVariant('zzz').key], [[['A',65,42],['B',55,63]], 'A', 'confirm', 63, 'confirm', 'A']);
     chk('pickRuleText nói đúng luật đang chọn', [/hoảng loạn/.test(pickRuleText({entryRule:'kind'})), /Hồi ≥ 2\/3/.test(pickRuleText({entryRule:'kind'})), /hoảng loạn/.test(pickRuleText({entryRule:'confirm'})), /đã chạm 75 trong 21 phiên, còn ≥ 65 và Hồi ≥ 2\/3/.test(pickRuleText({entryRule:'confirm'})), pickRuleText({entryRule:'score'})], [true, true, false, true, 'điểm hôm nay ≥ 75']);
     chk('hai luật cho hai danh sách mua khác nhau trên cùng ranks ⇒ có cái để so', [screenPicks(R2, [], {entryRule:'kind'}).buy.map(x=>x.sym), screenPicks(R2, [], {entryRule:'confirm'}).buy.map(x=>x.sym)], [['L','M','P'], ['L','M']]);
     chk('card Tháng này đi theo luật được chọn, không kẹt ở kind', [stockPlanNow(R2, [], [], '2026-09', {...STOCK_PLAN_V1, entryRule:'kind'}).candidates.filter(c=>c.confirmed).map(c=>c.sym), stockPlanNow(R2, [], [], '2026-09', {...STOCK_PLAN_V1, entryRule:'confirm'}).candidates.filter(c=>c.confirmed).map(c=>c.sym)], [['L','M','P'], ['L','M']]);
@@ -3267,6 +3279,7 @@ function testStocks(){
       chk('vào muộn theo xác nhận: chạm 85 rồi tụt về 70 có dấu hồi ⇒ confirm vào (peak trong 21 phiên), luật cũ không vào', [simulatePicks({A:late}, {exitScore:65, entryRule:'confirm'}).entries, simulatePicks({A:late}, {exitScore:65}).entries], [1, 0]); }
     const btc = stockBacktestAll(big, ['FPT','VCB','HPG']);
     chk('backtest trả planCmp 3 cách vào × 3 ngưỡng = 9 dòng soi từng phiên, plan cũ 3 dòng đầu tháng, có storeAt', [btc.planCmp.length, btc.planCmp.filter(x=>x.rule==='kind').length, btc.plan.length, btc.planCmp.every(x=>x.cadence==='day'), btc.plan.every(x=>x.cadence==='month'), btc.storeAt===big.updatedAt], [9, 3, 3, true, true, true]);
+    chk('backtest trả variants: A/B × (chuẩn hoá, tài khoản) = 4 dòng, luật confirm soi từng phiên, B giữ 63, dòng tài khoản vốn 30.000 lô 100', [btc.variants.length, btc.variants.every(x=>x.rule==='confirm' && x.cadence==='day'), btc.variants.find(x=>x.key==='B'&&!x.acct).maxHold, btc.variants.filter(x=>x.acct).length, btc.version], [4, true, 63, 2, 'stock-bt-v8']);
     { /* Bậc cắt lỗ theo ĐÁY trong phiên (audit F05): vào 100, phiên sau đáy 95 đóng 100 ⇒ chạm −4% (SL1) dù giá đóng không đổi; chuỗi không có low ⇒ không chạm. */
       const T = i => Date.UTC(2026,0,5) + i*86400e3;
       const wick = [ {time:T(0), close:100, open:100, high:100, low:100, score:80}, {time:T(1), close:100, open:100, high:101, low:95, score:80}, {time:T(2), close:100, open:100, high:100, low:100, score:80}, {time:T(3), close:100, open:100, high:100, low:100, score:80} ];
@@ -3283,12 +3296,51 @@ function testStocks(){
       chk('STOCK_SWING_RULES và COIN_SWING_RULES đều vào ở giá mở phiên sau', [STOCK_SWING_RULES.execAt, COIN_SWING_RULES.execAt], ['nextOpen', 'nextOpen']); }
     { const wf = walkForward(big, ['FPT','VCB','HPG']);
       chk('walkForward: chia đôi kỳ, 9 bộ lưới có train/test, kế hoạch 3 cũ + 9 mới, chọn theo nửa đầu và "biết trước" theo nửa sau', [wf.grid.rows.length, wf.plan.rows.length, wf.cut > wf.from && wf.cut < wf.to, wf.grid.best.train >= Math.max(...wf.grid.rows.map(r=>r.train)) - 1e-12, wf.grid.oracle.test >= Math.max(...wf.grid.rows.map(r=>r.test)) - 1e-12, wf.plan.rows.filter(r=>r.cadence==='month').length], [9, 12, true, true, true, 3]);
-      chk('walkForward: kho rỗng ⇒ null; backtest tổng trả wf', [walkForward(big, []), !!stockBacktestAll(big, ['FPT','VCB']).wf], [null, true]); }
+      chk('walkForward: kho rỗng ⇒ null; backtest tổng trả wf', [walkForward(big, []), !!stockBacktestAll(big, ['FPT','VCB']).wf], [null, true]);
+      chk('walkForward trả variants A/B với nửa đầu/nửa sau (không chọn tham số)', [wf.variants.map(v=>v.key), wf.variants.every(v=>typeof v.train==='number' && typeof v.test==='number' && v.rule==='confirm')], [['A','B'], true]); }
     chk('planCmpNote: mẫu nhỏ nói thẳng "dưới 10 lệnh", so sụt tối đa; thiếu dòng ⇒ chuỗi rỗng', [planCmpNote(btc.planCmp, btc.events).includes('Dưới 10 lệnh') || planCmpNote(btc.planCmp, btc.events).includes('đáng dùng'), planCmpNote([], []).length], [true, 0]);
     {     const oldRows = big.symbols.FPT.rows.map(r=>({...r, time: r.time - 400*86400e3})), stOld = { symbols:{ FPT:{ rows:oldRows } }, index:{ rows: big.index.rows.map(r=>({...r, time:r.time - 400*86400e3})) } };
     const so = stockScoreOf(stOld, 'FPT');
     chk('mã có nến cuối cách hơn một năm ⇒ Confidence LOW + stale, bộ Gợi ý loại với lý do "dữ liệu cũ" (audit F03)', [so.confidence, so.stale, screenPicks([{...so, score:85, confirm:{count:3}, kind:{kind:'panic'}}], []).excluded[0].why[0]], ['LOW', true, 'dữ liệu cũ']);
-    chk('entryDecision: cùng một hàm cho live và backtest — LOW ⇒ why, rớt 70% ⇒ why, đủ ⇒ ok', [entryDecision({score:85, confidence:'LOW'}, SCREEN_V1).why.length, entryDecision({score:85, dd:0.7}, SCREEN_V1).ok, entryDecision({score:85, kind:'panic', dd:0.3, confidence:'HIGH'}, SCREEN_V1).ok, entryDecision({score:60}, SCREEN_V1).eligible], [1, false, true, false]); } }
+    chk('entryDecision: cùng một hàm cho live và backtest — LOW ⇒ why, rớt 70% ⇒ why, đủ ⇒ ok', [entryDecision({score:85, confidence:'LOW'}, SCREEN_V1).why.length, entryDecision({score:85, dd:0.7}, SCREEN_V1).ok, entryDecision({score:85, kind:'panic', dd:0.3, confidence:'HIGH', conf:2}, SCREEN_V1).ok, entryDecision({score:85, kind:'panic', dd:0.3, confidence:'HIGH', conf:0}, SCREEN_V1).ok, entryDecision({score:60}, SCREEN_V1).eligible], [1, false, true, false, false]); } }
+  console.log('%c7b — paperStep: sổ lệnh giả chạy đúng luật phương án, khớp giá mở phiên sau, T+2, trần/sàn, lô, idempotent','font-weight:600');
+  { const D0 = Date.UTC(2026,8,1), d = i => D0 + i*86400e3;
+    const mkSer = (opens, closes, scores) => opens.map((o,i)=>({ time:d(i), open:o, close:closes[i], score:scores[i] }));
+    const serX = mkSer([100,100,104,106,108,110,112], [100,101,105,107,109,111,113], [85,80,70,60,50,50,50]);
+    const rk = (t, sym, score) => ({ sym, score, time:t, peak21:score, confidence:'HIGH', dd365:0.3, confirm:{ok:true, count:3}, kind:{kind:'struct'} });
+    const PA = variantPlan(STOCK_PLAN_V1, planVariant('A')), book0 = { mkt:'stock', variant:'A', capital:30000, cash:30000, positions:[], pending:[], closed:[], lastTime:0 };
+    const opts = { P:PA, seriesOf: sym => sym==='X' ? serX : [], lot:100, floorPct:0.069, mine:[] };
+    const s1 = paperStep(book0, [rk(d(0),'X',85), rk(d(0),'Y',80)], opts);
+    chk('nến cuối có 2 mã đủ điều kiện ⇒ 2 lệnh chờ mua (tối đa picks), tiền chưa đổi, lastTime = nến cuối', [s1.pending.map(p=>[p.sym,p.side]), s1.cash, s1.lastTime===d(0)], [[['X','buy'],['Y','buy']], 30000, true]);
+    const s1b = paperStep(s1, [rk(d(0),'X',85), rk(d(0),'Y',80)], {...opts, seriesOf: sym => sym==='X' ? serX.slice(0,1) : []});
+    chk('chạy lại cùng nến ⇒ không nhân đôi (idempotent)', [s1b.pending.length, s1b.positions.length], [2, 0]);
+    const s2 = paperStep(s1, [rk(d(1),'X',80)], {...opts, seriesOf: sym => sym==='X' ? serX.slice(0,2) : []});
+    chk('phiên sau: X khớp ở GIÁ MỞ 100 với nửa tiền (15.000/100,15 ⇒ 100 CP, lô 100), Y không có nến ⇒ vẫn chờ', [s2.positions.map(p=>[p.sym,p.qty,p.px]), Math.round(s2.cash), s2.pending.map(p=>p.sym)], [[['X',100,100]], 30000-Math.round(100*100*1.0015), ['Y']]);
+    const s3 = paperStep(s2, [rk(d(4),'X',50)], {...opts, seriesOf: sym => sym==='X' ? serX.slice(0,5) : []});
+    chk('điểm về 60 ở phiên 3 (đã giữ 2 phiên = T+2) ⇒ tín hiệu bán, khớp ở giá mở phiên 4 = 108, lý do "điểm", giữ 3 phiên', [s3.closed.map(c=>[c.sym, c.sellPx, c.why, c.held]), s3.positions.length], [[['X',108,'điểm',3]], 0]);
+    chk('tiền về = 100 × 108 × (1 − 0,0025); lãi = tiền về − vốn', [Math.round(s3.cash), Math.round(s3.closed[0].pnl)], [Math.round(30000 - 100*100*1.0015 + 100*108*(1-0.0025)), Math.round(100*108*(1-0.0025) - 100*100*1.0015)]);
+    /* Sàn: mở cửa −7% so phiên trước ⇒ chưa bán, phiên sau mới bán */
+    const serF = mkSer([100,100,100,100,92.5,99], [100,100,100,100,93,99], [85,80,60,60,60,60]);
+    const bF = { ...book0, positions:[{ sym:'F', qty:100, px:100, cost:10015, since:d(1), signal:d(0), held:0 }], lastTime:d(1) };
+    const sF = paperStep(bF, [rk(d(5),'F',60)], {...opts, seriesOf: sym => sym==='F' ? serF : []});
+    chk('tín hiệu bán ở phiên 3 (T+2), phiên 4 mở sát sàn ⇒ chưa bán, khớp phiên 5 @ 99; log ghi lý do', [sF.closed.map(c=>[c.sellPx, c.to===d(5)]), sF.log.some(l=>/sát sàn/.test(l.msg))], [[[99, true]], true]);
+    /* Trần: lệnh mua bỏ khi mở cửa +7% */
+    const serC = mkSer([100,107.5], [100,108], [85,85]);
+    const sC = paperStep({ ...book0, pending:[{sym:'C', side:'buy', signal:d(0)}], lastTime:d(0) }, [rk(d(1),'C',85)], {...opts, seriesOf: sym => sym==='C' ? serC : []});
+    chk('mở cửa sát trần ⇒ bỏ lệnh mua, không mở vị thế, không mua lại cùng nến (đã có 1 lệnh mua tháng này? không — lệnh bị bỏ không tính) ⇒ đặt lại lệnh chờ', [sC.positions.length, sC.log.some(l=>/sát trần/.test(l.msg)), sC.pending.filter(p=>p.side==='buy').length], [0, true, 1]);
+    /* Hạn giữ: phương án B giữ 63 — chuỗi 5 phiên điểm cao không bán; maxHold 2 thì bán vì "hạn" */
+    const serH = mkSer([100,100,100,100,100], [100,100,100,100,100], [85,85,85,85,85]);
+    const bH = { ...book0, positions:[{ sym:'H', qty:100, px:100, cost:10015, since:d(0), signal:d(0), held:0 }], lastTime:d(0) };
+    chk('điểm còn cao ⇒ không bán; hạn giữ 2 phiên ⇒ bán vì "hạn" ở giá mở phiên 3', [paperStep(bH, [rk(d(4),'H',85)], {...opts, seriesOf: s=>serH}).closed.length, paperStep(bH, [rk(d(4),'H',85)], {...opts, P:{...PA, maxHold:2}, seriesOf: s=>serH}).closed.map(c=>[c.why, c.to===d(3)])], [0, [['hạn', true]]]);
+    /* Không đủ một lô ⇒ không mua, ghi log; coin lô 0 ⇒ số lẻ */
+    const sL = paperStep({ ...book0, cash:5000, capital:5000, pending:[{sym:'X', side:'buy', signal:d(0)}], lastTime:d(0) }, [rk(d(1),'X',80)], {...opts, seriesOf: s=>serX.slice(0,2)});
+    chk('5.000k không đủ một lô 100 CP giá 100 ⇒ không mua, log nói rõ', [sL.positions.length, sL.log.some(l=>/không đủ tiền/.test(l.msg))], [0, true]);
+    const sK = paperStep({ ...book0, cash:1000, capital:1000, pending:[{sym:'X', side:'buy', signal:d(0)}], lastTime:d(0) }, [rk(d(1),'X',80)], {...opts, lot:0, floorPct:0, P:{...PA, fee:0.001, sellTax:0, minHold:0}, seriesOf: s=>serX.slice(0,2)});
+    chk('coin (lô 0, không sàn): mua số lẻ = 500/(100×1,001) làm tròn 6 số lẻ', sK.positions[0].qty, Math.floor(500/(100*1.001)*1e6)/1e6);
+    /* Dừng mua khi sụt ≥ 15%: vốn 30.000 nhưng equity 25.000 (peak 30.000) ⇒ không đặt lệnh mua mới */
+    const sD = paperStep({ ...book0, cash:25000, peak:30000, lastTime:d(0) }, [rk(d(1),'X',85)], {...opts, seriesOf: s=>serX.slice(0,2)});
+    chk('đường vốn sụt 16,7% từ đỉnh ⇒ halted, không có lệnh chờ mua, log ghi', [sD.halted, sD.pending.length, sD.log.some(l=>/sụt/.test(l.msg))], [true, 0, true]);
+    chk('paperId ghép thị trường và phương án', paperId(MARKETS.stock, planVariant('B')), 'stock-B'); }
   console.log('%c8 — nhãn lỗi','font-weight:600');
   chk('TypeError ⇒ CORS/mất mạng', probeErrorLabel(new TypeError('Failed to fetch')), 'trình duyệt chặn (CORS) hoặc mất mạng');
   chk('HTTP ⇒ giữ thông điệp', probeErrorLabel(new Error('HTTP 404')), 'HTTP 404');
@@ -4448,14 +4500,22 @@ function eventStudyAll(store, syms, opts){
 /* ---- Bộ lọc "Gợi ý" (owner yêu cầu 2026-09-17): gom các chỉ báo thành một phép lọc chạy trong app, KHÔNG phải khuyến nghị của ai.
    Hai hạng: MUA = rẻ (điểm ≥ entryMin) + đã có dấu hồi (Hồi ≥ needConfirm) + độ tin cậy không thấp + chưa rớt quá sâu (đỉnh 1 năm ≤ maxDd; sâu hơn thì rẻ có thể vì doanh nghiệp hỏng, điểm không biết);
    THEO DÕI = rẻ nhưng thiếu xác nhận. Mã đang giữ không vào danh sách mua mới. Mã bị loại có ghi lý do. Hàm thuần. */
-const SCREEN_V1 = { entryMin:75, needConfirm:2, maxDd:0.65, lowConf:'LOW', entryRule:'kind' };
+const SCREEN_V1 = { entryMin:75, needConfirm:2, maxDd:0.65, lowConf:'LOW', entryRule:'confirm' };   // entryRule 'confirm' từ 2026-09-18 (owner chốt hai phương án đều dùng điểm + Hồi; trước là 'kind')
 /* Ba cách vào, cùng một hàm để bộ Gợi ý và backtest không bao giờ nói khác nhau:
    'score' = chỉ điểm ≥ ngưỡng (bản cũ) · 'confirm' = điểm + Hồi ≥ 2/3 · 'kind' (bước 3, owner chốt 2026-09-17) = hoảng loạn vào ngay khi ≥ ngưỡng, cấu trúc/hỗn hợp phải có Hồi ≥ 2/3. */
 const ENTRY_RULES = [{key:'score', label:'điểm ≥ 75 (cũ)'}, {key:'confirm', label:'điểm + Hồi ≥ 2/3'}, {key:'kind', label:'theo kiểu rẻ (mới)'}];
-/* Hai luật vào cho bộ "Gợi ý", owner chọn trực tiếp trên tab Trading để so rồi quyết (yêu cầu 2026-09-18).
-   `kind` là luật app dùng từ trước; `confirm` là luật mà dữ liệu 5 năm ủng hộ (xem HUONGDAN-CACHCHOI.md mục 5.4).
-   Lựa chọn nằm ở `state.pickRule` và áp cho CẢ card "Tháng này" của tab Chứng khoán — cùng một bộ lọc thì phải cùng một luật. */
-const PICK_RULES = [{key:'kind', label:'Kiểu rẻ'}, {key:'confirm', label:'Điểm + Hồi'}];
+/* Hai PHƯƠNG ÁN đang nghiên cứu (owner chốt 2026-09-18, thay cho hai tab phụ Kiểu rẻ / Điểm + Hồi): cùng luật vào "điểm + Hồi ≥ 2/3" soi từng phiên,
+   tối đa 2 vị thế · 2 lệnh mua mới/tháng, chỉ khác NGƯỜNG BÁN và HẠN GIỮ. Mọi cách chơi khác (9 bộ lưới, ba cách vào, kiểu rẻ, sự kiện) vẫn tính nhưng gấp lại trong popup Backtest.
+   Số đo 5 năm (kho sâu 08/07/2021 → 17/09/2026, VN-Index +32,6%): A 33 lệnh · thắng 66,7% · +20,6% · sụt 22,7%; B 29 lệnh · 75,9% · +51,2% · sụt 31,9% — HUONGDAN-CACHCHOI.md.
+   Lựa chọn ở `state.planVariant`, áp cho card "Tháng này" (Chứng khoán), popup Tính PnL và Sổ lệnh giả (Trading). */
+const PLAN_VARIANTS = [
+  { key:'A', label:'Bán ≤ 65 · giữ 42', exitScore:65, maxHold:42 },
+  { key:'B', label:'Bán ≤ 55 · giữ 63', exitScore:55, maxHold:63 },
+];
+const planVariant = k => PLAN_VARIANTS.find(v=>v.key===k) || PLAN_VARIANTS[0];
+const variantPlan = (PL, V) => ({ ...PL, exitScore:V.exitScore, maxHold:V.maxHold, entryRule:'confirm', cadence:'day' });
+/* Luật tài khoản cho dòng "sát thực tế" trong Backtest và cho Sổ lệnh giả (reaudit R04): vốn cố định, làm tròn lô, dừng mở lệnh mới khi đường vốn sụt ≥ 15% từ đỉnh (mở lại khi còn ≤ 7,5%). */
+const PAPER_ACCOUNT_V1 = { capitalK:30000, ddStop:0.15 };
 const pickRuleText = P => { const R = {...SCREEN_V1, ...(P||{})}, wait = `đã chạm ${R.entryMin} trong ${CONFIRM_V1.waitBars} phiên, còn ≥ ${R.entryMin-EVENT_V1.rearm} và Hồi ≥ ${R.needConfirm}/3`;
   return R.entryRule==='confirm' ? wait : R.entryRule==='score' ? `điểm hôm nay ≥ ${R.entryMin}`
     : `<i>hoảng loạn</i>: điểm ≥ ${R.entryMin} vào ngay · <i>cấu trúc</i>/<i>hỗn hợp</i>: ${wait}`; };
@@ -4471,7 +4531,7 @@ const planCmpNote = (cmp, events, old) => {
   const ob = old && old.length ? best(old) : null, small = Math.min(c.n, k.n) < 10;
   return `Đọc: cùng soi từng phiên — điểm ${f(o)}; điểm + Hồi ${f(c)}; theo kiểu rẻ ${f(k)}${ob ? `; cách cũ chọn đầu tháng ${f(ob)}` : ''}. `
     + (small ? `Dưới 10 lệnh thì lãi/thua chưa nói được gì; chỉ so được sụt tối đa. ` : `Cách nào thắng cả toàn kỳ và 12 tháng với sụt nhỏ hơn thì đáng dùng; bằng nhau thì chọn cách ít lệnh hơn. `)
-    + `Mọi dòng khớp ở giá mở phiên sau tín hiệu, cùng bộ lọc với Gợi ý; tham số được chọn và đánh giá trên cùng dữ liệu (xem "Kiểm định ngoài mẫu" ngay dưới), rổ mã lấy theo danh sách hiện tại — kết quả dễ đẹp hơn thật.`;
+    + `Mọi dòng khớp ở giá mở phiên sau tín hiệu, cùng bộ lọc với Gợi ý; tham số được chọn và đánh giá trên cùng dữ liệu (xem "Chia đôi kỳ một lần" ngay dưới), rổ mã lấy theo danh sách hiện tại — kết quả dễ đẹp hơn thật.`;
 };
 /* Thứ tự chọn mã dùng CHUNG cho bộ Gợi ý (live) và simulatePicks (backtest): Hồi nhiều trước, rồi điểm — reaudit R05 (trước: live xếp Hồi, backtest xếp điểm). */
 const pickOrder = (a, b) => ((b.conf||0)-(a.conf||0)) || ((b.score||0)-(a.score||0));
@@ -4504,7 +4564,7 @@ function screenPicks(ranks, mine, P){
   }
   return { buy: buy.sort(pickOrder), watch: watch.sort(pickOrder), excluded, rule:P };
 }
-const STOCK_BT_VERSION = 'stock-bt-v7';   // v7: khớp bậc TP/SL theo đáy/đỉnh trong phiên, vào ở giá mở phiên sau, kiểm định ngoài mẫu (walk-forward)   // v6 (audit 2026-09-17): khớp giá mở phiên sau, cùng bộ lọc với Gợi ý, soi từng phiên, vị thế mở không ép bán, sự kiện chỉ tính rớt thêm khi đủ 63 phiên   // v5: kế hoạch tháng so ba cách vào (điểm · điểm+Hồi · theo kiểu rẻ)   // v4: sự kiện tách theo kiểu rẻ (cấu trúc / hoảng loạn / hỗn hợp)   // v3: thêm nghiên cứu sự kiện (điểm chạm mốc ⇒ rớt thêm / lợi suất sau); v2: kế hoạch chọn mã + VN-Index
+const STOCK_BT_VERSION = 'stock-bt-v8';   // v8 (reaudit 2026-09-18): ladder t−1/T+2 theo lô/không ép bán, hai phương án A/B kèm dòng tài khoản, chia đôi kỳ cho A/B   // v7: khớp bậc TP/SL theo đáy/đỉnh trong phiên, vào ở giá mở phiên sau, kiểm định ngoài mẫu (walk-forward)   // v6 (audit 2026-09-17): khớp giá mở phiên sau, cùng bộ lọc với Gợi ý, soi từng phiên, vị thế mở không ép bán, sự kiện chỉ tính rớt thêm khi đủ 63 phiên   // v5: kế hoạch tháng so ba cách vào (điểm · điểm+Hồi · theo kiểu rẻ)   // v4: sự kiện tách theo kiểu rẻ (cấu trúc / hoảng loạn / hỗn hợp)   // v3: thêm nghiên cứu sự kiện (điểm chạm mốc ⇒ rớt thêm / lợi suất sau); v2: kế hoạch chọn mã + VN-Index
 /* Chuỗi điểm từng phiên của một mã, tính một lần cho mỗi bản kho (38k lần chấm cho 100 mã) — backtest lưới và mô phỏng kế hoạch dùng chung. */
 const stockSeriesCache = new WeakMap();   // theo từng object kho (không theo updatedAt — hai kho thử nghiệm cùng mốc sẽ dẫm nhau)
 function stockSeriesFor(store, sym){
@@ -4544,13 +4604,14 @@ function walkForward(store, syms){
   }
   const byTrain = a => a.slice().sort((x,y)=>(y.train==null?-9:y.train)-(x.train==null?-9:x.train))[0], byTest = a => a.slice().sort((x,y)=>(y.test==null?-9:y.test)-(x.test==null?-9:x.test))[0];
   const plans = [];
-  const planOne = (rule, X, cadence) => { const o = {...PL, exitScore:X, entryRule:rule, cadence, floorPct}, a = simulatePicks(A, o), b = simulatePicks(B, o);
-    return { rule, X, cadence, train:a.netReturn, test:b.netReturn, testDd:b.maxDD, testN:b.n }; };
+  const planOne = (rule, X, cadence, maxHold) => { const o = {...PL, exitScore:X, entryRule:rule, cadence, floorPct, ...(maxHold ? {maxHold} : {})}, a = simulatePicks(A, o), b = simulatePicks(B, o);
+    return { rule, X, cadence, train:a.netReturn, test:b.netReturn, testDd:b.maxDD, testN:b.n, trainN:a.n }; };
   for(const X of PL.exits) plans.push(planOne('score', X, 'month'));
   for(const Rl of ENTRY_RULES) for(const X of PL.exits) plans.push(planOne(Rl.key, X, 'day'));
+  const variants = PLAN_VARIANTS.map(V=>({ key:V.key, label:V.label, ...planOne('confirm', V.exitScore, 'day', V.maxHold) }));   // hai phương án A/B: không chọn gì, chỉ xem có giữ được ở nửa sau không
   const idx = store.index ? store.index.rows.filter(r=>r.time >= cut && r.time <= t1) : [];
   return { from:t0, cut, to:t1, n:symsOk.length, bhTest: mean(symsOk.map(k=>bh(B[k]))), indexTest: bh(idx),
-           grid:{ rows:grid, best:byTrain(grid), oracle:byTest(grid) }, plan:{ rows:plans, best:byTrain(plans), oracle:byTest(plans) } };
+           grid:{ rows:grid, best:byTrain(grid), oracle:byTest(grid) }, plan:{ rows:plans, best:byTrain(plans), oracle:byTest(plans) }, variants };
 }
 function stockBacktestAll(store, syms){
   const per = (syms || Object.keys(store.symbols||{})).map(s=>stockBacktestOne(store, s)).filter(Boolean), PL = store.plan || STOCK_PLAN_V1;
@@ -4567,14 +4628,18 @@ function stockBacktestAll(store, syms){
   rows.sort((a,b)=>(b.net||-9)-(a.net||-9));
   const seriesMap = Object.fromEntries(per.map(p=>[p.sym, stockSeriesFor(store, p.sym)]));
   const floorPct = Number((store.rules||STOCK_SWING_RULES).floorPct)||0;
-  const planRow = (rule, X, cadence) => { const r = simulatePicks(seriesMap, {...PL, exitScore:X, entryRule:rule, cadence, floorPct}); return { rule, X, cadence, n:r.n, entries:r.entries, winRate:r.winRate, net:r.netReturn, netY1:r.netY1, dd:r.maxDD, avgHold:r.avgHold, avgRet:r.avgRet, exits:r.exits, months:r.months, exposure:r.exposure }; };
+  const planRow = (rule, X, cadence, extra) => { const r = simulatePicks(seriesMap, {...PL, exitScore:X, entryRule:rule, cadence, floorPct, ...(extra||{})}); return { rule, X, cadence, maxHold:r.maxHold, n:r.n, entries:r.entries, winRate:r.winRate, net:r.netReturn, netY1:r.netY1, dd:r.maxDD, avgHold:r.avgHold, avgRet:r.avgRet, exits:r.exits, months:r.months, exposure:r.exposure, haltedDays:r.haltedDays, cagr:r.cagr, worstY1:r.worstY1 }; };
+  /* Hai phương án đang nghiên cứu (A/B), mỗi phương án hai dòng: chuẩn hoá (vốn 1, không lô) và "tài khoản" (vốn 30.000 · lô · dừng mua khi sụt ≥ 15%) — reaudit R04. */
+  const lot = PL.lot===undefined ? 100 : PL.lot, acct = { capital:PAPER_ACCOUNT_V1.capitalK, lot, ddStop:PAPER_ACCOUNT_V1.ddStop };
+  const variants = PLAN_VARIANTS.flatMap(V=>[ { key:V.key, label:V.label, acct:false, ...planRow('confirm', V.exitScore, 'day', {maxHold:V.maxHold}) },
+                                              { key:V.key, label:V.label, acct:true,  ...planRow('confirm', V.exitScore, 'day', {maxHold:V.maxHold, ...acct}) } ]);
   const plan = PL.exits.map(X=>planRow('score', X, 'month'));                                   // bản cũ: chọn đầu tháng (giữ tên `plan` cho cache/test)
   const planCmp = ENTRY_RULES.flatMap(R=>PL.exits.map(X=>planRow(R.key, X, 'day')));            // ba cách vào, soi TỪNG PHIÊN như bộ Gợi ý (audit F02)
   const idxRows = store.index ? store.index.rows : [], iFrom = N ? Math.min(...per.map(p=>p.from)) : null, iTo = N ? Math.max(...per.map(p=>p.to)) : null;
   const ix = idxRows.filter(r=>iFrom!=null && r.time>=iFrom && r.time<=iTo), ix1 = ix.filter(r=>r.time >= iTo-365*86400e3);
   const bhOf = a => a.length ? a[a.length-1].close/a[0].close-1 : null;
   const events = eventStudyAll(store, per.map(p=>p.sym)), wf = walkForward(store, per.map(p=>p.sym));
-  return { version:STOCK_BT_VERSION, at:Date.now(), storeAt: store.updatedAt||null, n:N, rows, plan, planCmp, events, wf, indexBh:bhOf(ix), indexBhY1:bhOf(ix1), bhAvg: mean(per.map(p=>p.bh)), bhAvgY1: mean(per.map(p=>p.bhY1)),
+  return { version:STOCK_BT_VERSION, at:Date.now(), storeAt: store.updatedAt||null, n:N, rows, plan, planCmp, variants, events, wf, indexBh:bhOf(ix), indexBhY1:bhOf(ix1), bhAvg: mean(per.map(p=>p.bh)), bhAvgY1: mean(per.map(p=>p.bhY1)),
            from: N ? Math.min(...per.map(p=>p.from)) : null, to: N ? Math.max(...per.map(p=>p.to)) : null,
            perSym: Object.fromEntries(per.map(p=>[p.sym, { bh:p.bh, bhY1:p.bhY1, rows:p.rows.map(x=>[x.entry, x.ladder, x.n, x.net, x.netY1, x.dd]) }])) };
 }
@@ -4865,8 +4930,8 @@ function openBacktest(M, rerun){
         ? `<b>VÀO</b> theo bộ ${best.entry}/${best.ladder}: điểm ${r.score} ≥ ${best.entry}. Nhịp 1 mua 50% tại <b>${fmtPx(M, r.price)}</b>${plan.sizeK!=null&&plan.qty!=null?` (≈ ${fmtK(Math.round(plan.lots[0].k))}, ${qty(plan.qty/2)} ${M.unit})`:''}, nhịp 2 khi giá về ≤ ${fmtPx(M, plan.lots[1].price)}. Chốt lời dần <b>${fmtPx(M, plan.tpLevels[0].price)}</b> / <b>${fmtPx(M, plan.tpLevels[1].price)}</b> · cắt lỗ dần <b>${fmtPx(M, plan.slLevels[0].price)}</b> / <b>${fmtPx(M, plan.slLevels[1].price)}</b>${R.minHoldBars?' · T+2 mới bán được':''}, quá ${R.maxHoldBars} phiên thì đóng.${worth?'':' <b>Nhưng</b> bộ này chưa thắng mua-giữ ở cả hai kỳ với mã này — chỉ ghi lệnh giả.'}`
         : `<b>CHỜ</b> — điểm ${r.score}, còn thiếu ${plan.gap} điểm tới ngưỡng ${best.entry} của bộ tốt nhất cho ${sym}.`;
     }
-    const wi = r ? planWhatIf(st, sym) : [];
-    const body = `<div class="hint" style="padding:0 0 8px">Nến ngày · ${bt.n} mã · kỳ <b>${fmtDayY(bt.from)} → ${fmtDayY(bt.to)}</b> và 12 tháng gần · ${M.feeNote} · vào 2 nhịp · chốt lời/cắt lỗ 2 bậc · giữ tối đa ${R.maxHoldBars} phiên. Mua-giữ trung bình: <b>${pct(bt.bhAvg)}</b> · 12 th <b>${pct(bt.bhAvgY1)}</b>. Tính lúc ${fmtTime(bt.at)}.</div>
+    const wi = r ? planWhatIf(st, sym, {exits: PLAN_VARIANTS.map(v=>v.exitScore)}) : [];   // what-if đúng hai ngưỡng bán của A/B
+    const oldBody = `<div class="hint" style="padding:0 0 8px">Nến ngày · ${bt.n} mã · kỳ <b>${fmtDayY(bt.from)} → ${fmtDayY(bt.to)}</b> và 12 tháng gần · ${M.feeNote} · vào 2 nhịp · chốt lời/cắt lỗ 2 bậc · giữ tối đa ${R.maxHoldBars} phiên. Mua-giữ trung bình: <b>${pct(bt.bhAvg)}</b> · 12 th <b>${pct(bt.bhAvgY1)}</b>. Tính lúc ${fmtTime(bt.at)}.</div>
       <div class="scroll"><table class="tbl compact"><colgroup><col style="width:8%"><col style="width:14%"><col style="width:14%"><col style="width:9%"><col style="width:10%"><col style="width:12%"><col style="width:12%"><col style="width:10%"><col style="width:11%"></colgroup>
       <thead><tr><th class="first">Vào ≥</th><th>Chốt lời dần</th><th>Cắt lỗ dần</th><th class="n">Lệnh TB</th><th class="n">Thắng TB</th><th class="n">Toàn kỳ TB</th><th class="n">12 th TB</th><th class="n">Mã lãi</th><th class="n last">Thắng cả hai kỳ</th></tr></thead><tbody>${aggRows}</tbody></table></div>
       <div class="hint" style="padding:8px 0">${verdict} "Mã lãi" = số mã có lãi ròng toàn kỳ; "Thắng cả hai kỳ" = số mã bộ này thắng cả tiền mặt và mua-giữ ở toàn kỳ và 12 tháng gần. Kết quả quá khứ: vào ở giá mở phiên sau tín hiệu, bậc chốt lời/cắt lỗ soi theo đáy/đỉnh trong phiên (một phiên chạm cả hai thì tính cắt lỗ trước), chưa tính trượt giá — dùng để <b>loại bộ tệ</b>, không phải để tin bộ tốt.</div>
@@ -4878,15 +4943,13 @@ function openBacktest(M, rerun){
       ${bt.planCmp ? `<div class="hint" style="padding:6px 0 0">${esc(planCmpNote(bt.planCmp, bt.events, bt.plan))}</div>` : ''}
       ${bt.wf ? (()=>{ const W = bt.wf, g = W.grid, pl = W.plan, RL = x => x.cadence==='month' ? 'điểm ≥ 75, đầu tháng (cũ)' : ((ENTRY_RULES.find(q=>q.key===x.rule)||{}).label||x.rule).replace(' (cũ)','')+', từng phiên';
         const gWin = g.best && g.best.test > Math.max(0, W.bhTest||0), pWin = pl.best && pl.best.test > Math.max(0, W.indexTest!=null ? W.indexTest : (W.bhTest||0));
-        return `<div class="colhead" style="padding:10px 0 4px"><h2>Kiểm định ngoài mẫu <small>chọn tham số trên nửa đầu <b>${fmtDayY(W.from)} → ${fmtDayY(W.cut)}</b>, đo trên nửa sau <b>${fmtDayY(W.cut)} → ${fmtDayY(W.to)}</b> · ${W.n} mã · rổ vẫn là danh sách hiện tại (chưa có thành phần theo thời điểm)</small></h2></div>
+        return `<div class="colhead" style="padding:10px 0 4px"><h2>Chia đôi kỳ một lần — chọn tham số ở nửa đầu <small>(kiểm định ngoài mẫu đơn giản, R08: một lần chia, không phải walk-forward cuốn) · chọn tham số trên nửa đầu <b>${fmtDayY(W.from)} → ${fmtDayY(W.cut)}</b>, đo trên nửa sau <b>${fmtDayY(W.cut)} → ${fmtDayY(W.to)}</b> · ${W.n} mã · rổ vẫn là danh sách hiện tại (chưa có thành phần theo thời điểm)</small></h2></div>
         <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Phần</th><th>Bộ chọn trên nửa đầu</th><th class="n">Nửa đầu</th><th class="n">Nửa sau</th><th class="n">Mốc nửa sau</th><th class="last">Nếu biết trước nửa sau</th></tr></thead><tbody>
           <tr><td class="first"><b>Lưới 9 bộ</b></td><td>${g.best ? `${g.best.entry}/${g.best.ladder}` : '—'}</td><td class="n">${pct(g.best && g.best.train)}</td><td class="n"><b class="${g.best&&g.best.test<0?'neg':''}">${pct(g.best && g.best.test)}</b></td><td class="n">mua-giữ TB ${pct(W.bhTest)}</td><td class="last">${g.oracle ? `${g.oracle.entry}/${g.oracle.ladder} ${pct(g.oracle.test)}` : '—'}</td></tr>
           <tr><td class="first"><b>Kế hoạch chọn mã</b></td><td>${pl.best ? `${esc(RL(pl.best))} · bán ≤ ${pl.best.X}` : '—'}</td><td class="n">${pct(pl.best && pl.best.train)}</td><td class="n"><b class="${pl.best&&pl.best.test<0?'neg':''}">${pct(pl.best && pl.best.test)}</b> <span class="mute">${pl.best ? `· ${pl.best.testN} lệnh · sụt ${fmtPct(pl.best.testDd||0)}` : ''}</span></td><td class="n">${M.key==='coin'?'BTC':'VN-Index'} ${pct(W.indexTest)}</td><td class="last">${pl.oracle ? `${esc(RL(pl.oracle))} · ${pl.oracle.X} ${pct(pl.oracle.test)}` : '—'}</td></tr>
         </tbody></table></div>
         <div class="hint" style="padding:6px 0">${gWin ? 'Lưới: bộ chọn trước <b>thắng</b> mua-giữ ở nửa sau.' : 'Lưới: bộ chọn trước <b>không thắng</b> mua-giữ ở nửa sau.'} ${pWin ? 'Kế hoạch: luật chọn trước <b>thắng</b> chỉ số ở nửa sau.' : 'Kế hoạch: luật chọn trước <b>không thắng</b> chỉ số ở nửa sau.'} Khoảng cách tới cột "nếu biết trước" là phần lạc quan của bảng chính. Một lần chia đôi chỉ là một phép thử, không phải bằng chứng.</div>`; })() : ''}
       <div class="hint" style="padding:6px 0">Điểm đo độ rẻ so với chính mã đó một năm qua. Điểm về thấp có hai đường: giá lên (điều owner muốn) hoặc <b>đỉnh cũ trôi khỏi cửa sổ khi thời gian qua</b> — trường hợp sau bán ra mà giá không đổi, chỉ mất phí. Popup Tính PnL có dòng "giá đứng yên" đo đúng phần này.</div>` : ''}
-      ${wi.length ? `<div class="colhead" style="padding:6px 0 4px"><h2>Nếu mua ${esc(sym)} hôm nay <small>${fmtPx(M, r.price)} · điểm ${r.score} · bán đúng lúc điểm về ngưỡng — tĩnh, mọi thứ khác đứng yên</small></h2></div>
-      <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm về ≤</th><th class="n">Giá lúc đó</th><th class="n">Lãi gộp</th><th class="n last">Lãi sau phí</th></tr></thead><tbody>${wi.map(w=>`<tr><td class="first"><b>${w.X}</b></td><td class="n">${w.already ? '<span class="mute">đang dưới ngưỡng này</span>' : w.price==null ? '<span class="mute">không tới được chỉ bằng giá</span>' : fmtPx(M, w.price)}</td><td class="n">${w.already||w.price==null?'—':fmtPctS(w.gross)}</td><td class="n last ${w.net!=null&&w.net<0?'neg':''}">${w.already||w.price==null?'—':`<b>${fmtPctS(w.net)}</b>`}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${bt.events ? `<div class="colhead" style="padding:6px 0 4px"><h2>Sau khi điểm chạm mốc <small>mỗi sự kiện = điểm vượt lên ≥ T · "chờ xác nhận" = vào ở phiên đầu có ≥ 2/3 dấu hồi trong ${EVENT_V1.waitBars} phiên · (n) = số sự kiện có đủ phiên để đo ô đó — rớt thêm chỉ đo khi còn đủ 63 phiên, theo giá đóng cửa, không phải đáy trong phiên · "bỏ qua" = sự kiện không có dấu hồi trong 21 phiên (cách chờ bỏ lỡ), "vào … so lúc chạm" = chi phí chờ · nhiều mã chạm mốc cùng ngày không độc lập với nhau</small></h2></div>
       <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm ≥</th><th>Cách vào</th><th class="n">Sự kiện</th><th class="n">Rớt thêm trung vị (n)</th><th class="n">Rớt thêm xấu (10%)</th>${EVENT_V1.horizons.map(h=>`<th class="n">${h} phiên: dương · trung vị (n)</th>`).join('')}<th class="last"></th></tr></thead><tbody>${
         bt.events.map(e=>`<tr class="${e.mode==='confirm'?'':''}"><td class="first"><b>${e.T}</b></td><td>${e.mode==='now'?'ngay khi chạm':`chờ xác nhận <span class="mute">· TB ${e.waitAvg==null?'—':fmtNum(e.waitAvg,1)} phiên · bỏ qua ${e.skipped==null?'—':e.skipped} · vào ${e.waitRetMed==null?'—':fmtPctS(e.waitRetMed)} so lúc chạm</span>`}</td><td class="n">${e.n}</td><td class="n neg">${e.ddMed==null?'—':fmtPctS(e.ddMed)} <small class="mute">(${e.nDd==null?e.n:e.nDd})</small></td><td class="n neg">${e.ddP10==null?'—':fmtPctS(e.ddP10)}</td>${EVENT_V1.horizons.map(h=>{ const x = e.h[h]; return `<td class="n">${x.n?`<b>${fmtPct(x.hit)}</b> · <span class="${x.med<0?'neg':''}">${pct(x.med)}</span> <small class="mute">(${x.n})</small>`:'—'}</td>`; }).join('')}<td class="last"></td></tr>`).join('')
@@ -4900,6 +4963,25 @@ function openBacktest(M, rerun){
       <div class="colhead" style="padding:6px 0 4px"><h2>${esc(sym)} <small>9 bộ trên chính mã này · mua-giữ ${pct(ps?ps.bh:null)} · 12 th ${pct(ps?ps.bhY1:null)}</small></h2></div>
       ${ps ? `<div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Vào ≥</th><th>Bậc</th><th class="n">Lệnh</th><th class="n">Toàn kỳ</th><th class="n">12 th gần</th><th class="n last">Sụt tối đa</th></tr></thead><tbody>${symRows}</tbody></table></div>` : '<div class="mute">Mã này chưa đủ nến để backtest.</div>'}
       ${sig ? `<div class="suggest one" style="margin:8px 0 0">${sig}</div>` : ''}`;
+    const wiBlock = wi.length ? `<div class="colhead" style="padding:6px 0 4px"><h2>Nếu mua ${esc(sym)} hôm nay <small>${fmtPx(M, r.price)} · điểm ${r.score} · bán đúng lúc điểm về ngưỡng — tĩnh, mọi thứ khác đứng yên</small></h2></div>
+      <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Điểm về ≤</th><th class="n">Giá lúc đó</th><th class="n">Lãi gộp</th><th class="n last">Lãi sau phí</th></tr></thead><tbody>${wi.map(w=>`<tr><td class="first"><b>${w.X}</b></td><td class="n">${w.already ? '<span class="mute">đang dưới ngưỡng này</span>' : w.price==null ? '<span class="mute">không tới được chỉ bằng giá</span>' : fmtPx(M, w.price)}</td><td class="n">${w.already||w.price==null?'—':fmtPctS(w.gross)}</td><td class="n last ${w.net!=null&&w.net<0?'neg':''}">${w.already||w.price==null?'—':`<b>${fmtPctS(w.net)}</b>`}</td></tr>`).join('')}</tbody></table></div>` : '';
+    const V = planVariant(state.planVariant), vr = bt.variants||[], vRow = (k, acct) => vr.find(x=>x.key===k && !!x.acct===acct), wfV = bt.wf && bt.wf.variants ? bt.wf.variants : [], W = bt.wf;
+    const capLbl = M.key==='coin' ? `${fmtNum(PAPER_ACCOUNT_V1.capitalK)} USD` : fmtK(PAPER_ACCOUNT_V1.capitalK), idxLbl = M.key==='coin' ? 'BTC' : 'VN-Index';
+    const vCells = x => `<td class="n">${x.n}</td><td class="n">${x.winRate==null?'—':fmtPct(x.winRate)}</td><td class="n">${pct(x.avgRet)}</td><td class="n">${x.avgHold==null?'—':fmtNum(x.avgHold,0)+' phiên'}</td><td class="n">${x.exits.score} / ${x.exits.time}${x.exits.end?` · <span class="mute">${x.exits.end} mở</span>`:''}</td><td class="n"><b>${pct(x.net)}</b></td><td class="n">${pct(x.netY1)}</td><td class="n last mute">${x.dd==null?'—':'−'+fmtPct(x.dd)}</td>`;
+    const vRows = PLAN_VARIANTS.flatMap(Vv=>[false,true].map(acct=>{ const x = vRow(Vv.key, acct); if(!x) return '';
+      return `<tr class="${Vv.key===V.key&&!acct?'best':''}"><td class="first"><b>${Vv.key}</b> ${esc(Vv.label)}${acct?`<br><small class="mute">tài khoản ${capLbl}${M.lot?` · lô ${M.lot}`:''} · dừng mua khi sụt ≥ ${fmtPct(PAPER_ACCOUNT_V1.ddStop)}${x.haltedDays?` (đã dừng ${x.haltedDays} phiên)`:''}</small>`:''}</td>${vCells(x)}</tr>`; })).join('');
+    const wfRows = wfV.map(x=>`<tr class="${x.key===V.key?'best':''}"><td class="first"><b>${x.key}</b> ${esc(x.label)}</td><td class="n">${pct(x.train)} <small class="mute">(${x.trainN} lệnh)</small></td><td class="n"><b class="${x.test<0?'neg':''}">${pct(x.test)}</b> <small class="mute">(${x.testN} lệnh)</small></td><td class="n last mute">${x.testDd==null?'—':'−'+fmtPct(x.testDd)}</td></tr>`).join('');
+    /* Bảng chính chỉ còn hai phương án A/B (owner chốt 2026-09-18); mọi bảng nghiên cứu khác gấp trong <details> để bớt số liệu thừa nhưng vẫn tra được. */
+    const body = `<div class="hint" style="padding:0 0 8px">Nến ngày · ${bt.n} mã · kỳ <b>${fmtDayY(bt.from)} → ${fmtDayY(bt.to)}</b> và 12 tháng gần · ${M.feeNote} · luật vào chung: ${pickRuleText({entryRule:'confirm'})} · tối đa ${PL.picks} vị thế, ${PL.picks} lệnh mua mới/tháng, chia đều tiền · tín hiệu ở giá đóng, <b>khớp ở giá mở phiên sau</b> · vị thế còn mở cuối kỳ tính theo giá cuối, không đếm là lệnh · tính lúc ${fmtTime(bt.at)}.</div>
+      <div class="colhead" style="padding:0 0 4px"><h2>Hai phương án đang nghiên cứu <small>chỉ khác ngưỡng bán và hạn giữ · dòng đậm = phương án đang chọn ở Trading</small></h2></div>
+      <div class="scroll"><table class="tbl compact" style="table-layout:fixed"><colgroup><col style="width:30%"><col style="width:7%"><col style="width:8%"><col style="width:10%"><col style="width:9%"><col style="width:13%"><col style="width:8%"><col style="width:8%"><col style="width:7%"></colgroup><thead><tr><th class="first">Phương án</th><th class="n">Lệnh</th><th class="n">Thắng</th><th class="n">Lãi TB/lệnh</th><th class="n">Giữ TB</th><th class="n">Thoát điểm / hạn · mở</th><th class="n">Toàn kỳ</th><th class="n">12 th</th><th class="n last">Sụt</th></tr></thead><tbody>${vRows}
+        <tr class="total"><td class="first">${idxLbl} mua-giữ</td><td></td><td></td><td></td><td></td><td></td><td class="n">${pct(bt.indexBh)}</td><td class="n">${pct(bt.indexBhY1)}</td><td class="last"></td></tr></tbody></table></div>
+      <div class="hint" style="padding:6px 0">Dòng "tài khoản" là cùng luật nhưng vốn cố định, làm tròn lô và dừng mở lệnh mới khi đường vốn sụt ≥ 15% từ đỉnh — gần cách chơi thật hơn dòng chuẩn hoá. Kết quả quá khứ trên rổ mã hiện tại, chưa tính trượt giá; dưới 10 lệnh thì lãi/thua chưa nói được gì. Số 5 năm của hai phương án (kho sâu, không phải kho này): A 33 lệnh · 66,7% · +20,6% · sụt 22,7% — B 29 lệnh · 75,9% · +51,2% · sụt 31,9%.</div>
+      ${W && wfRows ? `<div class="colhead" style="padding:8px 0 4px"><h2>Chia đôi kỳ một lần <small>đo cùng hai phương án trên nửa đầu <b>${fmtDayY(W.from)} → ${fmtDayY(W.cut)}</b> và nửa sau <b>${fmtDayY(W.cut)} → ${fmtDayY(W.to)}</b> · không chọn tham số, chỉ xem có giữ được ở nửa sau không · ${W.n} mã · một phép thử, không phải bằng chứng</small></h2></div>
+      <div class="scroll"><table class="tbl compact"><thead><tr><th class="first">Phương án</th><th class="n">Nửa đầu</th><th class="n">Nửa sau</th><th class="n last">Sụt nửa sau</th></tr></thead><tbody>${wfRows}
+        <tr class="total"><td class="first">${idxLbl} mua-giữ · mua-giữ TB các mã (nửa sau)</td><td></td><td class="n">${pct(W.indexTest)} · ${pct(W.bhTest)}</td><td class="last"></td></tr></tbody></table></div>` : ''}
+      ${wiBlock}
+      <details class="more"><summary>Các bảng nghiên cứu khác — đang gấp (9 bộ lưới chốt lời/cắt lỗ dần, ba cách vào, sự kiện chạm mốc, kiểu rẻ, ${esc(sym)} theo 9 bộ, tín hiệu theo bộ tốt nhất)</summary>${oldBody}</details>`;
     showModal(`Backtest ${M.label.toLowerCase()} — ${bt.n} mã`, body, 'Chạy lại', ()=>{ bt = null; setTimeout(go, 30); return false; }, {wide:true});
     render();
   };
@@ -4917,7 +4999,7 @@ function openPnl(M, sym){
   const P = { fee:M.rules.fee, sellTax:M.rules.sellTax||0, lot:M.lot };
   const memo = new Map(), priceAt = Z => { if(!memo.has(Z)) memo.set(Z, stockPriceAt(st, sym, Z, r.price)); return memo.get(Z); };
   let decay = null; const decayPath = () => decay || (decay = scoreDecayPath(st, sym, 63));
-  const amt0 = (settings().trade||{}).sleeve || 10000, Z0 = Math.max(0, Math.min(65, r.score-5)), X = M.plan.exits;
+  const amt0 = (settings().trade||{}).sleeve || 10000, X = PLAN_VARIANTS.map(v=>v.exitScore), Z0 = Math.max(0, Math.min(planVariant(state.planVariant).exitScore, r.score-5));   // chip = ngưỡng bán của hai phương án A/B
   const body = `<div class="scntop" style="padding-bottom:6px">
       <div class="scnval"><span class="mute">Mua hôm nay</span><input id="pnlAmt" inputmode="numeric" value="${Math.round(amt0)}" style="width:90px"><span class="mute">k · ${fmtPx(M, r.price)} · điểm ${r.score}</span></div>
       <div class="scnslide"><span class="mute" style="min-width:0;font-weight:400">Bán khi điểm về</span><input type="range" id="pnlZ" min="0" max="100" step="1" value="${Z0}"><span id="pnlZv">${Z0}</span></div>
@@ -5062,6 +5144,7 @@ async function refreshStocks(opts){
     for(const r of stockRanks) D.prices[STOCK_PRICE_PREFIX+r.sym] = { value:r.price, source:'live', updatedAt:now, dataTime:r.time };
     D.prices.stocks = { ...(D.prices.stocks||{}), storeAt:stockStore.updatedAt, storeMs:k.ms, quotesAt:now, errors:q.errors, version:STOCK_SCORE_V1.version,
       ranks: Object.fromEntries(stockRanks.map(r=>[r.sym, { score:r.score, state:r.marketState ? r.marketState.key : null, price:r.price, chg:r.chg }])) };
+    try{ paperRun(MARKETS.stock); }catch(e){ console.warn('Sổ lệnh giả (cổ phiếu) lỗi:', e); }
     render();
     bg(store.set('prices','current', D.prices), silent ? undefined : `Kho cập nhật ${fmtTime(stockStore.updatedAt)} · ${stockRanks.length}/${VN100.length} mã có điểm`);
   }catch(e){
@@ -5096,6 +5179,7 @@ async function refreshCoins(opts){
     for(const r of coinRanks) D.prices[COIN_PRICE_PREFIX+r.sym] = { value: u>0 ? r6(r.price*u) : 0, usd:r.price, source:'live', updatedAt:now, dataTime:r.time };
     D.prices.coins = { ...(D.prices.coins||{}), storeAt:coinStore.updatedAt, quotesAt:now, errors:Object.keys(coinStore.errors).length, version:COIN_SCORE_V1.version,
       ranks: Object.fromEntries(coinRanks.map(r=>[r.sym, { score:r.score, state:r.marketState ? r.marketState.key : null, price:r.price, chg:r.chg }])) };
+    try{ paperRun(MARKETS.coin); }catch(e){ console.warn('Sổ lệnh giả (coin) lỗi:', e); }
     render();
     bg(store.set('prices','current', D.prices), silent ? undefined : `Binance: ${coinRanks.length} coin có điểm${Object.keys(coinStore.errors).length?` · lỗi ${Object.keys(coinStore.errors).join(', ')}`:''}`);
   }catch(e){
@@ -5106,6 +5190,124 @@ async function refreshCoins(opts){
   finally{ coinBusy = false; render(); }
 }
 
+
+/* ---- Sổ lệnh giả (owner 2026-09-18): chạy ĐÚNG luật của phương án đang chọn trên kho vừa tải, không tiền thật — để so "kế hoạch nói gì" với "thị trường làm gì" theo thời gian thật.
+   Một sổ cho mỗi thị trường × phương án (document `paper/{mkt}-{A|B}`):
+   book = { mkt, variant, capital, cash, positions:[{sym, qty, px, cost, since, signal, held, last, score}], pending:[{sym, side, signal, why}], closed:[{sym, qty, px, sellPx, pnl, ret, why, since, to, held}], lastTime, peak, halted, log:[{t, msg}] }.
+   `paperStep(book, ranks, opts)` là HÀM THUẦN ⇒ book mới. opts = { P (luật kế hoạch đã ghép phương án), seriesOf(sym) ⇒ [{time, open, close, score}], lot, floorPct, mine (mã đang giữ thật — không mua trùng), ddStop }.
+   Luật: tín hiệu ở giá ĐÓNG phiên t, khớp ở giá MỞ phiên đầu tiên sau t có trong kho (không mua khi mở sát trần — bỏ lệnh; không bán khi mở sát sàn — dời sang phiên sau);
+   bán khi điểm ≤ exitScore sau T+2 hoặc đã giữ ≥ maxHold phiên; mua mới chỉ xét ở NẾN CUỐI của kho (ngày không mở app thì tín hiệu ngày đó bỏ qua — sổ này chạy khi bấm Cập nhật, không có tiến trình nền);
+   tối đa `picks` vị thế và `picks` lệnh mua mới mỗi tháng, chia đều tiền cho chỗ trống, làm tròn lô; sụt ≥ ddStop từ đỉnh đường vốn ⇒ không mở lệnh mới tới khi sụt còn ≤ nửa.
+   Idempotent: chỉ xử lý nến có time > book.lastTime nên bấm Cập nhật nhiều lần một ngày không nhân đôi. */
+function paperStep(book, ranks, opts){
+  const O = opts||{}, P = {...STOCK_PLAN_V1, ...(O.P||{})}, X = P.exitScore!=null ? P.exitScore : P.exits[0], lot = Number(O.lot)||0, floorPct = Number(O.floorPct)||0;
+  const fee = P.fee, sellFee = P.fee + (P.sellTax||0), ddStop = O.ddStop!=null ? Number(O.ddStop) : PAPER_ACCOUNT_V1.ddStop, seriesOf = O.seriesOf || (()=>[]);
+  const B = { mkt:book.mkt, variant:book.variant, capital:book.capital, cash:book.cash, positions:(book.positions||[]).map(p=>({...p})), pending:(book.pending||[]).map(p=>({...p})),
+              closed:(book.closed||[]).slice(), lastTime:book.lastTime||0, peak:book.peak||book.capital, halted:!!book.halted, log:(book.log||[]).slice(-40), createdAt:book.createdAt||null };
+  const S = {}, ser = sym => S[sym] || (S[sym] = seriesOf(sym) || []);
+  const barAt = (sym, t) => { const a = ser(sym), i = a.findIndex(b=>b.time===t); return i<0 ? null : { b:a[i], prev: i>0 ? a[i-1] : null }; };
+  const openOf = b => b.open>0 ? b.open : b.close, roundQty = q => lot ? Math.floor(q/lot)*lot : Math.floor(q*1e6)/1e6, say = (t, msg) => B.log.push({ t, msg });
+  const rankTime = Math.max(0, ...(ranks||[]).map(r=>r.time||0)), watched = [...B.positions, ...B.pending].map(p=>p.sym);
+  const lastT = Math.max(B.lastTime, rankTime, ...watched.map(sym=>{ const a = ser(sym); return a.length ? a[a.length-1].time : 0; }));
+  const dates = [...new Set(watched.flatMap(sym=>ser(sym).filter(b=>b.time > B.lastTime).map(b=>b.time)))].sort((a,b)=>a-b);
+  const equity = () => B.cash + B.positions.reduce((a,p)=>a + p.qty*(p.last||p.px), 0);
+  for(const t of dates){
+    /* a) lệnh chờ có tín hiệu TRƯỚC phiên này ⇒ khớp ở giá mở */
+    for(const p of B.pending.slice()){ if(!(p.signal < t)) continue; const a = barAt(p.sym, t); if(!a) continue; const O0 = openOf(a.b), prevC = a.prev ? a.prev.close : O0;
+      if(p.side==='buy'){
+        B.pending = B.pending.filter(x=>x!==p);
+        if(floorPct>0 && O0 >= prevC*(1+floorPct)-1e-9){ say(t, `${p.sym}: mở cửa sát trần, bỏ lệnh mua`); continue; }
+        if(B.positions.length >= P.picks){ say(t, `${p.sym}: đã đủ ${P.picks} vị thế, bỏ lệnh mua`); continue; }
+        const slots = Math.max(1, P.picks - B.positions.length), qty = roundQty((B.cash/slots)/(O0*(1+fee)));
+        if(qty<=0){ say(t, `${p.sym}: không đủ tiền cho một lô ở giá ${O0}`); continue; }
+        const cost = qty*O0*(1+fee); B.cash -= cost; B.positions.push({ sym:p.sym, qty, px:O0, cost, since:t, signal:p.signal, signalScore:p.score, held:0, last:a.b.close, score:a.b.score });
+        say(t, `mua ${p.sym} ${qty} @ ${O0}`);
+      } else {
+        const pos = B.positions.find(x=>x.sym===p.sym); if(!pos){ B.pending = B.pending.filter(x=>x!==p); continue; }
+        if(floorPct>0 && O0 <= prevC*(1-floorPct)+1e-9){ say(t, `${p.sym}: mở cửa sát sàn, chưa bán được`); continue; }   // giữ lệnh, thử phiên sau
+        B.pending = B.pending.filter(x=>x!==p);
+        const proceeds = pos.qty*O0*(1-sellFee), pnl = proceeds - pos.cost;
+        B.closed.push({ sym:pos.sym, qty:pos.qty, px:pos.px, sellPx:O0, pnl, ret: pos.cost>0 ? pnl/pos.cost : 0, why:p.why, since:pos.since, signal:pos.signal, to:t, held:(pos.held||0)+1 });   // giữ = số phiên giữa hai lần khớp (như engine)
+        B.cash += proceeds; B.positions = B.positions.filter(x=>x!==pos); say(t, `bán ${pos.sym} @ ${O0} (${p.why}) ${pnl>=0?'+':''}${Math.round(pnl)}`);
+      } }
+    /* b) vị thế đang mở: đếm phiên đã giữ (không tính phiên mua), cập nhật giá/điểm, xét bán theo điểm (sau T+2) hay theo hạn */
+    for(const pos of B.positions){ const a = barAt(pos.sym, t); if(!a || !(t > pos.since)) continue;
+      pos.held = (pos.held||0) + 1; pos.last = a.b.close; pos.score = a.b.score;
+      if(B.pending.some(x=>x.sym===pos.sym && x.side==='sell')) continue;
+      const byScore = pos.held >= (P.minHold||0) && a.b.score!=null && a.b.score <= X, byTime = pos.held >= P.maxHold;
+      if(byScore || byTime) B.pending.push({ sym:pos.sym, side:'sell', signal:t, why: byScore ? 'điểm' : 'hạn' }); }
+    const eq = equity(); if(eq > B.peak) B.peak = eq;
+  }
+  /* c) tín hiệu mua mới ở nến cuối — cùng bộ lọc Gợi ý, luật confirm; tối đa picks vị thế (kể cả lệnh chờ) và picks lệnh mua/tháng; dừng khi sụt ≥ ddStop */
+  for(const pos of B.positions){ const r = (ranks||[]).find(x=>x.sym===pos.sym); if(r && r.time===lastT){ if(r.price>0) pos.last = r.price; pos.score = r.score; } }
+  const eqNow = equity(); if(eqNow > B.peak) B.peak = eqNow; const dd = B.peak>0 ? 1 - eqNow/B.peak : 0;
+  B.halted = ddStop>0 && (B.halted ? dd > ddStop/2 : dd >= ddStop); B.dd = dd;
+  if(lastT > B.lastTime && (ranks||[]).length){
+    const month = isoDay(lastT).slice(0,7), inMonth = x => x && isoDay(x).slice(0,7)===month;
+    const buysM = B.closed.filter(c=>inMonth(c.signal||c.since)).length + B.positions.filter(p=>inMonth(p.signal||p.since)).length + B.pending.filter(p=>p.side==='buy').length;
+    const pendBuys = B.pending.filter(p=>p.side==='buy').length, free = Math.min(P.picks - B.positions.length - pendBuys, P.picks - buysM);
+    const held = [...B.positions.map(p=>p.sym), ...B.pending.filter(p=>p.side==='buy').map(p=>p.sym), ...(O.mine||[])];
+    if(B.halted){ if(free>0) say(lastT, `đường vốn sụt ${Math.round(dd*100)}% từ đỉnh — tạm không mở lệnh mới`); }
+    else if(free > 0){ const pk = screenPicks(ranks, held, {entryRule:'confirm', entryMin:P.entryMin});
+      for(const c of pk.buy.slice(0, free)){ B.pending.push({ sym:c.sym, side:'buy', signal:lastT, score:c.score }); say(lastT, `tín hiệu mua ${c.sym} (điểm ${c.score}, hồi ${c.confirm}/3) — khớp ở giá mở phiên sau`); } }
+  }
+  B.lastTime = lastT; B.equity = equity();
+  return B;
+}
+const paperId = (M, V) => `${M.key}-${V.key}`;
+/* Sổ hiện có, hay sổ mới với vốn = "vốn dành cho trade" ở Cài đặt (nghìn đồng; coin quy USD theo tỷ giá USDT), không có thì 30.000k. */
+function paperBook(M, V){
+  const b = D.paper && D.paper[paperId(M, V)]; if(b) return b;
+  const u = price('usdt'), sleeve = Number((settings().trade||{}).sleeve)||0, capK = sleeve>0 ? sleeve : PAPER_ACCOUNT_V1.capitalK, capital = M.key==='coin' ? (u>0 ? Math.round(capK/u) : 1000) : capK;
+  return { mkt:M.key, variant:V.key, capital, cash:capital, positions:[], pending:[], closed:[], lastTime:0, peak:capital, halted:false, log:[], createdAt:Date.now() };
+}
+/* Chạy sổ giả của CẢ HAI phương án cho thị trường vừa tải kho — cùng một lần, rẻ (chỉ chấm lại chuỗi điểm của vài mã đang giữ/chờ). */
+function paperRun(M){
+  const st = mktStore(M), ranks = mktRanks(M); if(!st || !ranks.length || !store) return;
+  const ops = []; D.paper = D.paper || {};
+  for(const V of PLAN_VARIANTS){ const id = paperId(M, V);
+    const b1 = paperStep(paperBook(M, V), ranks, { P: variantPlan(M.plan, V), seriesOf: sym => stockSeriesFor(st, sym) || [], lot:M.lot, floorPct:Number(M.rules.floorPct)||0, mine:mktMine(M) });
+    b1.updatedAt = Date.now(); D.paper[id] = b1; ops.push({ op:'set', col:'paper', id, data:b1 }); }
+  bg(store.batch(ops));
+}
+/* Đóng tay một vị thế giả ở giá hiện tại (giá đóng gần nhất), có phí — ghi why 'tay' để phân biệt với thoát theo luật. */
+function paperClose(M, V, sym){
+  const id = paperId(M, V), b = D.paper && D.paper[id]; if(!b) return; const pos = b.positions.find(p=>p.sym===sym); if(!pos) return;
+  const px = tradePxNow(M.key, sym) || pos.last || pos.px, sellFee = M.plan.fee + (M.plan.sellTax||0), proceeds = pos.qty*px*(1-sellFee), pnl = proceeds - pos.cost;
+  b.closed.push({ sym, qty:pos.qty, px:pos.px, sellPx:px, pnl, ret: pos.cost>0 ? pnl/pos.cost : 0, why:'tay', since:pos.since, signal:pos.signal, to:Date.now(), held:pos.held||0 });
+  b.cash += proceeds; b.positions = b.positions.filter(p=>p!==pos); b.pending = (b.pending||[]).filter(p=>!(p.sym===sym && p.side==='sell')); b.equity = b.cash + b.positions.reduce((a,p)=>a + p.qty*(p.last||p.px), 0);
+  (b.log = b.log||[]).push({ t:Date.now(), msg:`đóng tay ${sym} @ ${px}` }); b.updatedAt = Date.now();
+  render(); bg(store.set('paper', id, b));
+}
+function paperReset(){ const ids = Object.keys(D.paper||{}); D.paper = {}; if(store && ids.length) bg(store.batch(ids.map(id=>({ op:'delete', col:'paper', id })))); render(); }
+/* Số phiên đã giữ một mã cổ phiếu THẬT = số nến trong kho sau ngày mua gần nhất (transfer vào holding stk:SYM, không tính dòng đối chiếu). Không có kho / chưa mua ⇒ null. */
+function stockAgeOf(sym){
+  if(!stockStore || !stockStore.symbols[sym]) return null;
+  const ids = new Set(D.holdings.filter(h=>h.priceKey===STOCK_PRICE_PREFIX+sym).map(h=>h.id));
+  const buys = D.transfers.filter(t=>ids.has(t.toId) && t.kind!=='adjust' && t.date).map(t=>t.date).sort();
+  if(!buys.length) return null;
+  const t0 = Date.parse(buys[buys.length-1]+'T00:00:00Z');
+  return stockStore.symbols[sym].rows.filter(r=>r.time > t0).length;
+}
+/* Card Buy Score (Trading): bảng Sổ lệnh giả luôn ĐÚNG 8 dòng như bảng Phân rã điểm nó thay thế (7 dòng + tổng) ⇒ card không đổi kích thước theo dữ liệu. */
+function renderPaper(M, V){
+  const b = D.paper && D.paper[paperId(M, V)] || null, ROWS = 7;
+  const money = x => M.key==='coin' ? fmtUsdPx(x) : fmtK(Math.round(x)), pctS = x => x==null ? '' : fmtPctS(x);
+  el('tdPaperSub').textContent = `${V.key} · ${V.label} · không tiền thật`;
+  el('tdPaperMeta').textContent = b ? `vốn ${money(b.capital)} · chạy tới ${fmtDayY(b.lastTime)}${b.halted?' · đang dừng mua (sụt ≥ 15%)':''}` : 'chạy khi bấm Cập nhật';
+  const items = [];
+  if(b){
+    for(const p of b.positions){ const pnl = p.last!=null ? p.qty*p.last*(1-(M.plan.fee+(M.plan.sellTax||0))) - p.cost : null, sell = (b.pending||[]).find(x=>x.sym===p.sym && x.side==='sell');
+      items.push({ sym:p.sym, st: sell ? `<span class="badge warn">chờ bán · ${esc(sell.why)}</span>` : `<span class="badge on">mở</span> <small class="mute">${p.held||0} phiên · điểm ${p.score!=null?p.score:'—'}</small>`, qty:p.qty, px:p.px, now:p.last, pnl, ret: pnl!=null && p.cost>0 ? pnl/p.cost : null, act:`<button data-act="pclose" data-sym="${esc(p.sym)}" class="tag" title="Đóng tay ở giá hiện tại">Đóng</button>` }); }
+    for(const p of (b.pending||[]).filter(x=>x.side==='buy')) items.push({ sym:p.sym, st:`<span class="badge">chờ mua</span> <small class="mute">tín hiệu ${fmtDayY(p.signal)} · điểm ${p.score!=null?p.score:'—'}</small>`, qty:null, px:null, now:null, pnl:null, ret:null, act:'' });
+    for(const c of b.closed.slice().reverse()) items.push({ sym:c.sym, st:`<span class="mute">đã bán · ${esc(c.why)} · ${fmtDayY(c.to)}</span>`, qty:c.qty, px:c.px, now:c.sellPx, pnl:c.pnl, ret:c.ret, act:'' });
+  }
+  const rows = items.slice(0, ROWS).map(x=>`<tr><td class="first"><b>${esc(x.sym)}</b></td><td class="cut">${x.st}</td><td class="n">${x.qty==null?'—':fmtQtyM(M, x.qty)}</td><td class="n">${x.px==null?'—':fmtPx(M, x.px)}</td><td class="n">${x.now==null?'—':fmtPx(M, x.now)}</td><td class="n ${x.pnl!=null&&x.pnl<0?'neg':''}">${x.pnl==null?'—':`<b>${signed(Math.round(x.pnl), money)}</b> <small class="mute">${pctS(x.ret)}</small>`}</td><td class="last n">${x.act}</td></tr>`);
+  while(rows.length < ROWS) rows.push(`<tr><td class="first mute">${rows.length===0 && !b ? 'Chưa chạy — bấm Cập nhật' : rows.length===0 ? 'Chưa có tín hiệu mua nào qua bộ lọc' : ''}</td><td></td><td class="n mute">—</td><td class="n mute">—</td><td class="n mute">—</td><td class="n mute">—</td><td class="last"></td></tr>`);
+  const eq = b ? (b.equity!=null ? b.equity : b.cash) : null, ret = b && b.capital>0 ? eq/b.capital-1 : null, wins = b ? b.closed.filter(c=>c.pnl>0).length : 0, real = b ? b.closed.reduce((a,c)=>a+c.pnl,0) : 0;
+  const total = `<tr class="total"><td class="first">Tổng</td><td class="cut">${b ? `tiền ${money(b.cash)} · ${b.closed.length} lệnh đã chốt${b.closed.length?` · thắng ${fmtPct(wins/b.closed.length)}`:''}` : '—'}</td><td class="n"></td><td class="n"></td><td class="n">${b ? `<small class="mute">tài sản</small> ${money(eq)}` : '—'}</td><td class="n ${real<0?'neg':''}">${b ? `<b>${signed(Math.round(real), money)}</b> <small class="mute">${pctS(ret)} vốn</small>` : '—'}</td><td class="last"></td></tr>`;
+  el('tdPaperTable').innerHTML = `<colgroup><col style="width:11%"><col style="width:33%"><col style="width:9%"><col style="width:12%"><col style="width:12%"><col style="width:16%"><col style="width:7%"></colgroup><thead><tr><th class="first">Mã</th><th>Trạng thái</th><th class="n">SL</th><th class="n">Giá vào</th><th class="n">Giá ra / nay</th><th class="n">Lãi/lỗ</th><th class="last"></th></tr></thead><tbody>${rows.join('')}${total}</tbody>`;
+}
 /* ---- Hero + phân rã dùng chung cho tab Cổ phiếu và tab Trading (cùng số dòng ở mọi mã: "đổi mã không đổi hình") ---- */
 function fillHero(P, o){
   el(P+'HeroLbl').textContent = 'Giá '+o.sym;
@@ -5203,9 +5405,9 @@ function renderStocks(){
   el('stockBandNow').textContent = r && r.score!=null ? `hiện ${fmtK(r.price,2)} · Score ${r.score}` : 'chưa có điểm';
   el('stockBandTable').innerHTML = bandTableHtml(M, stockStore, sym, r);
   /* Tháng này — kế hoạch chọn mã (cùng luật Backtest mô phỏng), luôn 3 dòng + một dòng gợi ý như card Tháng này của DCA. */
-  const p = stockPlanNow(stockRanks, mine, D.transfers, thisMonth(), {...STOCK_PLAN_V1, entryRule:state.pickRule});
+  const V = planVariant(state.planVariant), p = stockPlanNow(stockRanks, mine, D.transfers, thisMonth(), variantPlan(STOCK_PLAN_V1, V), stockAgeOf);
   el('stockPlanSub').textContent = 'kế hoạch chọn mã · '+fmtMonthLong(thisMonth()).toLowerCase();
-  el('stockPlanMeta').textContent = `mua điểm ≥ ${p.entryMin} (luật ${((PICK_RULES.find(x=>x.key===state.pickRule)||PICK_RULES[0]).label).toLowerCase()}, đổi ở Trading) · bán khi ≤ ${p.exit} · tối đa ${p.picks} mã/tháng · giữ ≤ ${p.maxHold} phiên`;
+  el('stockPlanMeta').textContent = `mua: đã chạm ${p.entryMin} trong ${CONFIRM_V1.waitBars} phiên, còn ≥ ${p.entryMin-EVENT_V1.rearm}, Hồi ≥ ${SCREEN_V1.needConfirm}/3 · phương án ${V.key} (đổi ở Trading): bán khi ≤ ${p.exit} hoặc giữ ≥ ${p.maxHold} phiên · tối đa ${p.picks} mã/tháng`;
   const heldScores = p.held.filter(h=>h.score!=null).map(h=>h.score), cands = p.candidates.slice(0, 6);
   const row = (name, badge, mid, note) => `<tr><td class="first"><b>${name}</b>${badge?` <span class="badge">${badge}</span>`:''}</td><td class="cut" title="${esc(mid.replace(/<[^>]+>/g,''))}">${mid}</td><td class="last cut" title="${esc(note.replace(/<[^>]+>/g,''))}">${note}</td></tr>`;
   el('stockPlanBody').innerHTML = `<div class="suggest one" title="${esc(stockSuggestion(p, sym, r ? r.score : null))}">${esc(stockSuggestion(p, sym, r ? r.score : null))}</div>
@@ -5249,18 +5451,14 @@ function renderTrade(){
   el('tdHeroSub').textContent = M.sub;
   const mine = mktMine(M), sets = M.sets, set = sets.find(x=>x.key===state.tradeSet[M.key]) || sets[0];
   const all = st ? Object.keys(st.symbols) : (M.key==='coin' ? [] : VN100);
-  const PR = PICK_RULES.find(x=>x.key===state.pickRule) || PICK_RULES[0], PRalt = PICK_RULES.find(x=>x.key!==PR.key);
-  const pk = screenPicks(ranks, mine, {entryRule:PR.key}), pkAlt = screenPicks(ranks, mine, {entryRule:PRalt.key});
+  const V = planVariant(state.planVariant), pk = screenPicks(ranks, mine);   // luật vào chung (SCREEN_V1.entryRule = confirm) — phương án A/B không đổi danh sách này
   const pickSyms = [...pk.buy, ...pk.watch].map(x=>x.sym), tagOf = Object.fromEntries([...pk.buy.map(x=>[x.sym,'buy']), ...pk.watch.map(x=>[x.sym,'watch'])]);
   const setSyms = set.key==='MINE' ? mine : set.key==='PICK' ? pickSyms : (set.syms || all);
   renderCoinPick('tdSetPick', sets, set.key);
-  /* Hàng chọn luật vào + đếm nhanh của luật kia, để so mà không phải bấm qua lại. */
-  el('tdPickRuleRow').hidden = set.key!=='PICK';
-  if(set.key==='PICK'){ renderCoinPick('tdPickRule', PICK_RULES, PR.key);
-    const dOnly = pk.buy.filter(x=>!pkAlt.buy.some(y=>y.sym===x.sym)).map(x=>x.sym), aOnly = pkAlt.buy.filter(x=>!pk.buy.some(y=>y.sym===x.sym)).map(x=>x.sym);
-    const diff = [dOnly.length?`chỉ ${esc(PR.label)}: ${dOnly.slice(0,3).map(esc).join(', ')}${dOnly.length>3?'…':''}`:'', aOnly.length?`chỉ ${esc(PRalt.label)}: ${aOnly.slice(0,3).map(esc).join(', ')}${aOnly.length>3?'…':''}`:''].filter(Boolean).join(' · ');
-    const nPanic = [...pk.buy, ...pk.watch].filter(x=>x.kind==='panic').length;   // hai luật CHỈ khác nhau ở mã nhãn hoảng loạn — không có mã nào thì chúng trùng nhau, nói thẳng để owner không tưởng là lỗi
-    el('tdPickCmp').innerHTML = !st ? '' : `luật <b>${esc(PRalt.label)}</b> cho <b>${pkAlt.buy.length}</b> mua · ${pkAlt.watch.length} theo dõi${diff?` — ${diff}`:` — hai luật đang trùng nhau (${nPanic} mã nhãn <i>hoảng loạn</i> trong nhóm xét)`}`; }
+  /* Hàng chọn PHƯƠNG ÁN (A: bán ≤ 65 · giữ 42 — B: bán ≤ 55 · giữ 63): luật vào chung nên không đổi danh sách; áp cho Sổ lệnh giả, Tính PnL và Tháng này (Chứng khoán). */
+  el('tdPickRuleRow').hidden = false;
+  renderCoinPick('tdPickRule', PLAN_VARIANTS, V.key);
+  el('tdPickCmp').innerHTML = `phương án <b>${V.key}</b> áp cho Sổ lệnh giả · Tính PnL · Tháng này — chỉ đổi ngưỡng bán và hạn giữ, không đổi danh sách Gợi ý (luật vào chung: ${pickRuleText({entryRule:'confirm'})})`;
   const sym = tdSym(M), r = ranks.find(x=>x.sym===sym) || null, rank = r ? ranks.indexOf(r)+1 : null;
   const bt = btCacheOf(M), btSym = bt && bt.perSym[sym] ? stockBtBest(bt.perSym[sym]) : null;
   fillHero('td', { sym, r, C, stale: stale || !!(r && r.stale), busy, fmt:p=>fmtPx(M,p), src:tdSrc,
@@ -5272,6 +5470,7 @@ function renderTrade(){
     empty: busy ? 'Đang tải…' : M.key==='coin' ? 'Chưa có dữ liệu Binance — bấm "Cập nhật" (100 coin, vài giây).' : 'Chưa có kho — bấm "Cập nhật". Kho do GitHub Actions cào mỗi ngày 15:40 sau phiên.' });
   el('tdWarn').hidden = !stale; el('tdWarn').textContent = stale ? `Dữ liệu quá ${M.staleH} giờ — bấm "Cập nhật".` : '';
   el('tdAlgo').textContent = st ? `${C.version} · ${fmtNum(C.windows.year)} ${M.key==='coin'?'ngày':'phiên'} ≈ 1 năm` : '';
+  renderPaper(M, V);
   /* Danh sách theo điểm — bấm dòng để chọn, bấm lại để tính PnL. */
   el('tdListSub').textContent = st && st.basket ? st.basket : (M.key==='coin' ? `top ${COIN_TOP_N} Binance theo khối lượng 24h` : `${VN30_BASKET} · giá nghìn đồng`);
   const setRanks = ranks.filter(x=>setSyms.includes(x.sym));
@@ -5307,7 +5506,7 @@ function renderTrade(){
   el('tdBookNote').innerHTML = `Lãi/lỗ nghìn đồng${u>0?` · coin quy theo tỷ giá USDT ${fmtK(u,4)}`:' · <b>chưa có tỷ giá USDT</b> nên coin chưa quy được'}. Phần này cũng hiện ở Tổng quan → Phân rã tăng trưởng (ghi chú dưới biểu đồ).`;
 }
 el('tdMkt').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.tradeMkt) return; state.tradeMkt=b.dataset.coin; renderTrade(); });
-el('tdPickRule').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.pickRule) return; state.pickRule=b.dataset.coin; renderTrade(); });
+el('tdPickRule').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.planVariant) return; state.planVariant=b.dataset.coin; renderTrade(); });
 el('tdSetPick').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b) return; const M = mktOf(state.tradeMkt); if(b.dataset.coin===state.tradeSet[M.key]) return; state.tradeSet[M.key]=b.dataset.coin; renderTrade(); });
 el('tdTable').addEventListener('click', e=>{ const tr = e.target.closest('tr[data-sym]'); if(!tr) return; const M = mktOf(state.tradeMkt);
   if(tr.dataset.sym===tdSym(M) && mktStore(M)){ openPnl(M, tr.dataset.sym); return; }   // bấm lại mã đang chọn ⇒ popup Tính PnL
@@ -5317,6 +5516,11 @@ el('tdPnl').onclick = ()=>{ const M = mktOf(state.tradeMkt); openPnl(M, tdSym(M)
 el('tdBt').onclick = ()=>{ const M = mktOf(state.tradeMkt); openBacktest(M, false); };
 el('tdOrder').onclick = ()=>{ const M = mktOf(state.tradeMkt); openTradeOrder(M, tdSym(M), 'buy'); };
 el('tdBookHist').onclick = openTradeHistory;
+el('tdPaperTable').addEventListener('click', e=>{ const b = e.target.closest('button[data-act="pclose"]'); if(!b) return; const M = mktOf(state.tradeMkt), V = planVariant(state.planVariant);
+  showModal('Đóng tay vị thế giả', `<div class="hint">Đóng ${esc(b.dataset.sym)} trong sổ lệnh giả ${V.key} ở giá hiện tại (có phí). Không đụng lệnh thật.</div>`, 'Đóng', ()=>paperClose(M, V, b.dataset.sym)); });
+/* Chạm vào ô Buy Score (thiết bị không có hover) bật/tắt panel phân rã; chạm ra ngoài thì đóng. */
+el('tdScorePop').addEventListener('click', e=>{ if(e.target.closest('.popover')) return; el('tdScorePop').classList.toggle('open'); });
+document.addEventListener('click', e=>{ if(!e.target.closest('#tdScorePop')) el('tdScorePop').classList.remove('open'); });
 el('tdBookTable').addEventListener('click', e=>{ const b = e.target.closest('button[data-act="sell"]'); if(!b) return; const tr = b.closest('tr'); openTradeOrder(mktOf(tr.dataset.mkt), tr.dataset.sym, 'sell'); });
 el('stockAdd').onclick = ()=>{
   const opts = STOCK_ALL.map(x=>`<option value="${x}"${x===state.stockSym?' selected':''}>${x}</option>`).join('');
@@ -6166,6 +6370,8 @@ el('btnImportStockHistory').onclick = async ()=>{
       (r.oldValue!=null ? `\nKhoản VCBS cũ ${fmtK(Math.round(r.oldValue))} ⇒ Tiền tại VCBS ước lượng ${fmtK(Math.round(r.cash))} — sửa lại theo số dư thật ở Tài sản → Tiền.` : '\nChưa có khoản VCBS cũ ⇒ Tiền tại VCBS = 0, nhập tay ở Tài sản → Tiền.'));
   }catch(e){ alert(e.message); }
 };
+el('btnPaperReset').onclick = ()=>{ const n = Object.keys(D.paper||{}).length;
+  showModal('Xoá sổ lệnh giả', `<div class="hint">Xoá ${n} sổ lệnh giả (mỗi thị trường × phương án một sổ) và bắt đầu lại từ vốn ${fmtK(Number((settings().trade||{}).sleeve)||PAPER_ACCOUNT_V1.capitalK)} ở lần Cập nhật kế. Không đụng lệnh thật, không đụng Tài sản.</div>`, 'Xoá', ()=>{ paperReset(); toast('Đã xoá sổ lệnh giả'); }); };
 el('btnReconcileStocks').onclick = async ()=>{
   if(!confirm('Đối chiếu sổ cổ phiếu với ảnh Danh mục VCBS 17/09/2026: sửa số CP đang giữ và giá vốn TB của BID, DPR, PHR, TCB, VIX cho khớp VCBS (ghi một dòng điều chỉnh mỗi mã lệch vào lịch sử Chuyển đổi). Chỉ làm một lần.')) return;
   try{
@@ -6194,7 +6400,7 @@ const BACKUP_VERSION = 1;
 /* Nạp kết quả store.loadAll() vào state. Dùng chung cho đăng nhập, import và khôi phục. */
 function applyLoaded(d){
   D.transactions = d.transactions || []; D.debts = d.debts || []; D.holdings = d.holdings || [];
-  D.transfers = d.transfers || []; D.months = d.months || {}; D.snaps = d.snaps || {}; D.prices = d.prices || {};
+  D.transfers = d.transfers || []; D.months = d.months || {}; D.snaps = d.snaps || {}; D.paper = d.paper || {}; D.prices = d.prices || {};
   D.settings = { incomeTarget: DEFAULT_TARGET, expenseCats:[...DEFAULT_EXPENSE_CATS], incomeCats:[...DEFAULT_INCOME_CATS], ...(d.settings||{}) };
   normalizeSettings();
   fixWbethPriceKey();
@@ -6203,7 +6409,7 @@ function applyLoaded(d){
 function backupPayload(){
   return { app:'fintrace', version:BACKUP_VERSION, exportedAt:new Date().toISOString(), mode:state.mode,
     data:{ transactions:D.transactions, debts:D.debts, holdings:D.holdings, transfers:D.transfers,
-           months:Object.values(D.months), snaps:Object.values(D.snaps), prices:D.prices, settings:D.settings } };
+           months:Object.values(D.months), snaps:Object.values(D.snaps), paper:Object.values(D.paper), prices:D.prices, settings:D.settings } };
 }
 
 function downloadJson(payload, filename){
@@ -6267,11 +6473,11 @@ async function restoreBackup(payload){
   if(Number(payload.version) > BACKUP_VERSION) throw new Error('Bản sao lưu mới hơn phiên bản app; hãy cập nhật app trước');
   const d = payload.data, ops = [], counts = {};
   const rowsOf = v => Array.isArray(v) ? v : (v && typeof v==='object' ? Object.values(v) : []);
-  for(const col of ['transactions','debts','holdings','transfers','months','snaps']){
+  for(const col of ['transactions','debts','holdings','transfers','months','snaps','paper']){
     const rows = rowsOf(d[col]); counts[col] = rows.length;
     for(const row of rows){
       const {id, ...rest} = row;
-      if((col==='months'||col==='snaps') && !id) throw new Error('Bản sao lưu hỏng: có '+(col==='months'?'tháng':'ảnh chụp')+' thiếu id');
+      if((col==='months'||col==='snaps'||col==='paper') && !id) throw new Error('Bản sao lưu hỏng: có '+(col==='months'?'tháng':col==='snaps'?'ảnh chụp':'sổ lệnh giả')+' thiếu id');
       ops.push({op:'set', col, id: id || store.newId(), data: rest});
     }
   }
@@ -6447,7 +6653,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
-        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1, screenPicks, SCREEN_V1, cheapKind, KIND_V1, ENTRY_RULES, entryOk, PICK_RULES, pickRuleText},
+        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1, screenPicks, SCREEN_V1, cheapKind, KIND_V1, ENTRY_RULES, entryOk, pickRuleText, PLAN_VARIANTS, planVariant, variantPlan, PAPER_ACCOUNT_V1, paperStep, paperId, stockAgeOf},
   render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
   refreshDca, refreshStocks, refreshCoins, importStockHistory, reconcileStocks, openPnl, openBacktest, openTradeOrder, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };

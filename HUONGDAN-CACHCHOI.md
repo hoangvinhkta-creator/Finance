@@ -35,8 +35,8 @@ còn lại đang ở mức theo dõi và ghi sổ.
 | 2 | Bốn khối xây dựng mà mọi cách chơi đều dùng |
 | 3 | Chín cách chơi: cách tính và kết quả từng cách |
 | 4 | Bảng tổng hợp, xếp theo tỉ lệ thắng |
-| 5 | Phương án đang chọn, tham số chính xác, quy trình hằng tháng |
-| 6 | Sáu cạm bẫy khi đọc những con số trên |
+| 5 | Phương án đang chọn, hai phương án A/B đang nghiên cứu, sổ lệnh giả, quy trình hằng tháng |
+| 6 | Bảy cạm bẫy khi đọc những con số trên |
 | 7 | Nhật ký các lần đo |
 
 ---
@@ -607,29 +607,62 @@ Ba luật vốn app cảnh báo nhưng không chặn:
 - Tháng này đã chốt lỗ từ 10% vốn trade trở lên.
 - Mua vượt số dư khoản tiền đang chọn — cái này **chặn**.
 
-## 5.4. Hai luật vào, tự chọn trên bảng
+## 5.4. Hai phương án đang nghiên cứu — A và B (chốt 18/09)
 
-Bộ Gợi ý có **hai nút chọn luật vào** ngay dưới bộ chọn danh sách, để so rồi quyết bằng dữ liệu
-thật thay vì quyết trước:
+Owner chốt **chỉ giữ lại hai phương án** để theo dõi tiếp, mọi cách chơi khác trong Phần 3 vẫn tính
+nhưng **gấp lại** trong popup Backtest (mục "Các bảng nghiên cứu khác — đang gấp") để bớt số liệu thừa.
+Cả hai dùng **cùng luật vào** là mục 3.4 (đã chạm 75 trong 21 phiên, hôm nay còn ≥ 65, Hồi ≥ 2/3,
+soi từng phiên, tối đa 2 vị thế và 2 lệnh mua mới mỗi tháng), **chỉ khác ngưỡng bán và hạn giữ**:
 
-| Nút | Luật | Số đo 5 năm |
-|---|---|---|
-| **Kiểu rẻ** (mặc định, là luật app dùng từ trước) | Mục 3.5 | Nhãn hoảng loạn vào ngay thắng 73,7%, nhưng 2022 chỉ **3/11**; kế hoạch dùng luật này kém luật kia trên cùng dữ liệu |
-| **Điểm + Hồi** | Mục 3.4 | 33 lệnh, thắng **66,7%**, +20,6%, sụt 22,7%; dương ở **cả hai nửa kỳ** |
+| Phương án | Bán khi điểm ≤ | Giữ tối đa | Kho 5 năm (08/07/2021 → 17/09/2026, VN-Index +32,6%) | Kho 2,3 năm (21/05/2024 → 17/09/2026, VN-Index +42,7%) |
+|---|---|---|---|---|
+| **A** (mặc định) | 65 | 42 phiên | 33 lệnh · thắng **66,7%** · +20,6% · 12 th +0,2% · sụt 22,7% | 10 lệnh · 90% · +14,6% · 12 th +0,2% · sụt 5,2% |
+| **B** | 55 | 63 phiên | 29 lệnh · thắng **75,9%** · +51,2% · 12 th +7,8% · sụt **31,9%** | 10 lệnh · 80% · +22% · 12 th +7,8% · sụt 15,4% |
 
-Hai luật **chỉ khác nhau ở mã mang nhãn hoảng loạn**. Mã nhãn *cấu trúc* và *hỗn hợp* đi theo cùng
-một điều kiện ở cả hai luật, nên khi nhóm đang xét không có mã hoảng loạn thì hai luật ra kết quả
-y hệt nhau. Dòng bên cạnh hai nút cho biết luật còn lại đang ra bao nhiêu mã mua, mã nào khác
-nhau, và đếm số mã nhãn hoảng loạn trong nhóm xét để giải thích khi chúng trùng nhau.
+Đọc cạnh nhau: B thắng nhiều hơn và lãi hơn nhưng **sụt sâu hơn gần gấp rưỡi** (31,9% so 22,7%);
+trên kho 5 năm B là bộ duy nhất thắng VN-Index toàn kỳ, nhưng ở nửa kỳ thị trường tăng (VN-Index
++53,7%) nó chỉ +18,1%. Chưa đủ để chọn một bỏ một — vì thế mới giữ cả hai để chạy **sổ lệnh giả**
+(mục 5.6) song song.
 
-Ngày 17/09 cả hai luật đều cho **0 mua và 20 theo dõi**, vì cả 20 mã đều nhãn *cấu trúc*.
+Bộ chọn **A / B** nằm trên card xếp hạng của tab Trading (hàng ngay dưới bộ chọn danh sách). Đổi
+phương án **không đổi danh sách Gợi ý** (luật vào chung), chỉ đổi ba chỗ: card "Tháng này" ở tab
+Chứng khoán (ngưỡng bán và hạn giữ của mã đang giữ), chip ngưỡng bán trong popup Tính PnL, và sổ
+lệnh giả đang hiện.
 
-Lựa chọn áp cho cả card **"Tháng này"** ở tab Chứng khoán — cùng một phép lọc thì phải cùng một
-luật. Card đó ghi luật đang dùng trong dòng mô tả.
+Popup Backtest cho mỗi phương án **hai dòng**: dòng chuẩn hoá (vốn 1, không lô) và dòng "tài khoản"
+(vốn 30.000k, lô 100, dừng mở lệnh mới khi đường vốn sụt ≥ 15% từ đỉnh, mở lại khi còn ≤ 7,5%) —
+dòng sau gần cách chơi thật hơn. Kho 17/09: dòng tài khoản của A +14% · +0,3% · sụt 4,7%; của B
++21% · +7,5% · sụt 13,7% — sát dòng chuẩn hoá, tức làm tròn lô và dừng mua chưa đổi kết luận.
 
-**Khuyến nghị theo số đo:** chọn *Điểm + Hồi*. Phần "hoảng loạn vào ngay" là phần duy nhất khác
-nhau giữa hai luật, và nó là phần không đứng vững qua 2022. Mặc định vẫn để *Kiểu rẻ* để không
-đổi hành vi sau lưng owner.
+**Chia đôi kỳ một lần** (kho 17/09, cắt 19/07/2025): A nửa đầu +14,4% · nửa sau **+0,2%**; B nửa
+đầu +13,2% · nửa sau **+7,8%**; VN-Index nửa sau **+22,7%**. Cả hai đều dương nhưng thua xa chỉ
+số ở nửa thị trường tăng — đúng tính chất "giữ vốn khi xuống, không thắng khi lên" đã thấy ở 5 năm.
+
+Luật vào của bộ Gợi ý (`SCREEN_V1.entryRule`) đã đổi từ `kind` về **`confirm`** cùng lúc — chỗ
+chưa khớp ghi ở bản trước của mục này đã đóng. Luật "theo kiểu rẻ" (mục 3.5) vẫn tính được trong
+bảng gấp, không còn là lựa chọn trên giao diện.
+
+## 5.6. Sổ lệnh giả — chạy hai phương án bằng thời gian thật
+
+Card Buy Score của tab Trading có bảng **Sổ lệnh giả** (thay chỗ bảng Phân rã điểm cũ; phân rã giờ
+hiện khi di chuột hoặc chạm vào ô Buy Score). Mỗi thị trường × mỗi phương án là một sổ riêng, vốn
+ban đầu = "vốn dành cho trade" trong Cài đặt (không có thì 30.000k; coin quy USD theo tỷ giá USDT).
+
+Sổ chạy **đúng luật của phương án** mỗi lần bấm Cập nhật, không có tiến trình nền:
+
+1. Tín hiệu mua lấy từ chính bộ Gợi ý (nhóm MUA) ở **nến cuối** của kho, tối đa 2 vị thế và 2 lệnh
+   mua mới mỗi tháng, không mua mã đang giữ thật. Lệnh khớp ở **giá mở phiên đầu tiên sau** tín hiệu
+   có trong kho; mở cửa sát trần thì bỏ lệnh. Tiền chia đều cho chỗ trống, làm tròn lô 100 (coin
+   số lẻ), phí như Backtest.
+2. Bán khi điểm ≤ ngưỡng của phương án **sau T+2** hoặc đã giữ ≥ hạn; khớp ở giá mở phiên sau; mở
+   cửa sát sàn thì dời sang phiên sau.
+3. Đường vốn sụt ≥ 15% từ đỉnh thì **không mở lệnh mới** tới khi sụt còn ≤ 7,5%.
+4. Chỉ xử lý nến mới hơn lần chạy trước, nên bấm Cập nhật nhiều lần một ngày không nhân đôi. Ngày
+   không mở app thì tín hiệu mua ngày đó bị bỏ qua (bán vẫn được xét đủ vì chuỗi điểm của mã đang
+   giữ được chấm lại cho mọi phiên đã trôi) — sổ này đo "nếu mở app đều" chứ không đo máy chạy 24/7.
+
+Nút **Đóng** trên mỗi vị thế bán tay ở giá hiện tại (ghi lý do "tay"). Cài đặt → Nâng cao có nút
+**Xoá sổ lệnh giả** để bắt đầu lại. Ngày 18/09 cả hai sổ đều trống vì bộ Gợi ý ra 0 mua.
 
 ## 5.5. Quy trình hằng tháng
 
@@ -638,7 +671,7 @@ nhau giữa hai luật, và nó là phần không đứng vững qua 2022. Mặc
 | Đầu tháng | Tab DCA, bấm Cập nhật, đọc card "Tháng này", mua phần Base đến hạn |
 | Hằng ngày hoặc vài ngày | Tab Trading, bộ Gợi ý. Có mã nhãn *mua* thì xét. Không có thì không làm gì |
 | Khi mua | Nút Mua / Bán, ghi đúng giá khớp thật |
-| Khi một mã đang giữ về điểm ≤ 65 | Theo luật thì bán. App nhắc ở card "Tháng này" |
+| Khi một mã đang giữ về ngưỡng bán của phương án (A: ≤ 65 · B: ≤ 55) hoặc hết hạn giữ | Theo luật thì bán. App nhắc ở card "Tháng này" và sổ lệnh giả tự bán |
 | Cuối tháng | Bấm Chốt tháng một lần để có mốc so sánh cho Phân rã tăng trưởng |
 | Khi kho dữ liệu cũ | Vào GitHub Actions, bấm Run workflow cho "Cào giá VN100" |
 
@@ -647,7 +680,7 @@ nhau giữa hai luật, và nó là phần không đứng vững qua 2022. Mặc
 
 ---
 
-# PHẦN 6 — SÁU CẠM BẪY KHI ĐỌC NHỮNG CON SỐ TRÊN
+# PHẦN 6 — BẢY CẠM BẪY KHI ĐỌC NHỮNG CON SỐ TRÊN
 
 **Một — mẫu nhỏ.** 10 lệnh thắng 9 thì tỉ lệ là 90%, nhưng đổi một lệnh thành lỗ là 80%. Dưới 30
 lệnh thì tỉ lệ thắng gần như không nói được gì. Mọi con số trên 80% trong tài liệu này đều dưới
@@ -673,6 +706,16 @@ tăng. Tỉ lệ thắng cao mà mỗi lần thua thì thua đậm là một cá
 
 ---
 
+**7. Ba chữ dễ đọc nhầm (reaudit R09).** *"Rớt thêm"* trong bảng sự kiện là giá đóng thấp nhất
+trong 63 phiên **so với giá vào**, không phải "sụt tối đa" của đường vốn (đo từ đỉnh đường vốn, có
+thể xảy ra sau khi đã có lãi). *"Điểm short = 100 − điểm mua"* là cách nói gần đúng: điểm short chấm
+trên nến đảo 1/giá, nên RSI thành 100 − RSI đúng, nhưng phần trăm giảm-từ-đỉnh và lệch MA không
+đối xứng hoàn toàn. *Funding 0,01%/8 giờ trả ở cả hai chiều* là giả định cố ý bất lợi, thực tế bên
+này trả thì bên kia nhận. Và "kiểm định ngoài mẫu" trong app là **một lần chia đôi kỳ**, không phải
+walk-forward cuốn nhiều cửa sổ — một phép thử, không phải bằng chứng.
+
+---
+
 # PHẦN 7 — NHẬT KÝ CÁC LẦN ĐO
 
 | Ngày | Đo gì | Kết luận |
@@ -685,10 +728,11 @@ tăng. Tỉ lệ thắng cao mà mỗi lần thua thì thua đậm là một cá
 | 17/09 | Nghiên cứu sự kiện, cột Hồi | Chờ hồi: rớt thêm từ −7,3% về 0,0%, mẫu 235 → 23 |
 | 17/09 | Nhãn kiểu rẻ | Hoảng loạn 90% dương, cấu trúc 57% — mẫu một quãng tăng |
 | 17/09 | Ba luật vào so với nhau | Luật kiểu rẻ không hơn luật điểm + Hồi |
-| 17/09 | Kiểm định ngoài mẫu chia đôi kỳ | Luật chọn trên nửa đầu lỗ 17,7% ở nửa sau |
+| 17/09 | Chia đôi kỳ một lần (kiểm định ngoài mẫu đơn giản) | Luật chọn trên nửa đầu lỗ 17,7% ở nửa sau |
 | 18/09 | Cào lịch sử về 2020, đo lại theo năm | Cổng trạng thái thị trường không giữ được qua 2022 |
 | 18/09 | Đáy → đỉnh và DCA 50/30/20 khi ≥ 85 | Chia nhịp không đổi xác suất, chỉ đổi hình dạng lỗ |
 | 18/09 | Chạy lại điểm + Hồi trên 5 năm | 66,7% thắng, không phải 90%. Hồi 1/3 không tốt hơn |
+| 18/09 | Reaudit: engine khớp lại (t−1, T+2 theo lô, không ép bán cuối, lô/dừng sụt) và đo lại A/B trên kho 17/09 | A 10 lệnh 90% +14,6% sụt 5,2% · B 10 lệnh 80% +22% sụt 15,4%; chia đôi kỳ A +0,2% · B +7,8% so VN-Index +22,7% |
 
 Mọi phép đo dùng đúng các hàm mà app dùng để hiện gợi ý, không viết lại công thức riêng. Nếu một
 ngưỡng trong app đổi, các con số này phải đo lại.
