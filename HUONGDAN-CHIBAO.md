@@ -645,6 +645,8 @@ xuống X hoặc quá 42 phiên.** So bốn cách vào:
 | Điểm ≥ 75, chọn đầu tháng (cũ) | 65 | 15 | 53% | +19,2% | +27,6% | 25,6% |
 | Điểm ≥ 75, soi từng phiên | 65 | 32 | 53% | **−18,4%** | −10,7% | 32,3% |
 | Điểm + Hồi, soi từng phiên | 65 | 10 | **90%** | +14,6% | +0,2% | **5,2%** |
+
+> **Kiểm lại trên 5 năm (18/09):** cùng luật này trên dữ liệu 2021 → 2026 ra **33 lệnh, thắng 66,7%**, +20,6% toàn kỳ, sụt tối đa 22,7% — con số 90% ở trên là của 10 lệnh trong quãng thị trường tăng. Bán khi điểm ≤ 55 thắng 76% và +45–51%, nhưng sụt 32% và vẫn thua cầm VN-Index (+53,7%) ở nửa sau. Nới điều kiện xuống Hồi 1/3 cho gấp đôi số lệnh nhưng sụt 40–57%. Giữ ngắn hơn 63 phiên không đổi gì vì lệnh đã tự thoát sau 6–8 phiên.
 | Điểm + Hồi, soi từng phiên | 55 | 10 | 80% | +17,3% | +3,7% | 18,7% |
 | Theo kiểu rẻ, soi từng phiên | 65 | 16 | 69% | +4,9% | −1,2% | 21,6% |
 | **VN-Index mua rồi giữ** | | | | **+42,7%** | **+9,1%** | |
