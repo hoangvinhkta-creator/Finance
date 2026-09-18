@@ -337,7 +337,10 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .seg button{height:30px;padding:0 14px;font-size:13px;color:var(--ink2);border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}
 .seg button:hover{background:var(--soft)}
-.pickrule{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 0 6px}   /* hàng chọn phương án A/B (ngưỡng bán · hạn giữ) trên card xếp hạng — card này height:0 nên không đổi chiều cao hàng */
+/* Bộ chọn phương án A/B nằm trên card "Sổ lệnh giả" — chỗ duy nhất nó đổi thứ nhìn thấy được (trước đặt ở card xếp hạng, nhưng đổi phương án không đổi danh sách Gợi ý nên owner cho bỏ 2026-09-18). */
+.segrow{display:flex;gap:6px;align-items:center;flex:none}
+.seg.mini button{height:22px;padding:0 9px;font-size:11px}
+.btn.mini{height:22px;padding:0 8px;font-size:11px;border-radius:5px}
 /* Phân rã điểm thành panel nhỏ hiện khi di chuột / chạm vào ô Buy Score (owner 2026-09-18) — chỗ cũ dành cho Sổ lệnh giả, card giữ nguyên kích thước. */
 .pop{position:relative;cursor:help}
 .pop .popi{display:inline-block;width:14px;height:14px;line-height:13px;text-align:center;border:1px solid var(--faint);border-radius:50%;font-size:10px;font-style:italic;color:var(--mute);margin-left:2px;vertical-align:1px}
@@ -347,8 +350,6 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .pop .popover .tbl.compact tbody tr{height:auto}
 .dialog details.more{margin-top:12px;border-top:1px solid var(--line);padding-top:6px}
 .dialog details.more>summary{font-size:12px;padding:4px 0}
-.pickrule .seg button{height:26px;padding:0 10px;font-size:12px}
-.pickrule small{font-size:12px}
 .seg button.on{background:var(--ink);color:#fff;font-weight:600}
 
 /* Dòng tiền: cả tab cao đúng một màn hình (owner chốt 2026-09-13 "cuộn trong card"). Hàng thống kê giữ nguyên,
@@ -765,12 +766,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           </div>
           <div class="split one" id="tdHeroMeta"></div>
           <div class="warnline" id="tdWarn" hidden></div>
-          <div class="colhead" style="padding:10px 0 4px"><h2>Sổ lệnh giả <small id="tdPaperSub"></small></h2><small class="mute" id="tdPaperMeta"></small></div>
+          <div class="colhead" style="padding:8px 0 4px"><h2>Sổ lệnh giả <small id="tdPaperSub"></small></h2><div class="segrow"><div class="seg mini" id="tdPaperVar" title="Phương án A: bán khi điểm ≤ 65, giữ tối đa 42 phiên · B: bán ≤ 55, giữ 63"></div><button class="btn mini" id="tdPaperBuy" title="Ghi một lệnh mua vào sổ lệnh giả — không tiền thật">+ Mua</button></div></div>
           <div class="scroll"><table class="tbl compact" id="tdPaperTable"></table></div>
         </section>
         <section class="card pad" id="tdListCard">
           <div class="colhead" style="padding:0 0 6px"><h2>Xếp theo điểm <small id="tdListSub"></small></h2><div class="seg" id="tdSetPick" style="flex:none"></div></div>
-          <div class="pickrule" id="tdPickRuleRow" hidden><div class="seg" id="tdPickRule"></div><small class="mute" id="tdPickCmp"></small></div>
           <div class="mute" id="tdListMeta" style="font-size:12px;padding:0 0 6px"></div>
           <div class="scroll"><table class="tbl compact" id="tdTable"></table></div>
         </section>
@@ -3341,6 +3341,19 @@ function testStocks(){
     const sD = paperStep({ ...book0, cash:25000, peak:30000, lastTime:d(0) }, [rk(d(1),'X',85)], {...opts, seriesOf: s=>serX.slice(0,2)});
     chk('đường vốn sụt 16,7% từ đỉnh ⇒ halted, không có lệnh chờ mua, log ghi', [sD.halted, sD.pending.length, sD.log.some(l=>/sụt/.test(l.msg))], [true, 0, true]);
     chk('paperId ghép thị trường và phương án', paperId(MARKETS.stock, planVariant('B')), 'stock-B'); }
+  { /* Mua/bán TAY trong sổ giả (owner 2026-09-18): phí, lô, chặn vượt tiền và vượt số đang giữ, bán một phần, mua thêm ra giá vào bình quân. */
+    const PA = variantPlan(STOCK_PLAN_V1, planVariant('A')), O = { P:PA, lot:100 }, T0 = Date.UTC(2026,8,18);
+    const b0 = { mkt:'stock', variant:'A', capital:30000, cash:30000, positions:[], pending:[], closed:[], lastTime:T0, peak:30000 };
+    const r1 = paperTrade(b0, {sym:'FPT', side:'buy', qty:150, px:100}, O);
+    chk('mua tay: ép lô 100 (150 ⇒ 100 CP), tiền trừ cả phí 0,15%, sổ gốc không đổi', [r1.err, r1.book.positions[0].qty, Math.round(r1.book.cash), b0.positions.length], [undefined, 100, 30000-Math.round(100*100*1.0015), 0]);
+    chk('mua vượt tiền ⇒ chặn, nói rõ cần bao nhiêu', [paperTrade(b0, {sym:'FPT', side:'buy', qty:400, px:100}, O).err.startsWith('Không đủ tiền'), paperTrade(b0, {sym:'FPT', side:'buy', qty:50, px:100}, O).err], [true, 'Số lượng phải đủ ít nhất một lô 100']);
+    const r2 = paperTrade(r1.book, {sym:'FPT', side:'buy', qty:100, px:110}, O);
+    chk('mua thêm cùng mã ⇒ giá vào bình quân 105, T+2 tính lại từ lần mua này', [r2.book.positions.length, r2.book.positions[0].px, r2.book.positions[0].qty, r2.book.positions[0].held], [1, 105, 200, 0]);
+    const r3 = paperTrade(r2.book, {sym:'FPT', side:'sell', qty:100, px:120}, O);
+    chk('bán một phần: còn 100 CP, vốn còn một nửa, lãi = tiền về − vốn phần bán', [r3.book.positions[0].qty, Math.round(r3.book.closed[0].pnl), r3.book.closed[0].why], [100, Math.round(100*120*(1-0.0025) - (100*100*1.0015 + 100*110*1.0015)/2), 'tay']);
+    chk('bán nhiều hơn số đang giữ ⇒ chỉ bán hết phần đang giữ; bán mã chưa giữ ⇒ chặn', [paperTrade(r3.book, {sym:'FPT', side:'sell', qty:999, px:120}, O).book.positions.length, paperTrade(r3.book, {sym:'VCB', side:'sell', qty:100, px:120}, O).err], [0, 'Sổ giả chưa giữ VCB']);
+    chk('mua mã thứ ba khi đã đủ 2 vị thế ⇒ chặn', paperTrade({...b0, positions:[{sym:'A',qty:1,px:1,cost:1},{sym:'B',qty:1,px:1,cost:1}]}, {sym:'C', side:'buy', qty:100, px:10}, O).err.includes('2/2'), true);
+    chk('coin lô 0 mua số lẻ được; giá ≤ 0 chặn', [paperTrade({...b0, cash:1000}, {sym:'SOL', side:'buy', qty:1.25, px:100}, {P:{...PA, fee:0.001, sellTax:0}, lot:0}).book.positions[0].qty, paperTrade(b0, {sym:'FPT', side:'buy', qty:100, px:0}, O).err], [1.25, 'Giá phải lớn hơn 0']); }
   console.log('%c8 — nhãn lỗi','font-weight:600');
   chk('TypeError ⇒ CORS/mất mạng', probeErrorLabel(new TypeError('Failed to fetch')), 'trình duyệt chặn (CORS) hoặc mất mạng');
   chk('HTTP ⇒ giữ thông điệp', probeErrorLabel(new Error('HTTP 404')), 'HTTP 404');
@@ -5270,14 +5283,81 @@ function paperRun(M){
     b1.updatedAt = Date.now(); D.paper[id] = b1; ops.push({ op:'set', col:'paper', id, data:b1 }); }
   bg(store.batch(ops));
 }
-/* Đóng tay một vị thế giả ở giá hiện tại (giá đóng gần nhất), có phí — ghi why 'tay' để phân biệt với thoát theo luật. */
-function paperClose(M, V, sym){
-  const id = paperId(M, V), b = D.paper && D.paper[id]; if(!b) return; const pos = b.positions.find(p=>p.sym===sym); if(!pos) return;
-  const px = tradePxNow(M.key, sym) || pos.last || pos.px, sellFee = M.plan.fee + (M.plan.sellTax||0), proceeds = pos.qty*px*(1-sellFee), pnl = proceeds - pos.cost;
-  b.closed.push({ sym, qty:pos.qty, px:pos.px, sellPx:px, pnl, ret: pos.cost>0 ? pnl/pos.cost : 0, why:'tay', since:pos.since, signal:pos.signal, to:Date.now(), held:pos.held||0 });
-  b.cash += proceeds; b.positions = b.positions.filter(p=>p!==pos); b.pending = (b.pending||[]).filter(p=>!(p.sym===sym && p.side==='sell')); b.equity = b.cash + b.positions.reduce((a,p)=>a + p.qty*(p.last||p.px), 0);
-  (b.log = b.log||[]).push({ t:Date.now(), msg:`đóng tay ${sym} @ ${px}` }); b.updatedAt = Date.now();
-  render(); bg(store.set('paper', id, b));
+/* Mua/bán TAY trong sổ lệnh giả (owner hỏi 2026-09-18 "thao tác mua bán trên sổ lệnh giả thế nào").
+   HÀM THUẦN: trả {book, err}. Có phí như luật của thị trường, làm tròn lô, mua không vượt tiền, bán không vượt số đang giữ (bán một phần được).
+   Mua thêm mã đang giữ ⇒ giá vào bình quân theo số lượng, T+2 tính lại từ lần mua này (giống nhịp 2 của engine). Lệnh tay ghi why 'tay' để tách khỏi thoát theo luật;
+   sau khi mua tay, vị thế đó vẫn do LUẬT của phương án quản (bán khi điểm ≤ ngưỡng hoặc hết hạn giữ) ở lần Cập nhật kế. */
+function paperTrade(book, order, opts){
+  const O = opts||{}, P = {...STOCK_PLAN_V1, ...(O.P||{})}, lot = Number(O.lot)||0, sellFee = P.fee + (P.sellTax||0), fmtM = O.fmt || (x=>fmtNum(Math.round(x)));
+  const B = { ...book, positions:(book.positions||[]).map(p=>({...p})), pending:(book.pending||[]).map(p=>({...p})), closed:(book.closed||[]).slice(), log:(book.log||[]).slice(-40) };
+  const sym = String(order.sym||'').trim(), px = Number(order.px), t = order.time || B.lastTime || Date.now();
+  let qty = Number(order.qty); if(lot) qty = Math.floor(qty/lot)*lot;
+  if(!sym) return { book:B, err:'Chưa chọn mã' };
+  if(!(px>0)) return { book:B, err:'Giá phải lớn hơn 0' };
+  if(!(qty>0)) return { book:B, err: lot ? `Số lượng phải đủ ít nhất một lô ${lot}` : 'Số lượng phải lớn hơn 0' };
+  if(order.side==='buy'){
+    const cost = qty*px*(1+P.fee);
+    if(cost > B.cash + 1e-9) return { book:B, err:`Không đủ tiền trong sổ giả: cần ${fmtM(cost)}, còn ${fmtM(B.cash)}` };
+    const pos = B.positions.find(p=>p.sym===sym);
+    if(pos){ pos.px = (pos.px*pos.qty + px*qty)/(pos.qty+qty); pos.qty += qty; pos.cost += cost; pos.since = t; pos.held = 0; pos.last = px; }
+    else{
+      if(B.positions.length >= P.picks) return { book:B, err:`Sổ giả đang giữ ${B.positions.length}/${P.picks} vị thế — bán một mã trước` };
+      B.positions.push({ sym, qty, px, cost, since:t, signal:t, held:0, last:px, score:order.score!=null ? order.score : null, manual:true });
+    }
+    B.cash -= cost; B.pending = B.pending.filter(p=>!(p.sym===sym && p.side==='buy'));
+    B.log.push({ t:Date.now(), msg:`mua tay ${sym} ${qty} @ ${px}` });
+  } else {
+    const pos = B.positions.find(p=>p.sym===sym);
+    if(!pos) return { book:B, err:`Sổ giả chưa giữ ${sym}` };
+    const q = Math.min(qty, pos.qty), part = q/pos.qty, cost = pos.cost*part, proceeds = q*px*(1-sellFee), pnl = proceeds - cost;
+    B.closed.push({ sym, qty:q, px:pos.px, sellPx:px, pnl, ret: cost>0 ? pnl/cost : 0, why:'tay', since:pos.since, signal:pos.signal, to:t, held:pos.held||0 });
+    B.cash += proceeds; pos.qty -= q; pos.cost -= cost;
+    if(pos.qty <= 1e-9){ B.positions = B.positions.filter(p=>p!==pos); B.pending = B.pending.filter(p=>!(p.sym===sym && p.side==='sell')); }
+    B.log.push({ t:Date.now(), msg:`bán tay ${sym} ${q} @ ${px}${pnl>=0?' +':' '}${Math.round(pnl)}` });
+  }
+  B.equity = B.cash + B.positions.reduce((a,p)=>a + p.qty*(p.last||p.px), 0);
+  if(B.equity > (B.peak||0)) B.peak = B.equity;
+  return { book:B };
+}
+/* Ghi một lệnh tay vào sổ giả đang xem rồi lưu. Trả chuỗi lỗi (hiện toast, giữ popup mở) hay null nếu xong. */
+function paperOrder(M, V, order){
+  const id = paperId(M, V), r = paperTrade(paperBook(M, V), order, { P: variantPlan(M.plan, V), lot:M.lot, fmt: x => M.key==='coin' ? fmtUsdPx(x) : fmtK(Math.round(x)) });
+  if(r.err) return r.err;
+  r.book.updatedAt = Date.now(); D.paper = D.paper || {}; D.paper[id] = r.book;
+  render(); if(store) bg(store.set('paper', id, r.book));
+  return null;
+}
+/* Popup Mua/Bán của sổ lệnh giả — cùng kiểu với form Mua/Bán thật nhưng KHÔNG đụng tài sản: chỉ đổi tiền và vị thế trong sổ giả. */
+function openPaperOrder(M, V, sym, side){
+  const b = paperBook(M, V), ranks = mktRanks(M), isSell = side==='sell';
+  if(isSell && !b.positions.length){ toast('Sổ lệnh giả chưa giữ mã nào'); return; }
+  const list = isSell ? b.positions.map(p=>p.sym) : (ranks.length ? ranks.map(r=>r.sym) : [sym]).filter(Boolean);
+  const cur = list.includes(sym) ? sym : list[0];
+  const pxOf = k => { const r = ranks.find(x=>x.sym===k); if(r && r.price>0) return r.price; const p = b.positions.find(x=>x.sym===k); return p ? (p.last||p.px) : null; };
+  const money = x => M.key==='coin' ? fmtUsdPx(x) : fmtK(Math.round(x));
+  const qtyFor = (k, p) => { if(isSell){ const q = b.positions.find(x=>x.sym===k); return q ? q.qty : 0; }
+    const slots = Math.max(1, (M.plan.picks||2) - b.positions.length), raw = p>0 ? (b.cash/slots)/(p*(1+M.plan.fee)) : 0;
+    return M.lot ? Math.floor(raw/M.lot)*M.lot : Math.floor(raw*1e6)/1e6; };
+  const px0 = pxOf(cur), q0 = qtyFor(cur, px0);
+  const body = `<div class="hint" style="padding:0 0 8px">Sổ lệnh giả <b>${V.key}</b> · ${esc(V.label)} · <b>không tiền thật</b>, không đụng Tài sản. Tiền trong sổ: <b>${money(b.cash)}</b>${isSell?'':` · đang giữ ${b.positions.length}/${M.plan.picks} vị thế`}. Phí tính như Backtest (${esc(M.feeNote.split('·')[0].trim())}).</div>
+    <div class="frow"><label>Mã</label><select id="poSym" class="inline" style="width:190px">${options(list, cur, k=>{ const r = ranks.find(x=>x.sym===k); return k + (r && r.score!=null ? ` · điểm ${r.score}` : ''); })}</select></div>
+    <div class="frow" style="margin-top:8px"><label>Số lượng${M.lot?` (lô ${M.lot})`:''}</label><input id="poQty" class="inline" inputmode="decimal" value="${q0||''}" style="width:130px"></div>
+    <div class="frow" style="margin-top:8px"><label>Giá (${M.key==='coin'?'USD':'k'})</label><input id="poPx" class="inline" inputmode="decimal" value="${px0!=null?String(px0).replace('.',','):''}" style="width:130px"></div>
+    <div class="suggest one" id="poNote" style="margin:8px 0 0"></div>
+    <div class="hint" style="padding:6px 0 0">${isSell ? 'Bán một phần được — sửa số lượng nhỏ hơn số đang giữ. Lãi/lỗ ghi vào "đã chốt" của sổ.' : 'Mua tay rồi thì vị thế đó vẫn do luật phương án quản: lần Cập nhật kế, điểm về ≤ ' + V.exitScore + ' hoặc giữ quá ' + V.maxHold + ' phiên là sổ tự bán.'}</div>`;
+  const sync = () => { const k = el('poSym').value, p = parseNum(el('poPx').value), q = parseNum(el('poQty').value), pos = b.positions.find(x=>x.sym===k);
+    const qq = M.lot ? Math.floor((isNaN(q)?0:q)/M.lot)*M.lot : (isNaN(q)?0:q), gross = qq>0 && p>0 ? qq*p : null;
+    el('poNote').innerHTML = gross==null ? 'Nhập số lượng và giá.'
+      : isSell ? `Bán ${fmtQtyM(M, qq)} ${esc(k)} @ ${fmtPx(M, p)} ⇒ tiền về <b>${money(gross*(1-M.plan.fee-(M.plan.sellTax||0)))}</b>${pos ? ` · giá vào ${fmtPx(M, pos.px)} ⇒ lãi/lỗ <b>${signed(Math.round(gross*(1-M.plan.fee-(M.plan.sellTax||0)) - pos.cost*Math.min(1, qq/pos.qty)), money)}</b>` : ''}${pos && qq>pos.qty ? ` · <b>đang giữ ${fmtQtyM(M, pos.qty)}</b> nên chỉ bán được chừng đó` : ''}`
+      : `Mua ${fmtQtyM(M, qq)} ${esc(k)} @ ${fmtPx(M, p)} ⇒ tiêu <b>${money(gross*(1+M.plan.fee))}</b> gồm phí · còn lại ${money(b.cash - gross*(1+M.plan.fee))}`; };
+  showModal(`${isSell?'Bán':'Mua'} trong sổ lệnh giả ${V.key}`, body, isSell?'Bán':'Mua', ()=>{
+    const k = el('poSym').value, err = paperOrder(M, V, { sym:k, side, qty:parseNum(el('poQty').value), px:parseNum(el('poPx').value), score:(ranks.find(x=>x.sym===k)||{}).score });
+    if(err){ toast(err); return false; }
+    toast(`Sổ giả ${V.key}: đã ghi lệnh ${isSell?'bán':'mua'} ${k}`);
+  });
+  el('poSym').onchange = ()=>{ const k = el('poSym').value, p = pxOf(k); el('poPx').value = p!=null ? String(p).replace('.',',') : ''; el('poQty').value = qtyFor(k, p) || ''; sync(); };
+  el('poQty').oninput = sync; el('poPx').oninput = sync;
+  sync();
 }
 function paperReset(){ const ids = Object.keys(D.paper||{}); D.paper = {}; if(store && ids.length) bg(store.batch(ids.map(id=>({ op:'delete', col:'paper', id })))); render(); }
 /* Số phiên đã giữ một mã cổ phiếu THẬT = số nến trong kho sau ngày mua gần nhất (transfer vào holding stk:SYM, không tính dòng đối chiếu). Không có kho / chưa mua ⇒ null. */
@@ -5293,12 +5373,13 @@ function stockAgeOf(sym){
 function renderPaper(M, V){
   const b = D.paper && D.paper[paperId(M, V)] || null, ROWS = 7;
   const money = x => M.key==='coin' ? fmtUsdPx(x) : fmtK(Math.round(x)), pctS = x => x==null ? '' : fmtPctS(x);
-  el('tdPaperSub').textContent = `${V.key} · ${V.label} · không tiền thật`;
-  el('tdPaperMeta').textContent = b ? `vốn ${money(b.capital)} · chạy tới ${fmtDayY(b.lastTime)}${b.halted?' · đang dừng mua (sụt ≥ 15%)':''}` : 'chạy khi bấm Cập nhật';
+  renderCoinPick('tdPaperVar', PLAN_VARIANTS.map(x=>({key:x.key, label:x.key})), V.key);
+  el('tdPaperBuy').disabled = !mktStore(M);
+  el('tdPaperSub').textContent = `${V.label.toLowerCase()} · ${b ? (b.halted ? 'đang dừng mua (sụt ≥ 15%)' : 'không tiền thật') : 'chạy khi bấm Cập nhật'}`;
   const items = [];
   if(b){
     for(const p of b.positions){ const pnl = p.last!=null ? p.qty*p.last*(1-(M.plan.fee+(M.plan.sellTax||0))) - p.cost : null, sell = (b.pending||[]).find(x=>x.sym===p.sym && x.side==='sell');
-      items.push({ sym:p.sym, st: sell ? `<span class="badge warn">chờ bán · ${esc(sell.why)}</span>` : `<span class="badge on">mở</span> <small class="mute">${p.held||0} phiên · điểm ${p.score!=null?p.score:'—'}</small>`, qty:p.qty, px:p.px, now:p.last, pnl, ret: pnl!=null && p.cost>0 ? pnl/p.cost : null, act:`<button data-act="pclose" data-sym="${esc(p.sym)}" class="tag" title="Đóng tay ở giá hiện tại">Đóng</button>` }); }
+      items.push({ sym:p.sym, st: sell ? `<span class="badge warn">chờ bán · ${esc(sell.why)}</span>` : `<span class="badge on">mở</span> <small class="mute">${p.held||0} phiên · điểm ${p.score!=null?p.score:'—'}</small>`, qty:p.qty, px:p.px, now:p.last, pnl, ret: pnl!=null && p.cost>0 ? pnl/p.cost : null, act:`<button data-act="psell" data-sym="${esc(p.sym)}" class="tag" title="Bán tay trong sổ giả (sửa được số lượng và giá)">Bán</button>` }); }
     for(const p of (b.pending||[]).filter(x=>x.side==='buy')) items.push({ sym:p.sym, st:`<span class="badge">chờ mua</span> <small class="mute">tín hiệu ${fmtDayY(p.signal)} · điểm ${p.score!=null?p.score:'—'}</small>`, qty:null, px:null, now:null, pnl:null, ret:null, act:'' });
     for(const c of b.closed.slice().reverse()) items.push({ sym:c.sym, st:`<span class="mute">đã bán · ${esc(c.why)} · ${fmtDayY(c.to)}</span>`, qty:c.qty, px:c.px, now:c.sellPx, pnl:c.pnl, ret:c.ret, act:'' });
   }
@@ -5455,10 +5536,6 @@ function renderTrade(){
   const pickSyms = [...pk.buy, ...pk.watch].map(x=>x.sym), tagOf = Object.fromEntries([...pk.buy.map(x=>[x.sym,'buy']), ...pk.watch.map(x=>[x.sym,'watch'])]);
   const setSyms = set.key==='MINE' ? mine : set.key==='PICK' ? pickSyms : (set.syms || all);
   renderCoinPick('tdSetPick', sets, set.key);
-  /* Hàng chọn PHƯƠNG ÁN (A: bán ≤ 65 · giữ 42 — B: bán ≤ 55 · giữ 63): luật vào chung nên không đổi danh sách; áp cho Sổ lệnh giả, Tính PnL và Tháng này (Chứng khoán). */
-  el('tdPickRuleRow').hidden = false;
-  renderCoinPick('tdPickRule', PLAN_VARIANTS, V.key);
-  el('tdPickCmp').innerHTML = `phương án <b>${V.key}</b> áp cho Sổ lệnh giả · Tính PnL · Tháng này — chỉ đổi ngưỡng bán và hạn giữ, không đổi danh sách Gợi ý (luật vào chung: ${pickRuleText({entryRule:'confirm'})})`;
   const sym = tdSym(M), r = ranks.find(x=>x.sym===sym) || null, rank = r ? ranks.indexOf(r)+1 : null;
   const bt = btCacheOf(M), btSym = bt && bt.perSym[sym] ? stockBtBest(bt.perSym[sym]) : null;
   fillHero('td', { sym, r, C, stale: stale || !!(r && r.stale), busy, fmt:p=>fmtPx(M,p), src:tdSrc,
@@ -5506,7 +5583,8 @@ function renderTrade(){
   el('tdBookNote').innerHTML = `Lãi/lỗ nghìn đồng${u>0?` · coin quy theo tỷ giá USDT ${fmtK(u,4)}`:' · <b>chưa có tỷ giá USDT</b> nên coin chưa quy được'}. Phần này cũng hiện ở Tổng quan → Phân rã tăng trưởng (ghi chú dưới biểu đồ).`;
 }
 el('tdMkt').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.tradeMkt) return; state.tradeMkt=b.dataset.coin; renderTrade(); });
-el('tdPickRule').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.planVariant) return; state.planVariant=b.dataset.coin; renderTrade(); });
+el('tdPaperVar').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b || b.dataset.coin===state.planVariant) return; state.planVariant=b.dataset.coin; renderTrade(); });
+el('tdPaperBuy').onclick = ()=>{ const M = mktOf(state.tradeMkt); openPaperOrder(M, planVariant(state.planVariant), tdSym(M), 'buy'); };
 el('tdSetPick').addEventListener('click', e=>{ const b=e.target.closest('button[data-coin]'); if(!b) return; const M = mktOf(state.tradeMkt); if(b.dataset.coin===state.tradeSet[M.key]) return; state.tradeSet[M.key]=b.dataset.coin; renderTrade(); });
 el('tdTable').addEventListener('click', e=>{ const tr = e.target.closest('tr[data-sym]'); if(!tr) return; const M = mktOf(state.tradeMkt);
   if(tr.dataset.sym===tdSym(M) && mktStore(M)){ openPnl(M, tr.dataset.sym); return; }   // bấm lại mã đang chọn ⇒ popup Tính PnL
@@ -5516,8 +5594,8 @@ el('tdPnl').onclick = ()=>{ const M = mktOf(state.tradeMkt); openPnl(M, tdSym(M)
 el('tdBt').onclick = ()=>{ const M = mktOf(state.tradeMkt); openBacktest(M, false); };
 el('tdOrder').onclick = ()=>{ const M = mktOf(state.tradeMkt); openTradeOrder(M, tdSym(M), 'buy'); };
 el('tdBookHist').onclick = openTradeHistory;
-el('tdPaperTable').addEventListener('click', e=>{ const b = e.target.closest('button[data-act="pclose"]'); if(!b) return; const M = mktOf(state.tradeMkt), V = planVariant(state.planVariant);
-  showModal('Đóng tay vị thế giả', `<div class="hint">Đóng ${esc(b.dataset.sym)} trong sổ lệnh giả ${V.key} ở giá hiện tại (có phí). Không đụng lệnh thật.</div>`, 'Đóng', ()=>paperClose(M, V, b.dataset.sym)); });
+el('tdPaperTable').addEventListener('click', e=>{ const b = e.target.closest('button[data-act="psell"]'); if(!b) return;
+  openPaperOrder(mktOf(state.tradeMkt), planVariant(state.planVariant), b.dataset.sym, 'sell'); });
 /* Chạm vào ô Buy Score (thiết bị không có hover) bật/tắt panel phân rã; chạm ra ngoài thì đóng. */
 el('tdScorePop').addEventListener('click', e=>{ if(e.target.closest('.popover')) return; el('tdScorePop').classList.toggle('open'); });
 document.addEventListener('click', e=>{ if(!e.target.closest('#tdScorePop')) el('tdScorePop').classList.remove('open'); });
@@ -6653,7 +6731,7 @@ window.FinTrace = { state, data:D,
         unlockPct, monthDiff, dcaPlan, dcaPlanNow, dcaSuggestion, DCA_PLAN_V1,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
-        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1, screenPicks, SCREEN_V1, cheapKind, KIND_V1, ENTRY_RULES, entryOk, pickRuleText, PLAN_VARIANTS, planVariant, variantPlan, PAPER_ACCOUNT_V1, paperStep, paperId, stockAgeOf},
+        VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1, screenPicks, SCREEN_V1, cheapKind, KIND_V1, ENTRY_RULES, entryOk, pickRuleText, PLAN_VARIANTS, planVariant, variantPlan, PAPER_ACCOUNT_V1, paperStep, paperTrade, paperId, stockAgeOf},
   render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
   refreshDca, refreshStocks, refreshCoins, importStockHistory, reconcileStocks, openPnl, openBacktest, openTradeOrder, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
