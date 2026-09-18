@@ -91,8 +91,10 @@ nhau. Bảng dưới là toàn bộ:
 | 7 | So với chỉ số tham chiếu | **5** | Mã này tụt hậu so với thị trường chung tới đâu |
 | | **Tổng** | **100** | |
 
-Mở tab và bấm vào một mã, bảng "Phân rã điểm" hiện đúng 7 dòng này kèm số điểm từng dòng. Nhờ vậy
-bạn biết **điểm cao đến từ đâu**, chứ không chỉ biết mỗi con số tổng.
+Ở tab Chứng khoán và DCA, bảng "Phân rã điểm" nằm ngay dưới hero và hiện đúng 7 dòng này kèm số điểm
+từng dòng. Ở tab Trading (từ 18/09) bảng này thành **panel nhỏ hiện khi di chuột hoặc chạm vào ô
+Buy Score** (có dấu ⓘ cạnh chữ), vì chỗ cũ dành cho Sổ lệnh giả. Nhờ vậy bạn biết **điểm cao đến từ
+đâu**, chứ không chỉ biết mỗi con số tổng.
 
 ## 2.1. Giảm từ đỉnh 1 năm — 25 điểm, nặng nhất
 
@@ -533,23 +535,20 @@ Sau đó chia ba nhóm:
 | **THEO DÕI** | Rẻ nhưng chưa qua luật vào |
 | **LOẠI** | Có ghi rõ lý do: đang giữ · dữ liệu thiếu hoặc cũ · rớt quá sâu |
 
-**Có hai luật vào, tự chọn ngay trên bảng.** Ngay dưới bộ chọn danh sách có thêm một hàng hai nút:
+**Luật vào** (từ 18/09 chỉ còn một, gọi là *điểm + Hồi*): đã chạm 75 trong 21 phiên, hôm nay còn
+≥ 65, **và** có ít nhất 2 trên 3 dấu hồi — không phân biệt nhãn kiểu rẻ. Luật "kiểu rẻ" (nhãn *hoảng
+loạn* vào ngay khi ≥ 75) đã bỏ khỏi giao diện vì dữ liệu 5 năm không ủng hộ (2022 chỉ 3/11 lần có
+lãi); nó vẫn được tính trong phần gấp của popup Backtest.
 
-| Nút | Luật vào |
-|---|---|
-| **Kiểu rẻ** (mặc định) | Nhãn *hoảng loạn* vào ngay khi điểm ≥ 75. Nhãn *cấu trúc* và *hỗn hợp* phải đã chạm 75 trong 21 phiên, hôm nay còn ≥ 65, **và** có ít nhất 2 trên 3 dấu hồi |
-| **Điểm + Hồi** | Mọi mã, không phân biệt nhãn, đều phải đã chạm 75 trong 21 phiên, còn ≥ 65, **và** có ít nhất 2 trên 3 dấu hồi |
+**Hai phương án A / B, chọn ngay dưới bộ chọn danh sách.** Cùng luật vào, chỉ khác lúc bán:
 
-Hai luật **chỉ khác nhau ở mã mang nhãn hoảng loạn**. Cạnh hai nút có một dòng cho biết luật còn
-lại đang ra bao nhiêu mã mua và mã nào khác nhau, nên xem được cả hai mà không phải bấm qua lại.
-Khi nhóm đang xét không có mã nào nhãn hoảng loạn thì hai luật cho cùng kết quả, và dòng đó nói rõ
-điều này.
+| Nút | Bán khi điểm ≤ | Giữ tối đa | 5 năm |
+|---|---|---|---|
+| **A** (mặc định) | 65 | 42 phiên | 33 lệnh · thắng 66,7% · +20,6% · sụt 22,7% |
+| **B** | 55 | 63 phiên | 29 lệnh · thắng 75,9% · +51,2% · sụt 31,9% |
 
-Chọn luật nào cũng áp luôn cho card **"Tháng này"** ở tab Chứng khoán, vì đó là cùng một phép lọc.
-
-Số đo để chọn nằm ở `HUONGDAN-CACHCHOI.md` mục 3.4 và 3.5. Tóm lại: trên 5 năm, phần "hoảng loạn
-vào ngay" thắng 73,7%, nhưng riêng năm 2022 chỉ **3 trong 11 lần**, và kế hoạch dùng luật *Kiểu rẻ*
-kém hơn luật *Điểm + Hồi* trên cùng dữ liệu.
+Đổi A/B **không đổi danh sách Gợi ý**; nó đổi ngưỡng bán ở card "Tháng này" (tab Chứng khoán), chip
+điểm bán trong popup Tính PnL, và sổ lệnh giả đang hiện. Số đo đầy đủ ở `HUONGDAN-CACHCHOI.md` mục 5.4.
 
 **Vì sao loại mã rớt quá 65% từ đỉnh:** rơi sâu tới mức đó thường không còn là chuyện định giá nữa.
 Buy Score không đọc được báo cáo tài chính nên không biết doanh nghiệp có đang hỏng thật không. App
@@ -557,8 +556,8 @@ chọn đứng ngoài và ghi rõ "kiểm tra doanh nghiệp".
 
 ## Kết quả thật hôm nay
 
-**0 mã đủ điều kiện mua · 20 mã theo dõi**, giống nhau ở cả hai luật. Cả 20 mã đều mang nhãn
-*cấu trúc*, và chưa mã nào có đủ dấu hồi — không có mã nào nhãn *hoảng loạn* nên hai luật trùng nhau.
+**0 mã đủ điều kiện mua · 20 mã theo dõi**. Cả 20 mã đều mang nhãn *cấu trúc*, và chưa mã nào có
+đủ dấu hồi. Sổ lệnh giả của cả A và B vì thế đều trống.
 
 Đây là một kết quả tốt, không phải công cụ bị hỏng. Nó đang nói: *"Có 20 mã rẻ, nhưng tất cả đều
 thuộc kiểu rơi dài ngày, và chưa mã nào ngừng rơi."*
@@ -672,6 +671,14 @@ xuống X hoặc quá 42 phiên.** So bốn cách vào:
 3. **Không cách nào thắng VN-Index toàn kỳ.** Cách tốt nhất (+42,2%) chỉ ngang chỉ số (+42,7%), mà
    cách đó thực chất là "mua rồi giữ 42 phiên" chứ không phải bán theo điểm.
 
+> **Từ 18/09 bảng này gấp lại.** Popup Backtest chỉ còn hiện hai phương án **A (bán ≤ 65 · giữ 42)** và
+> **B (bán ≤ 55 · giữ 63)**, cùng luật vào điểm + Hồi soi từng phiên — mỗi phương án hai dòng: chuẩn hoá
+> và "tài khoản" (vốn 30.000k, lô 100, dừng mua khi sụt ≥ 15%). Kho 17/09 sau khi engine khớp lại
+> theo reaudit (nhịp 2 quyết định từ nến trước, T+2 theo lô, vị thế cuối kỳ không ép bán): A 10 lệnh ·
+> 90% · +14,6% · 12 th +0,2% · sụt 5,2%; B 10 lệnh · 80% · +22% · 12 th +7,8% · sụt 15,4%; dòng tài
+> khoản của A +14% · sụt 4,7%, của B +21% · sụt 13,7%. Các bảng còn lại (9 bộ lưới, ba cách vào, sự
+> kiện, kiểu rẻ) nằm trong mục "Các bảng nghiên cứu khác — đang gấp", bấm là mở.
+
 ## 12.3. Bảng "Sau khi điểm chạm mốc"
 
 Chính là các con số đã dùng ở Phần 6 và Phần 8. Ba ngưỡng 75, 80, 85 nhân hai cách vào.
@@ -685,9 +692,13 @@ Chú ý mấy chỗ ghi trong ngoặc:
 - Mức rơi thêm đo theo **giá đóng cửa**, không phải đáy trong phiên. Thực tế có thể xấu hơn.
 - Nhiều mã cùng chạm mốc trong một ngày thì **không độc lập với nhau**, vì cả thị trường cùng rơi.
 
-## 12.4. Bảng "Kiểm định ngoài mẫu"
+## 12.4. Bảng "Chia đôi kỳ một lần" (trước gọi là "Kiểm định ngoài mẫu")
 
-Đây là bảng **quan trọng nhất** và cũng khó chịu nhất.
+Đây là bảng **quan trọng nhất** và cũng khó chịu nhất. Tên đổi cho đúng bản chất: đây là **một lần**
+chia đôi thời gian, không phải walk-forward cuốn nhiều cửa sổ — một phép thử, không phải bằng chứng.
+Với hai phương án A/B bảng này **không chọn tham số gì**, chỉ đo cùng phương án trên hai nửa: kho
+17/09 (cắt 19/07/2025) A nửa đầu +14,4% · nửa sau **+0,2%**; B +13,2% · **+7,8%**; VN-Index nửa sau
+**+22,7%**. Phần dưới đây là bảng gốc (chọn trên nửa đầu, đo nửa sau), giờ nằm trong mục gấp.
 
 Vấn đề: ba bảng trên chọn ra cách chơi tốt nhất **và** chấm điểm nó **trên cùng một tập dữ liệu**.
 Kiểu như ra đề rồi tự chấm bài mình. Kết quả bao giờ cũng đẹp hơn thực tế.
@@ -786,6 +797,28 @@ quá 10% vốn trade. Đó là hai quy tắc quản trị vốn cài sẵn.
 
 ---
 
+## Sổ lệnh giả — không tiền thật (thêm 18/09)
+
+Khác với Sổ lệnh ở trên (lệnh thật bạn tự ghi), **Sổ lệnh giả** nằm trong card Buy Score của tab
+Trading và do app tự ghi theo đúng luật của phương án đang chọn (A hoặc B), mỗi lần bạn bấm Cập nhật.
+Mục đích: xem hai phương án "nói gì" bằng thời gian thật, thay vì chỉ tin số quá khứ của Backtest.
+
+- Vốn ban đầu = "vốn dành cho trade" trong Cài đặt (không có thì 30.000k). Coin quy USD theo tỷ giá USDT.
+- Mua: mã trong nhóm MUA của bộ Gợi ý ở phiên mới nhất, khớp ở **giá mở phiên sau**, tối đa 2 vị thế và
+  2 lệnh mua mới mỗi tháng, chia đều tiền, lô 100 (coin số lẻ), có phí. Mở cửa sát trần thì bỏ lệnh.
+- Bán: điểm về ≤ ngưỡng của phương án sau T+2, hoặc đã giữ đủ hạn; khớp giá mở phiên sau; mở sát sàn
+  thì dời sang phiên sau. Đường vốn sụt ≥ 15% từ đỉnh thì tạm không mua mới.
+- Bảng luôn 8 dòng: vị thế mở (kèm số phiên đã giữ và điểm hôm nay), lệnh chờ khớp, lệnh đã bán gần
+  nhất, và dòng Tổng (tiền mặt, tài sản, lãi/lỗ đã chốt). Nút **Đóng** bán tay ở giá hiện tại.
+- Sổ chỉ chạy khi mở app; ngày không mở thì tín hiệu mua ngày đó bỏ qua. Cài đặt → Nâng cao có nút
+  **Xoá sổ lệnh giả** để bắt đầu lại.
+
+Đọc sổ này thế nào: sau vài tháng, nếu A hay B có lãi trong sổ giả **và** Backtest vẫn ủng hộ, mới
+bàn tới tiền thật. Một sổ giả có lãi vài lệnh chưa nói được gì — xem cạm bẫy "mẫu nhỏ" ở tài liệu
+cách chơi.
+
+---
+
 # PHẦN 15 — QUY TRÌNH DÙNG HẰNG THÁNG
 
 Gợi ý một nhịp làm việc gọn, khoảng 15 phút mỗi tháng.
@@ -798,7 +831,7 @@ Gợi ý một nhịp làm việc gọn, khoảng 15 phút mỗi tháng.
    - Nhãn rẻ kiểu gì. Là *cấu trúc* thì tự hỏi: mình có biết gì về doanh nghiệp này ngoài biểu đồ
      không? Không biết gì thì cân nhắc bỏ qua.
    - Cột Hồi mấy trên ba.
-   - Bảng Phân rã điểm: điểm đến từ thành phần nào?
+   - Di chuột (hoặc chạm) vào ô Buy Score để xem Phân rã điểm: điểm đến từ thành phần nào?
 4. Bấm **Tính PnL**, kéo thanh trượt tới mức điểm bạn định bán. Đọc **cả hai** dòng: giá cần lên
    tới đâu, và bao lâu nữa điểm tự tụt tới đó nếu giá đứng yên.
 5. Quyết định. Nếu mua, ghi lệnh qua nút **Mua / Bán** để sổ khớp.
@@ -815,8 +848,10 @@ Không cần mở hằng ngày. App tự lấy giá khi bạn mở, và tự ch�
 
 **Mỗi quý một lần**
 
-8. Mở popup **Backtest**, chạy lại, đọc bảng **Kiểm định ngoài mẫu**. Nếu vẫn chưa có cách chơi nào
-   thắng được chỉ số ngoài mẫu, thì kết luận vẫn là: mua tích luỹ đều đặn, đừng trade.
+8. Mở popup **Backtest**, chạy lại, đọc bảng hai phương án A/B và bảng **Chia đôi kỳ một lần**. So với
+   **Sổ lệnh giả** trên card Buy Score (chạy hai phương án bằng thời gian thật từ 18/09, không tiền
+   thật). Nếu vẫn chưa có cách chơi nào thắng được chỉ số ở nửa sau, kết luận vẫn là: mua tích luỹ
+   đều đặn, đừng trade.
 
 ---
 
