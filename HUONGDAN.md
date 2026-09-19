@@ -137,10 +137,27 @@ Trong cột **Chi**, điền lần lượt:
 |---|---|---|
 | **Tên** | Chi cho việc gì, viết ngắn gọn dễ hiểu | `Ăn trưa` |
 | **Số tiền** | Nghìn đồng (xem Phần 2.1) | `85` |
-| **Nhóm** | Chọn trong danh sách sẵn có | `Ăn uống` |
+| **Nhóm** | Chọn trong danh sách sẵn có (ô bên trái) | `Ăn uống` |
+| **Trừ vào** | Tiền ra từ đâu (ô bên phải) — **bắt buộc chọn** | `Vietcombank` |
 | **Ngày** | Mặc định là hôm nay, đúng rồi thì để nguyên | `17/09/2026` |
 
 Bấm **Thêm**. Dòng mới hiện ngay bên dưới. Xong.
+
+### Ô "Trừ vào" — tiền ra từ đâu
+
+Nằm ngay cạnh ô Nhóm, chiếm nửa còn lại của dòng. Chọn đúng nơi tiền thực sự đi ra:
+`Vietcombank`, `Tiền mặt`, `Tiền tại VCBS`, hoặc vàng/bạc nếu bán vàng ra để tiêu.
+
+Chọn xong bấm Thêm thì **app tự trừ đúng khoản đó** ở tab Tài sản. Không phải vào Tài sản sửa số dư
+bằng tay nữa.
+
+- **Bắt buộc chọn**, không để trống được. Không chắc tiền ra từ đâu thì hỏi chủ tài khoản rồi mới ghi.
+- Ghi nhầm nơi thì bấm ✏️ sửa lại — app tự cộng trả chỗ cũ và trừ chỗ mới.
+- Xoá dòng thì app tự hoàn lại tiền vào đúng chỗ đã trừ.
+- Chọn **vàng hoặc bạc** thì có một dòng chữ nhỏ hiện ngay dưới, ví dụ `Vàng Phi Đoan −0,5 (giá
+  14.300k/đơn vị)` — đọc dòng đó để chắc chắn số chỉ vàng bị trừ là đúng ý.
+- Trong danh sách **không có coin và cổ phiếu**: hai thứ đó mua bán ở tab DCA và tab Chứng khoán,
+  ghi ở đây sẽ làm sai giá vốn bên kia.
 
 ### Các nhóm chi có sẵn
 
@@ -172,10 +189,11 @@ Trong cột **Thu**:
 |---|---|---|
 | **Tên** | Tiền từ đâu | `Lương tháng 9` |
 | **Số tiền** | Nghìn đồng | `18000` |
-| **Nhóm** | `Lương`, `Hoa hồng` hoặc `Khác` | `Lương` |
+| **Nhóm** | `Lương`, `Hoa hồng` hoặc `Khác` (ô bên trái) | `Lương` |
+| **Vào** | Tiền về đâu (ô bên phải) — **bắt buộc chọn** | `Vietcombank` |
 | **Ngày** | Ngày nhận tiền | `05/09/2026` |
 
-Bấm **Thêm**.
+Bấm **Thêm**. App tự **cộng** vào đúng khoản đã chọn, giống như ô "Trừ vào" của cột Chi.
 
 ### Ô tick "chưa nhận" — rất quan trọng
 
@@ -185,9 +203,13 @@ Dưới form Thu có ô tick **chưa nhận**. Tick vào khi **đã chắc chắ
 Tick vào thì:
 - Khoản đó vẫn tính vào cột Thu của tháng.
 - Đồng thời hiện thêm bên cột **Họ nợ mình**, vì thực chất đó là tiền người ta còn giữ.
+- **Ô "Vào" bị khoá lại** (xám đi, không chọn được). Đúng như vậy: tiền chưa về tay thì chưa cộng
+  vào tài khoản nào cả.
 
 **Khi nhận được tiền thật:** tìm đúng dòng đó trong cột Thu, bấm **biểu tượng dấu tích ✓** ở cuối
-dòng. App tự bỏ trạng thái chưa nhận. Không cần xoá rồi ghi lại.
+dòng. App hiện một ô nhỏ hỏi **tiền vào đâu** — chọn nơi nhận (`Vietcombank`, `Tiền mặt`…) rồi bấm
+**Đã nhận**. App vừa bỏ trạng thái chưa nhận, vừa cộng tiền vào đúng chỗ. Không cần xoá rồi ghi lại,
+cũng không cần vào tab Tài sản sửa số dư.
 
 ## 3.3. Sửa và xoá một dòng
 
@@ -197,7 +219,7 @@ Mỗi dòng trong bốn cột đều có các biểu tượng nhỏ nằm giữa
 |---|---|---|
 | ✏️ cây bút | Sửa | Gõ nhầm số, nhầm tên, nhầm ngày |
 | 🗑️ thùng rác | Xoá | Ghi nhầm hoàn toàn, hoặc ghi trùng hai lần |
-| ✓ dấu tích | Đã nhận / Tất toán | Khoản thu chưa nhận giờ đã nhận; khoản nợ đã trả xong |
+| ✓ dấu tích | Đã nhận / Tất toán | Khoản thu chưa nhận giờ đã nhận (app hỏi tiền vào đâu); khoản nợ đã trả xong |
 | ↩️ mũi tên quay lại | Mở lại | Bấm tất toán nhầm, muốn quay lại |
 
 Bấm **✏️** thì nội dung dòng đó nhảy lên form phía trên để sửa. Sửa xong bấm **Thêm** (lúc này nút
@@ -210,13 +232,14 @@ Bấm **🗑️** thì app hỏi lại một lần trước khi xoá.
 Cuối mỗi ngày, làm đúng bốn bước này:
 
 1. Mở app, vào tab **Dòng tiền**, kiểm tra tên tháng ở đầu trang đúng là tháng hiện tại.
-2. Ghi lần lượt từng khoản chi trong ngày vào cột **Chi**.
-3. Ghi lần lượt từng khoản thu trong ngày vào cột **Thu**.
+2. Ghi lần lượt từng khoản chi trong ngày vào cột **Chi**, nhớ chọn đúng ô **Trừ vào**.
+3. Ghi lần lượt từng khoản thu trong ngày vào cột **Thu**, nhớ chọn đúng ô **Vào**.
 4. Nhìn hàng thống kê phía trên: ô **Thu**, ô **Chi**, ô **Chênh lệch**. Nếu con số trông lạ
    (ví dụ chi 50 triệu trong một ngày) thì gần như chắc chắn là gõ dư số 0 — kiểm tra lại ngay.
 
 Cách gộp nhiều khoản nhỏ cùng loại trong một ngày: gõ vào một dòng bằng phép cộng, ví dụ tên
-`Ăn uống trong ngày`, số tiền `35+85+120`. Nhưng nếu các khoản khác nhóm nhau thì phải tách dòng.
+`Ăn uống trong ngày`, số tiền `35+85+120`. Nhưng nếu các khoản khác nhóm nhau, **hoặc ra từ hai nơi
+khác nhau** (một phần tiền mặt, một phần chuyển khoản), thì phải tách dòng.
 
 ## 3.5. Đọc hàng thống kê
 
@@ -284,6 +307,8 @@ Cho nên:
 - **Trả hết một khoản nợ:** bấm nút **✓ Tất toán** trên chính dòng nợ đó. Không ghi thêm dòng chi nào.
 - **Nhóm chi "Trả nợ"** chỉ dùng cho các khoản lặt vặt mà chủ tài khoản muốn ghi chú lại, kiểu như
   trả lãi. Nếu bạn dùng nó để ghi một khoản trả nợ lớn, app sẽ hiểu nhầm là tháng đó tiêu rất nhiều.
+  Nặng hơn: khoản chi bây giờ có ô **Trừ vào** nên tiền sẽ bị trừ khỏi tài khoản **lần thứ hai**
+  (lần đầu là lúc bấm Tất toán). Đã bấm Tất toán rồi thì tuyệt đối không ghi thêm dòng chi.
 
 Tương tự: cho vay tiền **không phải là khoản chi**, nhận lại tiền cho vay **không phải là khoản thu**.
 
@@ -335,6 +360,8 @@ từng khoản. Coin gộp chung một dòng tên **Binance**, cổ phiếu gộ
 
 Hai việc thường làm ở đây:
 - **Sửa số dư tiền mặt hoặc tài khoản ngân hàng:** bấm vào ô số của khoản đó, gõ số mới, bấm ra ngoài.
+  Việc này giờ **ít khi cần**: mỗi khoản chi/thu ghi ở tab Dòng tiền đã tự trừ/cộng đúng khoản rồi.
+  Chỉ sửa tay khi số dư thật lệch với app (ví dụ phí ngân hàng chưa ai ghi).
 - **Cập nhật giá vàng:** trong bảng Bảng giá bên phải, sửa giá một chỉ vàng.
 
 Nút **Chuyển đổi** dùng khi đổi tài sản này thành tài sản kia, ví dụ rút tiền ngân hàng mua vàng.
@@ -484,7 +511,9 @@ Không hoàn tác được. Ghi lại dòng đó bằng tay là xong, không m�
 | Mua đồ ăn, xăng xe, mua sắm | Cột **Chi** |
 | Nhận lương, hoa hồng | Cột **Thu** |
 | Đã chốt được tiền nhưng chưa nhận | Cột **Thu**, tick **chưa nhận** |
-| Tiền đã hẹn giờ đã về tài khoản | Tìm dòng đó ở cột Thu, bấm **✓** |
+| Tiền đã hẹn giờ đã về tài khoản | Tìm dòng đó ở cột Thu, bấm **✓**, chọn nơi tiền vào |
+| Không biết tiền ra từ tài khoản nào | Hỏi chủ tài khoản. Ô **Trừ vào** bắt buộc, không đoán |
+| Tiền mặt trong két giảm nhưng không ai ghi | Tab **Tài sản → Tiền**, sửa tay. Việc của chủ tài khoản |
 | Cho ai đó mượn tiền | Cột **Họ nợ mình** |
 | Vay tiền của ai đó | Cột **Mình nợ** |
 | Người ta trả hết nợ cho mình | Bấm **✓** trên dòng ở cột Họ nợ mình |

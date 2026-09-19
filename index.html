@@ -151,6 +151,11 @@ select.inline:hover{border-color:var(--line)}
 .quick .cancel{display:none}
 .quick.editing .cancel{display:inline-flex}
 .quick .chk{grid-column:1/-1;margin-top:-2px}
+/* Nhóm chi/thu và nguồn tiền chia đôi một dòng — hai select luôn bằng nhau dù card hẹp cỡ nào. */
+.quick .pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;align-items:center}
+.quick .pair select{min-width:0}
+.quick .xhint{font-size:11px;line-height:1.35;color:var(--mute);margin-top:-3px}
+.quick select:disabled{opacity:.55}
 .quick.debt{grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr) minmax(0,.9fr) minmax(0,1.2fr) auto}
 .hint{padding:0 16px 10px;font-size:12px;color:var(--mute)}
 .notice{border:1px dashed var(--faint);border-radius:8px;padding:9px 14px;font-size:12px;color:var(--ink2);margin-bottom:16px;background:var(--soft)}
@@ -543,7 +548,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <form class="quick" id="formChi" data-type="chi" autocomplete="off">
             <input name="name" placeholder="Tên" required>
             <input name="amount" placeholder="Số tiền · 10+40+450" inputmode="text">
-            <select name="category"></select>
+            <span class="pair"><select name="category"></select><select name="assetId" title="Tiền ra từ tài sản nào — app tự trừ khoản đó"></select></span>
+            <small class="xhint" id="chiAssetHint" hidden></small>
             <input name="date" type="date">
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
             <label class="chk"><input type="checkbox" name="unusual"> bất thường <small style="color:var(--faint)">· không tính vào trung bình ở Tổng quan</small></label>
@@ -556,7 +562,8 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
           <form class="quick" id="formThu" data-type="thu" autocomplete="off">
             <input name="name" placeholder="Tên" required>
             <input name="amount" placeholder="Số tiền · 1200+1200" inputmode="text">
-            <select name="category"></select>
+            <span class="pair"><select name="category"></select><select name="assetId" title="Tiền về tài sản nào — app tự cộng khoản đó"></select></span>
+            <small class="xhint" id="thuAssetHint" hidden></small>
             <input name="date" type="date">
             <span class="acts-row"><button type="submit" class="btn primary">Thêm</button><button type="button" class="btn cancel">Huỷ</button></span>
             <label class="chk"><input type="checkbox" name="pending"> chưa nhận</label>
@@ -1330,6 +1337,25 @@ function normalizeSettings(){
 const r6 = x => Math.round((Number(x)||0)*1e6)/1e6;          // tiền: 6 chữ số là thừa đủ
 const rq = x => Math.round((Number(x)||0)*1e10)/1e10;        // số lượng: đủ mịn để cộng/trừ rồi đảo lại không lệch
 const holdingById = id => D.holdings.find(h=>h.id===id) || null;
+/* ---- Nguồn tiền của khoản chi/thu (owner chốt 2026-09-19) ----
+   Mỗi khoản chi/thu ghi rõ tiền ra/vào tài sản nào; app tự trừ/cộng số lượng holding đó.
+   Chỉ nhận nhóm Tiền, Vàng, Bạc — coin và cổ phiếu có sổ giá vốn riêng ở tab DCA / Chứng khoán,
+   để một lần chi tiêu không chui vào giá vốn của hai nơi khác nhau. */
+const TX_ASSET_GROUPS = ['Tiền','Vàng','Bạc'];
+const txAssetOk = h => TX_ASSET_GROUPS.includes(h.group || (h.priceKey ? '' : 'Tiền'));
+const txAssets = () => D.holdings.filter(txAssetOk).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
+/* Số lượng phải trừ/cộng trên holding cho một khoản tiền (nghìn đồng).
+   Không có khoá giá ⇒ số lượng chính là nghìn đồng. Có khoá giá (vàng/bạc) ⇒ chia giá hiện tại.
+   Chưa có giá ⇒ null, KHÔNG đoán một tỉ giá nào. */
+function txAssetQty(h, amountK){
+  if(!h) return null;
+  if(!h.priceKey) return rq(amountK);
+  const p = price(h.priceKey);
+  return p>0 ? rq(Number(amountK)/p) : null;
+}
+/* Delta đã ghi trên khoản (chi âm, thu dương) cộng vào số lượng holding. sign=−1 để đảo khi sửa/xoá.
+   Hàm thuần, tách riêng để test chuỗi ghi → sửa → xoá quay về đúng số ban đầu. */
+const txAssetApply = (qty0, tx, sign) => rq((Number(qty0)||0) + sign*((tx && Number(tx.assetQty)) || 0));
 function monthsBetween(a,b){ const [y1,m1]=a.split('-').map(Number), [y2,m2]=b.split('-').map(Number); return (y2-y1)*12+(m2-m1); }
 const lastDay = m => m+'-'+pad2(daysInMonth(m));
 
@@ -2840,6 +2866,55 @@ function testSnaps(){
   return {pass:ok, fail:bad};
 }
 /* Chi phí vốn — testCapital(): dữ liệu giả, không đụng D. */
+/* Nguồn tiền của khoản chi/thu — testLedger(): hàm thuần, dữ liệu giả, không đụng D. */
+function testLedger(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want,tol=1e-9)=>{ const p = typeof want==='number' && typeof got==='number' ? Math.abs(got-want)<=tol : JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+  const savedP = D.prices;
+  D.prices = { gold_pd:{value:14300}, silver_acr:{value:3000}, usdt:{value:26.4855}, hoa_khai_acr:{value:0} };
+  const vcb={id:'v', name:'Vietcombank', group:'Tiền', priceKey:null, quantity:531};
+  const gold={id:'g', name:'Vàng Phi Đoan', group:'Vàng', priceKey:'gold_pd', quantity:3};
+  const hoa={id:'h', name:'Hoa khai ACR', group:'Vàng', priceKey:'hoa_khai_acr', quantity:1};
+
+  console.log('%c1 — chỉ nhận nhóm Tiền / Vàng / Bạc; coin và cổ phiếu có sổ riêng nên không lọt vào','font-weight:600');
+  const savedH = D.holdings;
+  D.holdings = [vcb, {id:'c', name:'USDT', group:'Crypto', priceKey:'usdt', quantity:565},
+                gold, {id:'s', name:'Bạc ACR', group:'Bạc', priceKey:'silver_acr', quantity:17},
+                {id:'k', name:'FPT', group:'Chứng khoán', priceKey:'stk:FPT', quantity:100},
+                {id:'o', name:'Két cũ', priceKey:null, quantity:10}];   // không ghi group + không khoá giá ⇒ coi là Tiền
+  chk('lọc đúng danh sách', txAssets().map(h=>h.id), ['v','g','s','o']);
+
+  console.log('%c2 — quy đổi: tiền trừ thẳng nghìn đồng, vàng chia giá hiện tại, chưa có giá thì null','font-weight:600');
+  chk('tiền 500k ⇒ 500', txAssetQty(vcb, 500), 500);
+  chk('vàng 500k ⇒ 500/14300 chỉ', txAssetQty(gold, 500), rq(500/14300));
+  chk('chưa có giá ⇒ null, không đoán', txAssetQty(hoa, 500), null);
+  chk('không có holding ⇒ null', txAssetQty(null, 500), null);
+
+  console.log('%c3 — ghi → sửa → xoá quay về đúng số ban đầu (chi âm, thu dương)','font-weight:600');
+  const chi = {type:'chi', assetId:'v', assetQty:-500}, thu = {type:'thu', assetId:'v', assetQty:1200};
+  chk('chi 500 ⇒ 531 − 500', txAssetApply(531, chi, 1), 31);
+  chk('thu 1.200 ⇒ 31 + 1.200', txAssetApply(31, thu, 1), 1231);
+  chk('đảo khoản thu', txAssetApply(1231, thu, -1), 31);
+  chk('đảo khoản chi ⇒ về 531', txAssetApply(31, chi, -1), 531);
+  const chi2 = {type:'chi', assetId:'v', assetQty:-800};   // sửa số tiền: đảo cũ rồi áp mới
+  chk('sửa 500 → 800: đảo rồi áp lại', txAssetApply(txAssetApply(31, chi, -1), chi2, 1), 531-800);
+
+  console.log('%c4 — khoản không ghi nguồn (khoản cũ) không đụng gì tới tài sản','font-weight:600');
+  chk('không có assetQty', txAssetApply(531, {type:'chi', assetId:null, assetQty:null}, 1), 531);
+  chk('assetQty = 0', txAssetApply(531, {type:'chi', assetId:'v', assetQty:0}, -1), 531);
+
+  console.log('%c5 — vàng: trừ đúng số chỉ đã ghi, không tính lại theo giá mới','font-weight:600');
+  const gtx = {type:'chi', assetId:'g', assetQty:rq(-500/14300)};
+  const after = txAssetApply(3, gtx, 1);
+  chk('3 chỉ − 500k', after, rq(3-500/14300));
+  D.prices.gold_pd = {value:20000};                       // giá vàng nhảy sau khi đã ghi
+  chk('đảo lại vẫn về đúng 3 chỉ dù giá đã đổi', txAssetApply(after, gtx, -1), 3);
+
+  D.holdings = savedH; D.prices = savedP;
+  console.log(`%c${ok} đạt · ${bad} hỏng`, `font-weight:700;color:${bad?'#c0392b':'#1e8e3e'}`);
+  return {ok, bad};
+}
 function testCapital(){
   let ok=0, bad=0;
   const chk=(lb,got,want,tol=0.01)=>{ const p = typeof want==='number' && typeof got==='number' ? Math.abs(got-want)<=tol : JSON.stringify(got)===JSON.stringify(want);
@@ -3558,9 +3633,24 @@ async function logout(){ await store.signOut(); location.reload(); }
 
 /* ---------------- ghi dữ liệu (optimistic: sửa state, render, ghi nền) ---------------- */
 function bg(p, okMsg){ p.then(()=>{ if(okMsg) toast(okMsg); }).catch(e=>{ console.error(e); toast('Lỗi ghi dữ liệu: '+(e.code||e.message)); }); }
-function addTx(data){ const id=store.newId(); const doc={...data, createdAt:Date.now()}; D.transactions.push({id,...doc}); render(); bg(store.set('transactions',id,doc)); return id; }
-function updateTx(id, patch){ const t=D.transactions.find(x=>x.id===id); if(!t) return; Object.assign(t,patch); render(); bg(store.update('transactions',id,patch)); }
-function removeTx(id){ D.transactions = D.transactions.filter(x=>x.id!==id); render(); bg(store.remove('transactions',id)); }
+/* Áp phần trừ/cộng tài sản của một khoản chi/thu. sign=+1 ghi, −1 đảo ngược (sửa hoặc xoá).
+   Cùng khuôn với applyXfer của Chuyển đổi: số lượng đã áp lưu ngay trên khoản (assetQty) nên
+   đảo lại luôn đúng, kể cả khi giá vàng đã đổi kể từ lúc ghi. */
+function applyTxAsset(tx, sign){
+  if(!tx || !tx.assetId || !Number(tx.assetQty)) return;
+  const h = holdingById(tx.assetId); if(!h) return;
+  updateHolding(h.id, {quantity: txAssetApply(h.quantity, tx, sign)});
+}
+function addTx(data){ const id=store.newId(); const doc={...data, createdAt:Date.now()}; D.transactions.push({id,...doc}); applyTxAsset(doc,1); render(); bg(store.set('transactions',id,doc)); return id; }
+function updateTx(id, patch){ const t=D.transactions.find(x=>x.id===id); if(!t) return;
+  /* Chỉ đụng tài sản khi patch thật sự nói về nguồn tiền — nút "Đã nhận" hay sửa ghi chú không kéo theo gì. */
+  const touch = ('assetId' in patch) || ('assetQty' in patch);
+  if(touch) applyTxAsset(t,-1);
+  Object.assign(t,patch);
+  if(touch) applyTxAsset(t,1);
+  render(); bg(store.update('transactions',id,patch)); }
+function removeTx(id){ const t=D.transactions.find(x=>x.id===id); if(t) applyTxAsset(t,-1);
+  D.transactions = D.transactions.filter(x=>x.id!==id); render(); bg(store.remove('transactions',id)); }
 function addDebt(data){ const id=store.newId(); const doc={...data, settled:false, createdAt:Date.now()}; D.debts.push({id,...doc}); render(); bg(store.set('debts',id,doc)); }
 function updateDebt(id, patch){ const d=D.debts.find(x=>x.id===id); if(!d) return; Object.assign(d,patch); render(); bg(store.update('debts',id,patch)); }
 function removeDebt(id){ D.debts = D.debts.filter(x=>x.id!==id); render(); bg(store.remove('debts',id)); }
@@ -3875,10 +3965,50 @@ function fillStaticSelects(){
   setOptions(thuSel, settings().incomeCats);
   if(!had && settings().incomeCats.includes('Hoa hồng')) thuSel.value='Hoa hồng';
   document.querySelectorAll('form.debt select[name=unit]').forEach(s=>setOptions(s, DEBT_UNITS, u=>u.label, u=>u.value));
+  fillTxAssetSelects();
   /* Coin quản lý riêng ở "Ví Coin" (tab DCA) — bớt một chỗ nữa có thể sửa cùng một dữ liệu. */
   setOptions(el('formHold').group, HOLDING_GROUPS.filter(g=>g!=='Crypto' && g!=='Chứng khoán'));   // coin thêm ở DCA, cổ phiếu thêm ở Chứng khoán
   setOptions(el('formHold').priceKey, [{key:'',label:'giá = số lượng (VND)'},...PRICE_KEYS.filter(p=>!LIVE_KEYS.includes(p.key))], p=>p.label, p=>p.key);
   fillXferSelects();
+}
+/* Select "nguồn tiền" của form Chi/Thu. Khoản mới bắt buộc chọn; khoản cũ chưa ghi nguồn giữ
+   lựa chọn trống "khoản cũ: không trừ" để sửa lại không làm tài sản tụt oan một lần nữa. */
+function fillTxAssetSelects(){
+  const hs = txAssets();
+  for(const type of ['chi','thu']){
+    const f = el(type==='chi'?'formChi':'formThu'), sel = f.assetId, cur = sel.value, legacy = f.dataset.legacy==='1';
+    sel.innerHTML = `<option value="">${legacy ? '— khoản cũ: không trừ —' : (type==='chi' ? '— trừ vào —' : '— vào —')}</option>`
+      + options(hs, cur, h=>h.name, h=>h.id);
+    if(cur && hs.some(h=>h.id===cur)) sel.value = cur;
+    else if(!legacy && !state.edit[type]) sel.value = lastTxAsset(type);
+  }
+}
+/* Mặc định = nơi dùng gần nhất cho đúng chiều tiền (ghi nhanh hằng ngày thường lặp lại một chỗ). */
+function lastTxAsset(type){
+  for(let i=D.transactions.length-1;i>=0;i--){ const x=D.transactions[i];
+    if(x.type===type && x.assetId && holdingById(x.assetId)) return x.assetId; }
+  const hs = txAssets(); const cash = hs.find(h=>!h.priceKey);
+  return cash ? cash.id : '';
+}
+/* Thu "chưa nhận" thì chưa có tiền ở đâu cả ⇒ khoá ô chọn nơi tiền vào, hỏi lại lúc bấm ✓. */
+function syncPendingLock(f){
+  const on = !!(f.pending && f.pending.checked);
+  f.assetId.disabled = on;
+  if(on) f.assetId.value = '';
+  else if(!f.assetId.value && f.dataset.legacy!=='1') f.assetId.value = lastTxAsset(f.dataset.type);
+  updateTxAssetHint(f.dataset.type);
+}
+/* Dòng nhỏ dưới form: vàng/bạc trừ theo số lượng chứ không theo nghìn đồng — nói rõ trước khi bấm Thêm. */
+function updateTxAssetHint(type){
+  const f = el(type==='chi'?'formChi':'formThu'), hint = el(type==='chi'?'chiAssetHint':'thuAssetHint');
+  const show = txt => { hint.hidden = !txt; hint.innerHTML = txt; };
+  if(f.assetId.disabled){ show('Chưa nhận: chọn nơi tiền vào lúc bấm ✓.'); return; }
+  const h = holdingById(f.assetId.value);
+  if(!h || !h.priceKey){ show(''); return; }
+  const p = price(h.priceKey);
+  if(!(p>0)){ show(`Chưa có giá cho ${esc(h.name)} — chọn nơi khác hoặc nhập giá ở Tài sản.`); return; }
+  const amt = parseAmount(f.amount.value), q = amt ? txAssetQty(h, amt.amount) : null;
+  show(q==null ? `${esc(h.name)}: ${fmtK(p)}/đơn vị` : `${esc(h.name)} ${type==='chi'?'−':'+'}${fmtQty(q)} (giá ${fmtK(p)}/đơn vị)`);
 }
 function fillXferSelects(){
   const f = el('formXfer'), hs=[...D.holdings].sort((a,b)=>(a.order||0)-(b.order||0));
@@ -4127,9 +4257,11 @@ function renderLedger(){
     `<div class="catstack">${catRows.map((r,i)=>`<i style="width:${t.expense?r.v/t.expense*100:0}%;background:${SHADES[i%SHADES.length]}" title="${esc(r.c)} · ${fmtK(r.v)} · ${fmtPct(r.v/t.expense)}"></i>`).join('')}</div>
      <div class="catlegend">${catRows.map((r,i)=>`<span><i style="background:${SHADES[i%SHADES.length]}"></i>${esc(r.c)}<b>${fmtK(r.v)}</b><span class="p">${fmtPct(r.v/t.expense)}</span></span>`).join('')}</div>`;
   el('byCatHint').innerHTML = (t.byCategory['Trả nợ']||0) > 0
-    ? 'Nhóm <b>Trả nợ</b> chỉ là ghi chú cho dễ nhớ. Việc trả nợ thật đã ghi qua nút <b>Tất toán</b> ở cột công nợ (tài sản giảm, nợ giảm, tài sản ròng không đổi) — khoản chi ở đây không trừ thêm lần nữa vào tài sản.'
+    ? 'Nhóm <b>Trả nợ</b> chỉ là ghi chú cho dễ nhớ. Việc trả nợ thật ghi qua nút <b>Tất toán</b> ở cột công nợ (tài sản giảm, nợ giảm, tài sản ròng không đổi). Đã Tất toán rồi thì <b>đừng</b> ghi thêm khoản chi nhóm này — khoản chi bây giờ có chọn nguồn nên sẽ trừ tài sản lần thứ hai.'
     : '';
-  for(const type of ['chi','thu']){ const f = el(type==='chi'?'formChi':'formThu'); if(!state.edit[type] && !f.date.value) f.date.value = todayStr(); }
+  for(const type of ['chi','thu']){ const f = el(type==='chi'?'formChi':'formThu');
+    if(!state.edit[type] && !f.date.value) f.date.value = todayStr();
+    syncPendingLock(f); }
 }
 el('mPrev').onclick = ()=>{ state.month=shiftMonth(state.month,-1); render(); };
 el('mNext').onclick = ()=>{ state.month=shiftMonth(state.month,1); render(); };
@@ -4143,6 +4275,9 @@ for(const type of ['chi','thu']){
     if(e.key==='Escape'){ resetForm(type); }
   });
   f.querySelector('.cancel').onclick = ()=>resetForm(type);
+  f.assetId.addEventListener('change', ()=>updateTxAssetHint(type));
+  f.amount.addEventListener('input', ()=>updateTxAssetHint(type));
+  if(f.pending) f.pending.addEventListener('change', ()=>syncPendingLock(f));
   f.addEventListener('submit', e=>{
     e.preventDefault();
     const name = f.name.value.trim();
@@ -4150,8 +4285,19 @@ for(const type of ['chi','thu']){
     if(!name){ shake(f.name); f.name.focus(); return; }
     if(!amt || amt.amount<=0){ shake(f.amount); f.amount.focus(); toast('Số tiền không hợp lệ. Ví dụ: 86 hoặc 10+40+450'); return; }
     const date = /^\d{4}-\d{2}-\d{2}$/.test(f.date.value) ? f.date.value : todayStr();
+    const pending = type==='thu' ? !!f.pending.checked : false;
+    /* Nguồn tiền: bắt buộc với khoản mới. Chưa nhận ⇒ không có nguồn (hỏi lúc bấm ✓).
+       Khoản cũ chưa từng ghi nguồn ⇒ cho giữ nguyên, nếu không một lần sửa sẽ trừ oan tài sản. */
+    const legacy = f.dataset.legacy==='1';
+    const asset = pending ? null : holdingById(f.assetId.value);
+    if(!pending && !asset && !legacy){ shake(f.assetId); f.assetId.focus(); toast(type==='chi' ? 'Chọn nguồn tiền ra (Vietcombank, Tiền mặt, vàng…)' : 'Chọn nơi tiền vào'); return; }
+    let assetQty = null;
+    if(asset){ const q = txAssetQty(asset, amt.amount);
+      if(q==null){ shake(f.assetId); toast('Chưa có giá cho '+asset.name+' — không quy đổi được, chọn nơi khác.'); return; }
+      assetQty = rq((type==='chi' ? -1 : 1) * q); }
     const doc = { type, name, amount:amt.amount, parts:amt.parts, category:f.category.value, date, month:date.slice(0,7),
-                  pending: type==='thu' ? !!f.pending.checked : false, unusual: type==='chi' ? !!f.unusual.checked : false };
+                  pending, unusual: type==='chi' ? !!f.unusual.checked : false,
+                  assetId: asset ? asset.id : null, assetQty };
     if(doc.parts===null) delete doc.parts;
     const editId = state.edit[type];
     if(editId){ if(!doc.parts) doc.parts=null; updateTx(editId, doc); toast('Đã sửa'); }
@@ -4161,24 +4307,52 @@ for(const type of ['chi','thu']){
 }
 function resetForm(type){
   const f = el(type==='chi'?'formChi':'formThu');
-  state.edit[type]=null; f.classList.remove('editing');
+  state.edit[type]=null; f.classList.remove('editing'); delete f.dataset.legacy;
   f.name.value=''; f.amount.value=''; f.date.value=todayStr(); if(f.pending) f.pending.checked=false; if(f.unusual) f.unusual.checked=false;
+  f.assetId.value = lastTxAsset(type); f.assetId.disabled=false; updateTxAssetHint(type);
   f.querySelector('button[type=submit]').textContent='Thêm';
   f.name.focus();
 }
 function editTx(x){
   const type=x.type, f = el(type==='chi'?'formChi':'formThu');
   state.edit[type]=x.id; f.classList.add('editing');
+  /* Khoản ghi trước khi có ô nguồn tiền: đánh dấu legacy để sửa lại không bắt buộc chọn nguồn. */
+  if(x.assetId) delete f.dataset.legacy; else f.dataset.legacy='1';
   f.name.value=x.name; f.amount.value = x.parts ? partsStr(x.parts) : String(x.amount).replace('.',','); f.category.value=x.category; f.date.value=x.date;
   if(f.pending) f.pending.checked=!!x.pending;
   if(f.unusual) f.unusual.checked=!!x.unusual;
+  fillTxAssetSelects(); f.assetId.value = x.assetId && holdingById(x.assetId) ? x.assetId : ''; syncPendingLock(f);
   f.querySelector('button[type=submit]').textContent='Lưu';
   f.name.focus(); f.name.select();
+}
+/* Thu chưa nhận: lúc ghi chưa biết họ chuyển khoản hay đưa tiền mặt, nên hỏi ở đúng lúc bấm ✓.
+   Cùng một đường ghi với form Thu — vẫn là assetId + assetQty trên chính khoản đó. */
+function receiveDialog(x){
+  const hs = txAssets();
+  const done = (id, qty) => { updateTx(x.id, {pending:false, assetId:id, assetQty:qty});
+    toast('Đã nhận '+fmtK(x.amount)+' · '+x.name+(id?' → '+holdingById(id).name:'')); };
+  if(!hs.length){ done(null, null); return; }
+  const def = lastTxAsset('thu') || hs[0].id;
+  showModal('Đã nhận · '+x.name,
+    `<div class="kv"><span>Số tiền</span><b>${fmtK(x.amount)}</b><span>Ngày ghi</span><b>${fmtDate(x.date)}</b></div>
+     <div class="frow" style="margin-top:10px"><label>Tiền vào</label><select id="mdAsset" class="inline" style="width:190px">${options(hs, def, h=>h.name, h=>h.id)}</select></div>
+     <div class="hint" id="mdAssetHint" style="padding:8px 0 0"></div>`,
+    'Đã nhận', ()=>{
+      const h = holdingById(el('mdAsset').value); if(!h) return false;
+      const q = txAssetQty(h, Number(x.amount)||0);
+      if(q==null){ toast('Chưa có giá cho '+h.name+' — chọn nơi khác.'); return false; }
+      done(h.id, rq(q));
+    });
+  const upd = ()=>{ const h = holdingById(el('mdAsset').value), p = h && h.priceKey ? price(h.priceKey) : 0;
+    el('mdAssetHint').innerHTML = !h ? '' : !h.priceKey ? `<b>${esc(h.name)}</b> tăng ${fmtK(x.amount)}.`
+      : p>0 ? `<b>${esc(h.name)}</b> tăng ${fmtQty(txAssetQty(h, Number(x.amount)||0))} đơn vị (giá ${fmtK(p)}/đơn vị).`
+            : `Chưa có giá cho <b>${esc(h.name)}</b> — chọn nơi khác.`; };
+  el('mdAsset').onchange = upd; upd();
 }
 for(const id of ['rowsChi','rowsThu']) el(id).addEventListener('click', e=>{
   const b=e.target.closest('button[data-act]'); if(!b) return;
   const tr=b.closest('tr'), x=D.transactions.find(t=>t.id===tr.dataset.id); if(!x) return;
-  if(b.dataset.act==='received'){ updateTx(x.id,{pending:false}); toast('Đã nhận '+fmtK(x.amount)+' · '+x.name); }
+  if(b.dataset.act==='received'){ receiveDialog(x); }
   else if(b.dataset.act==='edit') editTx(x);
   else if(b.dataset.act==='del'){ if(confirm(`Xoá "${x.name}" ${fmtK(x.amount)}?`)) removeTx(x.id); }
 });
@@ -4254,7 +4428,7 @@ function resetDebtForm(f){ state.edit[f.dataset.dir]=null; f.classList.remove('e
 for(const id of ['rowsRecv','rowsPay']) el(id).addEventListener('click', e=>{
   const b=e.target.closest('button[data-act]'); if(!b) return;
   const tr=b.closest('tr');
-  if(tr.dataset.tx){ const x=D.transactions.find(t=>t.id===tr.dataset.tx); if(x){ updateTx(x.id,{pending:false}); toast('Đã nhận '+fmtK(x.amount)+' · '+x.name); } return; }
+  if(tr.dataset.tx){ const x=D.transactions.find(t=>t.id===tr.dataset.tx); if(x) receiveDialog(x); return; }
   const d=D.debts.find(t=>t.id===tr.dataset.id); if(!d) return;
   if(b.dataset.act==='settle') settleDialog(d);
   else if(b.dataset.act==='reopen') reopenDebt(d);
@@ -6716,13 +6890,14 @@ window.testViews = testViews;
 window.testScenario = testScenario;
 window.testSnaps = testSnaps;
 window.testCapital = testCapital;
+window.testLedger = testLedger;
 window.testSwing = testSwing;
 window.testRecovery = testRecovery;
 window.scanLocalData = scanLocalData;
 window.FinTrace = { state, data:D,
   calc:{monthTotals, debtTotals, totalAssets, netWorth, pendingIncome, parseAmount,
         attribution, snapshotOf, currentSnapshot, debtQtySnapshot, snapAtFrom, snapsToPrune, snapshotOfSnap, periodStats, monthFigures, accumAvg, growthRate, milestoneInfo,
-        transferValue, scnPrice, scnNetWorth, netQty, scnProjection, scnApplyPct, scnPctOf, capitalCost,
+        txAssets, txAssetQty, txAssetApply, TX_ASSET_GROUPS, transferValue, scnPrice, scnNetWorth, netQty, scnProjection, scnApplyPct, scnPctOf, capitalCost,
         coinHolding, coinPurchases, coinSales, coinLedger, coinQtyHeld, coinValueHeld, familyHoldings, COIN_FAMILY,
         ethHolding, ethPurchases, purchaseUsdPrice, transferUsd, dcaCostBasis, dcaSummary, dcaState,
         normalizeDcaPlanCfg, migrateDcaSettings, DCA_COINS,
@@ -6732,7 +6907,7 @@ window.FinTrace = { state, data:D,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
         VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1, screenPicks, SCREEN_V1, cheapKind, KIND_V1, ENTRY_RULES, entryOk, pickRuleText, PLAN_VARIANTS, planVariant, variantPlan, PAPER_ACCOUNT_V1, paperStep, paperTrade, paperId, stockAgeOf},
-  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testSwing, testStocks,
+  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testLedger, testSwing, testStocks,
   refreshDca, refreshStocks, refreshCoins, importStockHistory, reconcileStocks, openPnl, openBacktest, openTradeOrder, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
