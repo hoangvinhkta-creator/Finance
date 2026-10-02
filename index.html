@@ -351,6 +351,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 .pop .popi{display:inline-block;width:14px;height:14px;line-height:13px;text-align:center;border:1px solid var(--faint);border-radius:50%;font-size:10px;font-style:italic;color:var(--mute);margin-left:2px;vertical-align:1px}
 .pop .popover{display:none;position:absolute;left:-12px;top:calc(100% + 8px);z-index:40;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:min(560px,calc(100vw - 40px));box-shadow:0 10px 30px rgba(0,0,0,.14);cursor:default;text-align:left}
 .pop:hover .popover,.pop.open .popover{display:block}
+@media (max-width:820px){ .ovtrow{flex-wrap:wrap} #ovChartLegend{flex-wrap:wrap!important} }   /* điện thoại: tiêu đề + chú giải biểu đồ Tổng quan được xuống dòng thay vì bị cắt */
 @media (max-width:820px){ .pop .popover{position:fixed;left:16px;right:16px;top:auto;width:auto;margin-top:8px} }   /* điện thoại: neo theo màn hình để không tràn phải */
 .pop .popover .tbl.compact tbody tr{height:auto}
 .dialog details.more{margin-top:12px;border-top:1px solid var(--line);padding-top:6px}
@@ -482,11 +483,12 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
       <div class="grid3 ov" style="margin-bottom:0">
         <section class="card pad" id="ovChartCard">
-          <div class="colhead" style="padding:0 0 6px;flex-wrap:wrap;gap:6px 14px">
-            <div class="segrow"><div class="seg mini" id="ovChartMode"><button data-v="day">Ngày</button><button data-v="month">Tháng</button></div>
+          <div class="colhead" style="padding:0 0 6px;flex-direction:column;align-items:stretch;gap:6px;min-width:0;max-width:100%">
+            <div class="segrow" style="flex-wrap:wrap;flex:initial">
+              <div class="seg mini" id="ovChartMode"><button data-v="day">Ngày</button><button data-v="month">Tháng</button></div>
               <div class="seg mini" id="ovChartMetric"><button data-v="nw">Tài sản ròng</button><button data-v="income">Thu</button><button data-v="expense">Chi</button></div></div>
-            <div style="display:flex;gap:4px 14px;align-items:baseline;flex-wrap:wrap"><h2 style="font-size:13px"><span id="ovChartTitle">Thu chi &amp; tài sản ròng</span> <small id="ovChartSub"></small></h2>
-              <div class="legend" id="ovChartLegend" style="padding:0"></div></div></div>
+            <div class="ovtrow" style="display:flex;gap:4px 14px;align-items:baseline;white-space:nowrap;overflow:hidden;min-width:0;max-width:100%"><h2 style="font-size:13px;flex:none"><span id="ovChartTitle">Thu chi &amp; tài sản ròng</span> <small id="ovChartSub"></small></h2>
+              <div class="legend" id="ovChartLegend" style="padding:0;flex-wrap:nowrap;min-width:0;overflow:hidden"></div></div></div>
           <div id="histChart"></div>
         </section>
         <section class="card pad" id="ovWfCard">
@@ -2857,6 +2859,15 @@ function testDaily(){
   chk('TB bỏ ngày trống', [dailyAvg(r,'nw'), dailyAvg(r,'income')], [5166.666666666667, 325]);
   chk('đường cong không vọt quá điểm kề (đỉnh nằm đúng điểm giữa)', smoothPath([[0,10],[10,0],[20,10]]).includes('C3.3,6.7 6.7,0.0 10.0,0.0'), true);
   chk('một điểm ⇒ chỉ M', smoothPath([[1,2]]), 'M1,2');
+  { const H=(id,q,pk,p)=>({holdingId:id,name:id,quantity:q,priceKey:pk,price:p,value:q*p});
+    const a = {netWorth:1000+2*500, holdings:[H('vcb',1000,null,1),H('eth',2,'eth',500)], debt:{recv:0,pay:0,pending:0}};
+    const b = {netWorth:700+2*450-100, holdings:[H('vcb',700,null,1),H('eth',2,'eth',450)], debt:{recv:0,pay:100,pending:0}};
+    const r2 = nwDayDiff(a, b, [{type:'chi',amount:300,assetId:'vcb'},{type:'chi',amount:50}]);
+    chk('nwDayDiff: giá ETH −50 × 2 = −100, tiền −300, nợ thêm −100, không còn phần chưa tách', [r2.dNW, r2.priceSum, r2.qtySum, r2.debtSum, r2.other], [-500, -100, -300, -100, 0]);
+    chk('nwDayDiff: chi có nguồn / không nguồn tách riêng', [r2.flow.expense, r2.flow.expenseAsset], [350, 300]);
+    const r3 = nwDayDiff({netWorth:100, holdings:[H('x',1,'eth',100)]}, {netWorth:90, holdings:[H('x',1,'eth',100)]}, []);
+    chk('nwDayDiff: ảnh cũ thiếu công nợ ⇒ phần lệch vào "chưa tách được"', [r3.debt, r3.other], [null, -10]);
+  }
   console.log(`%cBiểu đồ ngày: ${ok} đạt · ${bad} hỏng`, `font-weight:700;color:${bad?'#b00':'#060'}`);
   return {ok, bad};
 }
@@ -6543,9 +6554,9 @@ function renderHistory(){
   el('ovChartMetric').hidden = state.ovChart!=='day';
   if(state.ovChart==='day'){ renderDailyChart(); return renderCatTable(rows); }
   el('ovChartTitle').textContent = 'Thu chi & tài sản ròng';
-  el('ovChartLegend').innerHTML = `<span><i style="background:var(--ink)"></i>Thu</span><span><i style="background:var(--bar2)"></i>Chi</span><span><i class="line" style="background:var(--ink)"></i>Tài sản ròng</span><span><i class="line" style="background:repeating-linear-gradient(90deg,var(--mute) 0 3px,transparent 3px 6px)"></i>TB thu 12 tháng</span>`;
+  el('ovChartLegend').innerHTML = `<span><i style="background:var(--ink)"></i>Thu</span><span><i style="background:var(--bar2)"></i>Chi</span><span><i class="line" style="background:var(--ink)"></i>Tài sản ròng</span><span><i class="line" style="background:repeating-linear-gradient(90deg,var(--mute) 0 3px,transparent 3px 6px)"></i>TB thu 12 th</span>`;
   const box = el('histChart'); const data = rows.slice(-24);
-  el('ovChartSub').textContent = data.length ? `${data.length} tháng gần nhất` : '';
+  el('ovChartSub').textContent = data.length ? `${data.length} tháng` : '';
   if(!data.length){ box.innerHTML='<div class="mute">Chưa chốt tháng nào</div>'; return renderCatTable(rows); }
   const W = Math.max(320, box.clientWidth||800), H = 280, L=54, Rr=64, T=14, B=30, pw=W-L-Rr, ph=H-T-B;
   const yMax = niceMax(Math.max(...data.map(r=>Math.max(r.income,r.expense))));
@@ -6602,12 +6613,72 @@ function smoothPath(pts){
 }
 /* Nhãn trục gọn: 1,5 tỷ · 820 tr · 500k. */
 const fmtAxis = v => Math.abs(v)>=1e6 ? fmtNum(v/1e6, v%1e6?1:0)+' tỷ' : Math.abs(v)>=1000 ? fmtNum(v/1000, v%1000?1:0)+' tr' : fmtNum(v)+'k';
+/* Hàm thuần: vì sao tài sản ròng đổi giữa hai ảnh chụp s0 → s1 (cùng dạng snapshotOfSnap/currentSnapshot).
+   Mỗi tài sản tách hai phần: GIÁ = số lượng cũ × (giá mới − giá cũ), SỐ LƯỢNG = (số lượng mới − cũ) × giá mới.
+   Công nợ và thu chưa nhận lấy từ khối debt của ảnh chụp (ảnh cũ không có ⇒ null, rơi vào "chưa giải thích").
+   txs: các khoản thu/chi có ngày trong (d0, d1] — chỉ để đối chiếu phần số lượng, không cộng thêm. */
+function nwDayDiff(s0, s1, txs){
+  const byId = new Map();
+  for(const h of s0.holdings||[]) byId.set(h.holdingId, {name:h.name, group:h.group, priceKey:h.priceKey, q0:+h.quantity||0, p0:+h.price||0, q1:0, p1:+h.price||0});
+  for(const h of s1.holdings||[]){ const r = byId.get(h.holdingId) || {name:h.name, group:h.group, priceKey:h.priceKey, q0:0, p0:+h.price||0};
+    Object.assign(r, {name:h.name, q1:+h.quantity||0, p1:+h.price||0}); byId.set(h.holdingId, r); }
+  const rows = [...byId.values()].map(r=>({ ...r, price: r.q0*(r.p1-r.p0), qty: (r.q1-r.q0)*r.p1 }));
+  const priceRows = rows.filter(r=>Math.abs(r.price)>=0.5).sort((a,b)=>a.price-b.price);
+  const qtyRows = rows.filter(r=>Math.abs(r.qty)>=0.5).sort((a,b)=>a.qty-b.qty);
+  const d0 = s0.debt, d1 = s1.debt, hasDebt = !!(d0 && d1);
+  const debt = hasDebt ? { recv:(+d1.recv||0)-(+d0.recv||0), pay:-((+d1.pay||0)-(+d0.pay||0)), pending:(+d1.pending||0)-(+d0.pending||0) } : null;
+  const dNW = (s1.netWorth==null||s0.netWorth==null) ? null : s1.netWorth - s0.netWorth;
+  const priceSum = sum(rows, r=>r.price), qtySum = sum(rows, r=>r.qty), debtSum = debt ? debt.recv+debt.pay+debt.pending : 0;
+  const flow = { expense:0, expenseAsset:0, income:0, incomeAsset:0, nExp:0, nInc:0 };
+  for(const t of txs||[]){ const a = Number(t.amount)||0, onAsset = !!t.assetId && !(t.type==='thu' && t.pending);
+    if(t.type==='chi'){ flow.expense+=a; flow.nExp++; if(onAsset) flow.expenseAsset+=a; }
+    else if(t.type==='thu'){ flow.income+=a; flow.nInc++; if(onAsset) flow.incomeAsset+=a; } }
+  return { dNW, priceSum, qtySum, debt, debtSum, priceRows, qtyRows, flow,
+           other: dNW==null ? null : dNW - priceSum - qtySum - debtSum };
+}
+/* Ảnh chụp của ngày id (hôm nay = số đang tính) và ảnh chụp gần nhất TRƯỚC nó. */
+function dayPair(id){
+  const today = todayStr();
+  const s1 = id===today ? {...currentSnapshot(), asOf:today} : (D.snaps[id] ? snapshotOfSnap(D.snaps[id]) : null);
+  const k0 = snapAtFrom(Object.keys(D.snaps).filter(x=>x<id), id);
+  return { s1, s0: k0 ? snapshotOfSnap(D.snaps[k0]) : null };
+}
+function openNwDay(id){
+  const {s0, s1} = dayPair(id), dm = x => `${Number(x.slice(8,10))}/${Number(x.slice(5,7))}`;
+  if(!s1){ toast('Ngày '+dm(id)+' không có ảnh chụp (không mở app ngày đó)'); return; }
+  if(!s0){ toast('Chưa có ảnh chụp nào trước '+dm(id)+' để so sánh'); return; }
+  const txs = D.transactions.filter(t=>t.date && t.date>s0.asOf && t.date<=s1.asOf);
+  const r = nwDayDiff(s0, s1, txs);
+  const row = (lb, v, sub) => `<tr><td class="first">${lb}${sub?`<small style="display:block">${sub}</small>`:''}</td><td class="n last"><b>${signed(Math.round(v), fmtK)}</b></td></tr>`;
+  const head = (lb, v) => `<tr class="total"><td class="first">${lb}</td><td class="n last">${signed(Math.round(v), fmtK)}</td></tr>`;
+  const unit = p => p>=100 ? fmtK(Math.round(p)) : fmtNum(p,2)+'k';
+  let body = '';
+  body += head('Giá thị trường thay đổi', r.priceSum);
+  body += r.priceRows.map(x=>row(esc(x.name), x.price, `giá ${unit(x.p0)} → ${unit(x.p1)} (${fmtPctS(x.p0?x.p1/x.p0-1:null)}) · giữ ${fmtNum(x.q0, x.priceKey?6:0)}`)).join('') || '<tr><td class="first mute" colspan="2">không có</td></tr>';
+  body += head('Số lượng tài sản thay đổi', r.qtySum);
+  body += r.qtyRows.map(x=>row(esc(x.name), x.qty, x.priceKey ? `${fmtNum(x.q0,6)} → ${fmtNum(x.q1,6)}` : `${fmtK(Math.round(x.q0))} → ${fmtK(Math.round(x.q1))}`)).join('') || '<tr><td class="first mute" colspan="2">không có</td></tr>';
+  if(r.debt){
+    body += head('Công nợ & thu chưa nhận', r.debtSum);
+    if(Math.abs(r.debt.recv)>=0.5) body += row('Họ nợ mình', r.debt.recv);
+    if(Math.abs(r.debt.pay)>=0.5) body += row('Mình nợ', r.debt.pay, r.debt.pay<0?'nợ tăng thêm':'đã trả bớt');
+    if(Math.abs(r.debt.pending)>=0.5) body += row('Thu chưa nhận', r.debt.pending, r.debt.pending<0?'khoản chưa nhận đã được nhận hoặc xoá':'thêm khoản chưa nhận');
+  }
+  if(r.other!=null && Math.abs(r.other)>=1) body += head('Chưa tách được', r.other);
+  const f = r.flow, legacyExp = f.expense - f.expenseAsset;
+  const note = [`Thu chi ghi từ ${dm(s0.asOf)} tới ${dm(s1.asOf)}: chi <b>${fmtK(f.expense)}</b> (${f.nExp} khoản) · thu <b>${fmtK(f.income)}</b> (${f.nInc} khoản). Phần có chọn nguồn tiền đã nằm trong "Số lượng tài sản thay đổi" ở trên, không cộng thêm.`];
+  if(legacyExp>=1) note.push(`${fmtK(legacyExp)} chi <b>không chọn nguồn</b> nên không trừ vào tài sản nào.`);
+  if(Math.abs(r.priceSum) > Math.abs(r.qtySum) && Math.abs(r.priceSum)>=1000) note.push(`Phần lớn là do <b>giá</b>: giá lưu trong app lấy theo lần cập nhật gần nhất trong ngày (coin: nút Cập nhật ở DCA hoặc lúc mở app; cổ phiếu: kho cào sau 15:40).`);
+  showModal(`Tài sản ròng ${dm(s0.asOf)} → ${dm(s1.asOf)}${s1.live?' (hiện tại)':''}`,
+    `<div style="font-size:15px;margin-bottom:10px">${fmtBig(s0.netWorth)} → <b>${fmtBig(s1.netWorth)}</b> · <b>${signed(r.dNW)}</b></div>
+     <div class="scroll"><table class="tbl compact"><tbody>${body}</tbody></table></div>
+     <div class="hint" style="padding:10px 0 0">${note.join('<br>')}</div>`, 'Đóng', ()=>{}, {noCancel:true});
+}
 const DAILY_METRICS = { nw:{label:'Tài sản ròng'}, income:{label:'Thu'}, expense:{label:'Chi'} };
 function renderDailyChart(){
   const m = thisMonth(), pm = shiftMonth(m,-1), today = todayStr(), k = state.ovMetric;
   const cur = dailyFigures(m, D.transactions, D.snaps, today, netWorth()), prev = dailyFigures(pm, D.transactions, D.snaps, today, null);
   const [cy,cm] = m.split('-'), [py,pmo] = pm.split('-');
-  el('ovChartTitle').textContent = `${DAILY_METRICS[k].label} theo ngày · tháng ${Number(cm)}/${cy}`;
+  el('ovChartTitle').textContent = `${DAILY_METRICS[k].label} theo ngày`;   // tháng đã ghi ở chú giải ngay cạnh
   el('ovChartSub').textContent = '';
   el('ovChartLegend').innerHTML = `<span><i class="line" style="background:var(--ink);height:3px"></i>Tháng ${Number(cm)}/${cy}</span><span><i class="line" style="background:var(--faint);height:3px"></i>Tháng ${Number(pmo)}/${py}</span>`;
   const box = el('histChart');
@@ -6626,6 +6697,7 @@ function renderDailyChart(){
   const step = gx>=22 ? 3 : gx>=12 ? 5 : 7;
   for(let d=1; d<=n; d+=step) s+=`<text x="${X(d)}" y="${H-8}" text-anchor="middle">${d}</text>`;
   s += `<text x="${xTB}" y="${H-8}" text-anchor="middle">TB</text>`;
+  if(k==='nw') s += `<text x="${L+gx*n-4}" y="${T+12}" text-anchor="end">bấm một ngày để xem lý do tăng/giảm</text>`;
   const line = (rows, color, w, r) => {
     let segs=[], seg=[];
     for(const x of rows){ if(x[k]==null){ if(seg.length) segs.push(seg); seg=[]; } else seg.push([X(x.day), Y(x[k])]); }
@@ -6645,9 +6717,10 @@ function renderDailyChart(){
   // vùng rê chuột: mỗi ngày một dải trong suốt, title ghi số hai tháng
   for(let d=1; d<=n; d++){ const c=cur[d-1], p=prev[d-1]; if(!c && !p) continue;
     const t = [c?`${d}/${Number(cm)}: ${c[k]==null?'—':fmtK(Math.round(c[k]))}`:'', p?`${d}/${Number(pmo)}: ${p[k]==null?'—':fmtK(Math.round(p[k]))}`:''].filter(Boolean).join('\n');
-    s+=`<rect x="${X(d)-gx/2}" y="${T}" width="${gx}" height="${ph}" fill="transparent"><title>${t}</title></rect>`; }
+    s+=`<rect x="${X(d)-gx/2}" y="${T}" width="${gx}" height="${ph}" fill="transparent"${k==='nw' && c && c.nw!=null ? ` data-day="${c.id}" style="cursor:pointer"` : ''}><title>${t}</title></rect>`; }
   s+='</svg>'; box.innerHTML = s;
 }
+el('histChart').addEventListener('click', e=>{ const r=e.target.closest('rect[data-day]'); if(r) openNwDay(r.dataset.day); });
 el('ovChartMode').addEventListener('click', e=>{ const b=e.target.closest('button[data-v]'); if(!b) return; state.ovChart=b.dataset.v; renderHistory(); });
 el('ovChartMetric').addEventListener('click', e=>{ const b=e.target.closest('button[data-v]'); if(!b) return; state.ovMetric=b.dataset.v; renderHistory(); });
 function renderCatTable(rows){

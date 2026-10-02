@@ -351,6 +351,10 @@ Card **biểu đồ** (dưới ô tài sản ròng) có hai chế độ:
   chọn xem **Tài sản ròng**, **Thu** hoặc **Chi**. Cột **TB** bên phải là trung bình mỗi ngày của hai tháng.
   Rê chuột (máy tính) lên một ngày để xem số. Tài sản ròng lấy từ ảnh chụp mỗi lần mở app — ngày không
   mở app không có số, đường nối qua ngày đó bằng nét đứt mảnh.
+  **Bấm vào một ngày** (chế độ Tài sản ròng) để xem **vì sao tăng/giảm** so với lần chụp trước:
+  phần do **giá** (coin, vàng, cổ phiếu lên xuống — từng tài sản, giá trước → sau), phần do **số lượng**
+  (tiền chi ra, tiền nhận vào, mua bán), phần do **công nợ / thu chưa nhận**. Bên dưới ghi tổng thu chi
+  trong khoảng đó để đối chiếu.
 - **Tháng:** cột thu/chi và đường tài sản ròng của 24 tháng đã chốt.
 
 Card **Phân rã tăng trưởng** trả lời câu "tháng này giàu thêm nhờ đâu": nhờ để dành được tiền, hay
