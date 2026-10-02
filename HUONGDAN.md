@@ -346,6 +346,13 @@ Ba nút ở góc trên mở ba bảng:
 - **Chi theo nhóm:** tháng này chi từng nhóm bao nhiêu, so với trung bình 6 tháng.
 - **Thu theo nguồn:** tiền vào từ những nguồn nào.
 
+Card **biểu đồ** (dưới ô tài sản ròng) có hai chế độ:
+- **Ngày** (mặc định): từng ngày của tháng này (đường đậm) so với cùng ngày tháng trước (đường xám),
+  chọn xem **Tài sản ròng**, **Thu** hoặc **Chi**. Cột **TB** bên phải là trung bình mỗi ngày của hai tháng.
+  Rê chuột (máy tính) lên một ngày để xem số. Tài sản ròng lấy từ ảnh chụp mỗi lần mở app — ngày không
+  mở app không có số, đường nối qua ngày đó bằng nét đứt mảnh.
+- **Tháng:** cột thu/chi và đường tài sản ròng của 24 tháng đã chốt.
+
 Card **Phân rã tăng trưởng** trả lời câu "tháng này giàu thêm nhờ đâu": nhờ để dành được tiền, hay
 nhờ giá vàng và coin lên. Nó chỉ chạy khi đã có ít nhất hai lần chốt tháng trong app.
 
