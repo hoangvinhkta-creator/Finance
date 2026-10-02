@@ -482,8 +482,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background
 
       <div class="grid3 ov" style="margin-bottom:0">
         <section class="card pad" id="ovChartCard">
-          <div class="colhead" style="padding:0 0 8px;flex-wrap:wrap;gap:6px 14px"><h2>Thu chi &amp; tài sản ròng <small id="ovChartSub"></small></h2>
-            <div class="legend" style="padding:0"><span><i style="background:var(--ink)"></i>Thu</span><span><i style="background:var(--bar2)"></i>Chi</span><span><i class="line" style="background:var(--ink)"></i>Tài sản ròng</span><span><i class="line" style="background:repeating-linear-gradient(90deg,var(--mute) 0 3px,transparent 3px 6px)"></i>TB thu 12 tháng</span></div></div>
+          <div class="colhead" style="padding:0 0 6px;flex-wrap:wrap;gap:6px 14px">
+            <div class="segrow"><div class="seg mini" id="ovChartMode"><button data-v="day">Ngày</button><button data-v="month">Tháng</button></div>
+              <div class="seg mini" id="ovChartMetric"><button data-v="nw">Tài sản ròng</button><button data-v="income">Thu</button><button data-v="expense">Chi</button></div></div>
+            <div style="display:flex;gap:4px 14px;align-items:baseline;flex-wrap:wrap"><h2 style="font-size:13px"><span id="ovChartTitle">Thu chi &amp; tài sản ròng</span> <small id="ovChartSub"></small></h2>
+              <div class="legend" id="ovChartLegend" style="padding:0"></div></div></div>
           <div id="histChart"></div>
         </section>
         <section class="card pad" id="ovWfCard">
@@ -1248,7 +1251,7 @@ const state = {
   data:{transactions:[], debts:[], holdings:[], transfers:[], prices:{}, months:{}, snaps:{}, paper:{}, settings:{}},
   month: thisMonth(), view:'tong', showSettled:false, dcaFilter:'', dcaCoin:'eth', stockSym:'FPT', tradeMkt:'stock', tradeSym:{stock:'FPT', coin:'BTC'}, tradeSet:{stock:'PICK', coin:'PICK'}, planVariant:'A',
   edit:{chi:null, thu:null, receivable:null, payable:null},
-  period:'m0', exUnusual:false, scn:{prices:{}, name:'', key:null, cryptoPct:0}, holdOpen:{},
+  period:'m0', ovChart:'day', ovMetric:'nw', exUnusual:false, scn:{prices:{}, name:'', key:null, cryptoPct:0}, holdOpen:{},
 };
 const D = state.data;
 const settings = () => D.settings;
@@ -2830,6 +2833,32 @@ function testScenario(){
     D.holdings=sH; D.prices=sP; state.scn=sS; }
   console.log(`%c${ok} đạt · ${bad} hỏng`, bad?'color:#b00;font-weight:600':'font-weight:600');
   return {pass:ok, fail:bad};
+}
+/* Biểu đồ theo ngày ở Tổng quan — testDaily(). */
+function testDaily(){
+  let ok=0, bad=0;
+  const chk=(lb,got,want)=>{ const p = JSON.stringify(got)===JSON.stringify(want);
+    console.log(`  ${p?'✓':'✗'} ${lb}: ${JSON.stringify(got)}${p?'':`   (mong đợi ${JSON.stringify(want)})`}`); p?ok++:bad++; };
+  const tx = [{type:'thu',amount:1000,date:'2026-10-01',month:'2026-10'},{type:'chi',amount:200,date:'2026-10-01',month:'2026-10'},
+              {type:'chi',amount:50,date:'2026-10-01',month:'2026-10'},{type:'thu',amount:300,date:'2026-10-03',month:'2026-10',pending:true},
+              {type:'chi',amount:70,date:'2026-09-30',month:'2026-09'},{type:'chi',amount:90,date:'2026-10-20',month:'2026-10'}];
+  const sn = {'2026-10-01':{netWorth:5000},'2026-10-03':{netWorth:5200},'2026-10-05':{netWorth:9999},'2026-09-30':{netWorth:4800}};
+  const r = dailyFigures('2026-10', tx, sn, '2026-10-04', 5300);
+  chk('31 ngày cho tháng 10', r.length, 31);
+  chk('ngày 1: thu 1.000, chi cộng dồn 250', [r[0].income, r[0].expense], [1000, 250]);
+  chk('ngày đã qua không có khoản ⇒ 0, không phải trống', [r[1].income, r[1].expense], [0, 0]);
+  chk('thu chưa nhận vẫn tính (như monthTotals)', r[2].income, 300);
+  chk('ngày chưa tới ⇒ trống, kể cả có khoản ghi trước', [r[5].income, r[19].expense], [null, 90]);
+  chk('tài sản ròng: có ảnh chụp ⇒ số ảnh, không có ⇒ trống', [r[0].nw, r[1].nw, r[2].nw], [5000, null, 5200]);
+  chk('hôm nay dùng số đang tính, ngày tương lai bỏ ảnh chụp', [r[3].nw, r[4].nw], [5300, null]);
+  chk('khoản tháng khác không lọt vào', sum(r, x=>x.expense||0), 340);
+  const p = dailyFigures('2026-09', tx, sn, '2026-10-04', 5300);
+  chk('tháng trước: 30 ngày, đủ số, không dùng số hôm nay', [p.length, p[29].expense, p[29].nw, p[0].nw], [30, 70, 4800, null]);
+  chk('TB bỏ ngày trống', [dailyAvg(r,'nw'), dailyAvg(r,'income')], [5166.666666666667, 325]);
+  chk('đường cong không vọt quá điểm kề (đỉnh nằm đúng điểm giữa)', smoothPath([[0,10],[10,0],[20,10]]).includes('C3.3,6.7 6.7,0.0 10.0,0.0'), true);
+  chk('một điểm ⇒ chỉ M', smoothPath([[1,2]]), 'M1,2');
+  console.log(`%cBiểu đồ ngày: ${ok} đạt · ${bad} hỏng`, `font-weight:700;color:${bad?'#b00':'#060'}`);
+  return {ok, bad};
 }
 /* Ảnh chụp hằng ngày: chọn mốc và dọn bản cũ — testSnaps(). */
 function testSnaps(){
@@ -6508,7 +6537,13 @@ function renderHistory(){
   el('histTable').innerHTML = `<thead><tr><th class="first">Tháng</th><th class="n">Thu</th><th class="n">Chi</th><th class="n">Chênh lệch</th><th class="n">Tài sản ròng</th><th class="n">Tăng</th><th class="n">Hệ số</th><th class="n">Tốc độ</th><th>Ghi chú</th><th class="last"></th></tr></thead><tbody>`+
     (rows.map(r=>`<tr data-m="${r.id}"><td class="first">${fmtMonth(r.id)}</td><td class="n">${fmtK(r.income)}</td><td class="n">${fmtK(r.expense)}</td><td class="n">${fmtK(r.diff)}</td><td class="n"><b>${fmtK(r.nw)}</b></td><td class="n">${fmtK(r.growth)}</td><td class="n">${r.ratio==null?'—':fmtNum(r.ratio,2)}</td><td class="n">${fmtPct(r.rate)}</td><td style="min-width:140px"><input class="inline l" data-note="${r.id}" value="${esc(r.note||'')}" placeholder="—"></td><td class="act last"><button data-act="del">xoá</button></td></tr>`).join('') || '<tr><td class="empty" colspan="10">Chưa chốt tháng nào</td></tr>')+
     (avg?`<tr class="avg"><td class="first">TB ${last12.length} tháng gần nhất</td><td class="n">${fmtK(Math.round(avg.income))}</td><td class="n">${fmtK(Math.round(avg.expense))}</td><td class="n">${fmtK(Math.round(avg.income-avg.expense))}</td><td colspan="6"></td></tr>`:'')+`</tbody>`;
-  // ---- biểu đồ cột thu/chi + đường tài sản ròng ----
+  // ---- biểu đồ: Ngày = tháng này so tháng trước theo từng ngày; Tháng = cột thu/chi + đường tài sản ròng 24 tháng ----
+  for(const b of el('ovChartMode').children) b.classList.toggle('on', b.dataset.v===state.ovChart);
+  for(const b of el('ovChartMetric').children) b.classList.toggle('on', b.dataset.v===state.ovMetric);
+  el('ovChartMetric').hidden = state.ovChart!=='day';
+  if(state.ovChart==='day'){ renderDailyChart(); return renderCatTable(rows); }
+  el('ovChartTitle').textContent = 'Thu chi & tài sản ròng';
+  el('ovChartLegend').innerHTML = `<span><i style="background:var(--ink)"></i>Thu</span><span><i style="background:var(--bar2)"></i>Chi</span><span><i class="line" style="background:var(--ink)"></i>Tài sản ròng</span><span><i class="line" style="background:repeating-linear-gradient(90deg,var(--mute) 0 3px,transparent 3px 6px)"></i>TB thu 12 tháng</span>`;
   const box = el('histChart'); const data = rows.slice(-24);
   el('ovChartSub').textContent = data.length ? `${data.length} tháng gần nhất` : '';
   if(!data.length){ box.innerHTML='<div class="mute">Chưa chốt tháng nào</div>'; return renderCatTable(rows); }
@@ -6531,6 +6566,90 @@ function renderHistory(){
   s+='</svg>'; box.innerHTML=s;
   renderCatTable(rows);
 }
+/* ---- Biểu đồ theo ngày (tab Tổng quan, chế độ "Ngày") ----
+   Hàm thuần: số liệu từng ngày của tháng m. Thu/chi cộng theo ngày ghi trên khoản (cả thu chưa nhận, như monthTotals);
+   ngày đã qua không có khoản nào = 0, ngày chưa tới = null. Tài sản ròng lấy từ ảnh chụp ngày (snaps) — ngày không mở app
+   thì không có ảnh ⇒ null, đường đứt ở đó chứ không nối đoán; riêng hôm nay dùng số đang tính (nwNow). */
+function dailyFigures(m, txs, snaps, today, nwNow){
+  const n = daysInMonth(m), out = [];
+  for(let d=1; d<=n; d++){
+    const id = m+'-'+pad2(d), past = id<=today, sn = snaps && snaps[id];
+    out.push({ day:d, id, income: past?0:null, expense: past?0:null,
+      nw: id===today && nwNow!=null ? nwNow : (past && sn && sn.netWorth!=null ? Number(sn.netWorth) : null) });
+  }
+  for(const t of txs){
+    if(!t.date || t.date.slice(0,7)!==m || (t.type!=='thu' && t.type!=='chi')) continue;
+    const r = out[Number(t.date.slice(8,10))-1]; if(!r) continue;
+    const k = t.type==='thu' ? 'income' : 'expense';
+    r[k] = (r[k]||0) + (Number(t.amount)||0);
+  }
+  return out;
+}
+/* Hàm thuần: trung bình các ngày có số (bỏ null). */
+function dailyAvg(rows, k){ const v = rows.map(r=>r[k]).filter(x=>x!=null); return v.length ? sum(v)/v.length : null; }
+/* Hàm thuần: đường cong qua các điểm, không vọt quá điểm kề (monotone cubic) — chi một ngày 0 không bị vẽ thành âm. */
+function smoothPath(pts){
+  if(!pts.length) return '';
+  if(pts.length===1) return `M${pts[0][0]},${pts[0][1]}`;
+  const n = pts.length, dx=[], m=[], t=[];
+  for(let i=0;i<n-1;i++){ dx[i]=pts[i+1][0]-pts[i][0]; m[i]=(pts[i+1][1]-pts[i][1])/(dx[i]||1); }
+  t[0]=m[0]; t[n-1]=m[n-2];
+  for(let i=1;i<n-1;i++) t[i] = m[i-1]*m[i]<=0 ? 0 : 3*(dx[i-1]+dx[i])/((2*dx[i]+dx[i-1])/m[i-1]+(dx[i]+2*dx[i-1])/m[i]);
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for(let i=0;i<n-1;i++){ const h=dx[i]/3;
+    d += ` C${(pts[i][0]+h).toFixed(1)},${(pts[i][1]+t[i]*h).toFixed(1)} ${(pts[i+1][0]-h).toFixed(1)},${(pts[i+1][1]-t[i+1]*h).toFixed(1)} ${pts[i+1][0].toFixed(1)},${pts[i+1][1].toFixed(1)}`; }
+  return d;
+}
+/* Nhãn trục gọn: 1,5 tỷ · 820 tr · 500k. */
+const fmtAxis = v => Math.abs(v)>=1e6 ? fmtNum(v/1e6, v%1e6?1:0)+' tỷ' : Math.abs(v)>=1000 ? fmtNum(v/1000, v%1000?1:0)+' tr' : fmtNum(v)+'k';
+const DAILY_METRICS = { nw:{label:'Tài sản ròng'}, income:{label:'Thu'}, expense:{label:'Chi'} };
+function renderDailyChart(){
+  const m = thisMonth(), pm = shiftMonth(m,-1), today = todayStr(), k = state.ovMetric;
+  const cur = dailyFigures(m, D.transactions, D.snaps, today, netWorth()), prev = dailyFigures(pm, D.transactions, D.snaps, today, null);
+  const [cy,cm] = m.split('-'), [py,pmo] = pm.split('-');
+  el('ovChartTitle').textContent = `${DAILY_METRICS[k].label} theo ngày · tháng ${Number(cm)}/${cy}`;
+  el('ovChartSub').textContent = '';
+  el('ovChartLegend').innerHTML = `<span><i class="line" style="background:var(--ink);height:3px"></i>Tháng ${Number(cm)}/${cy}</span><span><i class="line" style="background:var(--faint);height:3px"></i>Tháng ${Number(pmo)}/${py}</span>`;
+  const box = el('histChart');
+  const W = Math.max(320, box.clientWidth||800), H = 280, L=50, Rr=50, T=12, B=26, pw=W-L-Rr, ph=H-T-B;
+  const vals = [...cur, ...prev].map(r=>r[k]).filter(x=>x!=null);
+  if(!vals.length){ box.innerHTML = `<div class="mute" style="padding:18px 0">${k==='nw'?'Chưa có ảnh chụp ngày nào — app tự chụp mỗi lần mở.':'Chưa có khoản nào trong hai tháng này.'}</div>`; return; }
+  let lo, hi;
+  if(k==='nw'){ const a=Math.min(...vals), b=Math.max(...vals), pad=Math.max((b-a)*0.15, Math.abs(b)*0.01, 1);
+    const step = niceMax((b-a+2*pad)/4); lo = Math.floor((a-pad)/step)*step; hi = lo+step*4; if(hi<b){ hi=Math.ceil(b/step)*step; } }
+  else { lo = 0; hi = niceMax(Math.max(...vals)); }
+  const n = 31, gx = pw/(n+1);             // 31 khe ngày + 1 khe cho cột TB
+  const X = d => L + gx*(d-0.5), Y = v => T + ph - (v-lo)/(hi-lo||1)*ph, xTB = L + gx*(n+0.5);
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+  for(let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4, y=Y(v); s+=`<line x1="${L}" x2="${W-Rr}" y1="${y}" y2="${y}" stroke="var(--line2)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${fmtAxis(v)}</text>`; }
+  s += `<line x1="${L+gx*n}" x2="${L+gx*n}" y1="${T}" y2="${T+ph}" stroke="var(--line)"/>`;
+  const step = gx>=22 ? 3 : gx>=12 ? 5 : 7;
+  for(let d=1; d<=n; d+=step) s+=`<text x="${X(d)}" y="${H-8}" text-anchor="middle">${d}</text>`;
+  s += `<text x="${xTB}" y="${H-8}" text-anchor="middle">TB</text>`;
+  const line = (rows, color, w, r) => {
+    let segs=[], seg=[];
+    for(const x of rows){ if(x[k]==null){ if(seg.length) segs.push(seg); seg=[]; } else seg.push([X(x.day), Y(x[k])]); }
+    if(seg.length) segs.push(seg);
+    let o='';
+    // tài sản ròng là số dư: ngày không mở app (không có ảnh chụp) nối bằng nét đứt mảnh để vẫn đọc được xu hướng; thu/chi không có khoảng trống trong quá khứ
+    for(let i=1;i<segs.length;i++){ const a=segs[i-1][segs[i-1].length-1], b=segs[i][0];
+      o+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${color}" stroke-width="1" stroke-dasharray="2 3"/>`; }
+    for(const g of segs){ if(g.length>1) o+=`<path d="${smoothPath(g)}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round"/>`;
+      for(const p of g) o+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${r}" fill="${color}"/>`; }
+    return o;
+  };
+  s += line(prev, 'var(--faint)', 1.5, 2) + line(cur, 'var(--ink)', 2.2, 2.6);
+  const aP = dailyAvg(prev,k), aC = dailyAvg(cur,k);
+  if(aP!=null) s+=`<circle cx="${xTB}" cy="${Y(aP)}" r="4" fill="var(--faint)"><title>TB tháng ${Number(pmo)}: ${fmtK(Math.round(aP))}</title></circle>`;
+  if(aC!=null) s+=`<circle cx="${xTB}" cy="${Y(aC)}" r="4" fill="var(--ink)"><title>TB tháng ${Number(cm)}: ${fmtK(Math.round(aC))}</title></circle>`;
+  // vùng rê chuột: mỗi ngày một dải trong suốt, title ghi số hai tháng
+  for(let d=1; d<=n; d++){ const c=cur[d-1], p=prev[d-1]; if(!c && !p) continue;
+    const t = [c?`${d}/${Number(cm)}: ${c[k]==null?'—':fmtK(Math.round(c[k]))}`:'', p?`${d}/${Number(pmo)}: ${p[k]==null?'—':fmtK(Math.round(p[k]))}`:''].filter(Boolean).join('\n');
+    s+=`<rect x="${X(d)-gx/2}" y="${T}" width="${gx}" height="${ph}" fill="transparent"><title>${t}</title></rect>`; }
+  s+='</svg>'; box.innerHTML = s;
+}
+el('ovChartMode').addEventListener('click', e=>{ const b=e.target.closest('button[data-v]'); if(!b) return; state.ovChart=b.dataset.v; renderHistory(); });
+el('ovChartMetric').addEventListener('click', e=>{ const b=e.target.closest('button[data-v]'); if(!b) return; state.ovMetric=b.dataset.v; renderHistory(); });
 function renderCatTable(rows){
   const withCat = rows.filter(r=>r.byCategory && Object.keys(r.byCategory).length);
   const cats = [...settings().expenseCats]; for(const r of withCat) for(const c of Object.keys(r.byCategory)) if(!cats.includes(c)) cats.push(c);
@@ -6889,6 +7008,7 @@ window.testUsd = testUsd;
 window.testViews = testViews;
 window.testScenario = testScenario;
 window.testSnaps = testSnaps;
+window.testDaily = testDaily;
 window.testCapital = testCapital;
 window.testLedger = testLedger;
 window.testSwing = testSwing;
@@ -6907,7 +7027,7 @@ window.FinTrace = { state, data:D,
         toUsd, priceUsd, holdingUsd, cryptoUsd, resolveLiveUsd, LIVE_SYMBOLS, coinAllocation,
         dcaHistoryOps, usdtHistoryOps, DCA_HISTORY_IMPORT, USDT_HISTORY_IMPORT, DCA_SCORED, DCA_COIN_KEYS,
         VN30, VN70, VN100, STOCK_EXTRA, STOCK_ALL, STOCK_SETS, STOCK_SCORE_V1, STOCK_HISTORY_IMPORT, stockHistoryOps, stockLedgerOf, STOCK_SWING_RULES, STOCK_GRID, probeErrorLabel, parseStockStore, quotesFromStore, stockScoreOf, stockScores, stockBands, stockBacktestOne, stockBacktestAll, stockBtBest, simulatePicks, planWhatIf, STOCK_PLAN_V1, stockPriceAt, stockPnlPlan, stockReconcileOps, STOCK_RECONCILE_VCBS, scoreAfterFlat, scoreDecayPath, decayFirstAt, floorPx, pickTopCoins, COIN_SCORE_V1, COIN_SWING_RULES, COIN_PLAN_V1, MARKETS, tradeLedger, tradeStatsIn, isCoinKey, refRows, stockPlanNow, stockSuggestion, confirmSignal, eventStudyOne, eventStudyAll, CONFIRM_V1, EVENT_V1, screenPicks, SCREEN_V1, cheapKind, KIND_V1, ENTRY_RULES, entryOk, pickRuleText, PLAN_VARIANTS, planVariant, variantPlan, PAPER_ACCOUNT_V1, paperStep, paperTrade, paperId, stockAgeOf},
-  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testCapital, testLedger, testSwing, testStocks,
+  render, importInitialData, importDcaHistory, takeDailySnapshot, testAttribution, testDca, testBuyScore, testDcaPlan, testDcaCoins, testUsd, testViews, testScenario, testSnaps, testDaily, testCapital, testLedger, testSwing, testStocks,
   refreshDca, refreshStocks, refreshCoins, importStockHistory, reconcileStocks, openPnl, openBacktest, openTradeOrder, makeCandles,
   downloadBackup, downloadJson, restoreBackup, backupPayload, scanLocalData, testRecovery };
 
