@@ -6039,7 +6039,7 @@ function renderDcaPlan(){
       row('Smart', k(p.smart.total)+'/th', `${k(p.smart.paid)} <span class="u mute">/ ${k(p.smart.unlocked)} đang mở</span>`, bar(p.smart.paid, p.smart.unlocked),
           `mở ${p.smart.pct}% theo Score ${p.score==null?'—':p.score} · ${p.smart.remaining>0.5 ? 'còn '+k(p.smart.remaining) : p.smart.unlocked<=0.5 ? 'chưa mở' : 'đã mua hết'}`)+
       row('Opp', 'góp '+k(p.opp.monthly)+'/th', `${k(p.opp.balance)} <span class="u mute">/ cap ${k(p.opp.cap)}</span>`, bar(p.opp.balance, p.opp.cap),
-          `mở ${p.opp.pct}%${p.opp.available>0.5?' ⇒ được mua '+k(p.opp.available)+(usdRate()>0?' ≈ '+fmtUsdt(p.opp.available/usdRate()):''):''} · góp ${p.opp.months} th ${k(p.opp.contributed)} · tiêu ${k(p.opp.spent)}`)
+          `mở ${p.opp.pct}%${p.opp.available>0.5?' ⇒ được mua '+k(p.opp.available)+(usdRate()>0?' ≈ '+fmtUsdt(p.opp.available/usdRate()):''):p.opp.unlocked>0.5?' ('+k(p.opp.unlocked)+') · đã mua hết, khoá':' · chưa mở'} · góp ${p.opp.months} th ${k(p.opp.contributed)} · tiêu ${k(p.opp.spent)}`)
     )}</table></div>`;
 }
 
