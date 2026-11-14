@@ -2463,13 +2463,19 @@ function dcaPlan(month, cfg, purchases, score, today){
   const cap = Number(cfg.oppCapMonths)*oppMonthly;
   const oppBalance = Math.max(0, Math.min(cap, contributed-oppSpent));
   const oppPct = score==null ? 0 : unlockPct(DCA_PLAN_V1.oppUnlock, score);
-  const oppAvailable = oppBalance*oppPct/100;
+  /* % mở tính trên số dư ĐẦU THÁNG (chưa trừ lần mua trong tháng), rồi trừ phần đã mua — như Smart.
+     Tính trên số dư hiện tại thì mỗi lần mua xong số dư giảm, % lại mở tiếp trên phần còn lại (9.000k
+     × 25% = 2.250k, mua xong còn 6.750k × 25% = 1.688k nữa…) và khoản đã mở không bao giờ khoá. */
+  const oppPaidMonth = spentBy('OPPORTUNITY');
+  const oppStartBal = Math.max(0, Math.min(cap, contributed-(oppSpent-oppPaidMonth)));
+  const oppUnlocked = oppStartBal*oppPct/100;
+  const oppAvailable = Math.max(0, Math.min(oppBalance, oppUnlocked-oppPaidMonth));
 
   return { month, budget, baseTotal, smartTotal, oppMonthly,
     base:{ legs, total:baseTotal, dueAmount:baseDueAmount, paid:basePaid, remaining:baseRemaining },
     smart:{ total:smartTotal, pct:smartPct, unlocked:smartUnlocked, paid:smartPaid, remaining:smartRemaining },
     opp:{ monthly:oppMonthly, months, contributed, spent:oppSpent, cap, balance:oppBalance,
-          pct:oppPct, available:oppAvailable, paidThisMonth:spentBy('OPPORTUNITY') },
+          pct:oppPct, startBalance:oppStartBal, unlocked:oppUnlocked, available:oppAvailable, paidThisMonth:oppPaidMonth },
     score };
 }
 
@@ -2665,6 +2671,18 @@ function testDcaPlan(){
     chk('Score 90 ⇒ 100%', at(90).pct, 100); chk('Score 90 ⇒ được mua 8.000k', at(90).available, 8000);
     chk('Score 80 ⇒ 50%', at(80).pct, 50);   chk('Score 70 ⇒ 25%', at(70).pct, 25);
     chk('Score 60 ⇒ 0% (Smart đã mở 75% nhưng Opportunity vẫn đóng)', at(60).pct, 0); }
+
+  console.log('%c8b — mua xong phần đã mở thì KHÓA, không mở tiếp % trên số còn lại','font-weight:600');
+  { /* Quỹ 8.000k (4 tháng × 2.000k), score 70 ⇒ 25% ⇒ mở 2.000k */
+    const at = (spent, sc=70) => dcaPlan('2026-12', CFG, spent?[buy('2026-12-05',spent,'OPPORTUNITY')]:[], sc, 14).opp;
+    chk('Chưa mua: mở 2.000k', at(0).available, 2000);
+    chk('Mua hết 2.000k ⇒ còn 0 (không mở thêm 25% của 6.000k)', at(2000).available, 0);
+    chk('Mua 1.000k ⇒ còn 1.000k', at(1000).available, 1000);
+    chk('Số dư vẫn trừ đúng sau khi mua', at(2000).balance, 6000);
+    chk('Score lên 80 (50% = 4.000k), đã mua 2.000k ⇒ còn 2.000k', at(2000,80).available, 2000);
+    chk('Score 80, đã mua 4.000k ⇒ khóa', at(4000,80).available, 0);
+    const prev = dcaPlan('2026-12', CFG, [buy('2026-11-05',2000,'OPPORTUNITY')], 70, 14).opp;
+    chk('Mua ở tháng trước không khóa tháng này (đầu tháng còn 6.000k × 25%)', prev.available, 1500); }
 
   console.log('%c9 — ngân sách 0 ⇒ mọi con số về 0 và không có dòng gợi ý','font-weight:600');
   { const p = dcaPlan('2026-09', {...CFG, budget:0}, [], 80, 14);
