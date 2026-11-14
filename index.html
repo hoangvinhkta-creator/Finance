@@ -2480,7 +2480,7 @@ function dcaPlan(month, cfg, purchases, score, today){
 }
 
 /* Một dòng gợi ý tĩnh — mô tả trạng thái, không phải lệnh, không lưu ở đâu cả. */
-function dcaSuggestion(plan){
+function dcaSuggestion(plan, usdtRate){
   if(!plan.budget) return '';
   const bits = [plan.staleBlocked ? 'Điểm quá 48 giờ — không mở Smart/Opportunity, bấm Cập nhật' : plan.score==null ? 'Chưa có Buy Score' : 'Score '+plan.score];
   const dueLeg = plan.base.legs.find(l=>l.status==='due');
@@ -2489,7 +2489,7 @@ function dcaSuggestion(plan){
   else bits.push('Base đã đủ phần tới hạn');
   bits.push(`Smart mở ${plan.smart.pct}%` + (plan.smart.unlocked<=0.5 ? '' :
     plan.smart.remaining>0.5 ? ` (${fmtK(Math.round(plan.smart.remaining))})` : ' — đã mua đủ phần mở'));
-  if(plan.opp.pct>0 && plan.opp.available>0.5) bits.push(`Opportunity mở ${plan.opp.pct}% (${fmtK(Math.round(plan.opp.available))})`);
+  if(plan.opp.pct>0 && plan.opp.available>0.5) bits.push(`Opportunity mở ${plan.opp.pct}% (${fmtK(Math.round(plan.opp.available))}${usdtRate>0?' ≈ '+fmtUsdt(plan.opp.available/usdtRate):''})`);
   return bits.join(' · ');
 }
 /* Điểm vào cho UI: lấy tháng hiện tại, cài đặt và Buy Score đã cache. */
@@ -2635,6 +2635,9 @@ function testDcaPlan(){
   { const p = dcaPlan('2026-09', CFG, [buy('2026-09-03',2000,'BASE')], 50, 14);
     chk('Kỳ 3', p.base.legs[0].status, 'done'); chk('Kỳ 13', p.base.legs[1].status, 'due');
     chk('Kỳ 13 còn thiếu', p.base.legs[1].remaining, 1500); chk('Base còn phải mua', p.base.remaining, 1500);
+    { const o = dcaPlan('2026-12', CFG, [], 90, 14);
+      chk('Gợi ý có USDT tương đương (8.000k ÷ 25 = 320 USDT)', dcaSuggestion(o, 25).includes('≈ 320 USDT'), true);
+      chk('Không có tỷ giá ⇒ không in USDT', dcaSuggestion(o).includes('USDT'), false); }
     chk('Gợi ý nêu đúng kỳ tới hạn', dcaSuggestion(p).includes('Base kỳ 13'), true); }
 
   console.log('%c4 — tháng đã qua (không truyền ngày) ⇒ mọi kỳ đều đã tới hạn','font-weight:600');
@@ -6030,13 +6033,13 @@ function renderDcaPlan(){
   const LEG_SHORT = { done:'đủ', due:'chưa đủ', waiting:'chờ' };
   const legs = p.base.legs.map(l=>`ngày ${l.day} ${LEG_SHORT[l.status]}`).join(' · ');
   el('dcaPlanBody').innerHTML =
-    `<div class="suggest one" title="${esc(dcaSuggestion(p)||'')}">${esc(dcaSuggestion(p)||'—')}</div>`+
+    `<div class="suggest one" title="${esc(dcaSuggestion(p, usdRate())||'')}">${esc(dcaSuggestion(p, usdRate())||'—')}</div>`+
     `<div class="scroll"><table class="tbl compact">${table(
       row('Base', k(p.base.total)+'/th', `${k(p.base.paid)} <span class="u mute">/ ${k(p.base.dueAmount)} tới hạn</span>`, bar(p.base.paid, p.base.dueAmount), legs)+
       row('Smart', k(p.smart.total)+'/th', `${k(p.smart.paid)} <span class="u mute">/ ${k(p.smart.unlocked)} đang mở</span>`, bar(p.smart.paid, p.smart.unlocked),
           `mở ${p.smart.pct}% theo Score ${p.score==null?'—':p.score} · ${p.smart.remaining>0.5 ? 'còn '+k(p.smart.remaining) : p.smart.unlocked<=0.5 ? 'chưa mở' : 'đã mua hết'}`)+
       row('Opp', 'góp '+k(p.opp.monthly)+'/th', `${k(p.opp.balance)} <span class="u mute">/ cap ${k(p.opp.cap)}</span>`, bar(p.opp.balance, p.opp.cap),
-          `góp ${p.opp.months} th ${k(p.opp.contributed)} · tiêu ${k(p.opp.spent)} · mở ${p.opp.pct}%${p.opp.available>0.5?' ⇒ '+k(p.opp.available):''}`)
+          `mở ${p.opp.pct}%${p.opp.available>0.5?' ⇒ được mua '+k(p.opp.available)+(usdRate()>0?' ≈ '+fmtUsdt(p.opp.available/usdRate()):''):''} · góp ${p.opp.months} th ${k(p.opp.contributed)} · tiêu ${k(p.opp.spent)}`)
     )}</table></div>`;
 }
 
